@@ -4,6 +4,7 @@ const { ipcRenderer, webFrame } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const zlib = require("zlib");
 const { dialog, clipboard } = require("@electron/remote");
 
 // CodeMirror 6 bundle & PDF.js viewer
@@ -418,8 +419,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (info && info.text) {
           const docText = cm.getValue();
           const cleanSnippet = info.text.trim();
-          if (cleanSnippet.length > 3) {
-            const idx = docText.indexOf(cleanSnippet);
+          if (cleanSnippet.length > 2) {
+            let idx = docText.indexOf(cleanSnippet);
+            if (idx === -1) {
+              const words = cleanSnippet.split(/\s+/).filter(w => w.length >= 4);
+              for (const w of words) {
+                idx = docText.indexOf(w);
+                if (idx !== -1) break;
+              }
+            }
             if (idx !== -1) {
               const line = cm.view.state.doc.lineAt(idx);
               cm.jumpToLine(line.number);
@@ -430,6 +438,168 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     }
   );
+
+  // ====== SYNCTEX BIDIRECTIONAL NAVIGATION ======
+  let cachedSyncTex = null;
+
+  function getActiveSyncTexFile() {
+    if (typeof isLinkedProject !== "undefined" && isLinkedProject && typeof currentProject !== "undefined" && currentProject && currentProject.storePath) {
+      const storeBuild = path.join(currentProject.storePath, '.lack', 'build');
+      const gzPath = path.join(storeBuild, `${currentProject.mainBase || 'main'}.synctex.gz`);
+      if (fs.existsSync(gzPath)) return gzPath;
+      const plainPath = path.join(storeBuild, `${currentProject.mainBase || 'main'}.synctex`);
+      if (fs.existsSync(plainPath)) return plainPath;
+    }
+    const pdfPath = typeof pdfViewer.getCurrentPdfPath === "function" ? pdfViewer.getCurrentPdfPath() : null;
+    if (pdfPath) {
+      const dir = path.dirname(pdfPath);
+      const base = path.basename(pdfPath, path.extname(pdfPath));
+      const gz1 = path.join(dir, `${base}.synctex.gz`);
+      if (fs.existsSync(gz1)) return gz1;
+      const gz2 = path.join(dir, '.lack', 'build', `${base}.synctex.gz`);
+      if (fs.existsSync(gz2)) return gz2;
+      const plain1 = path.join(dir, `${base}.synctex`);
+      if (fs.existsSync(plain1)) return plain1;
+    }
+    const curTab = typeof getActiveTab === "function" ? getActiveTab() : null;
+    if (curTab && curTab.filePath) {
+      const dir = path.dirname(curTab.filePath);
+      const base = path.basename(curTab.filePath, path.extname(curTab.filePath));
+      const gz = path.join(dir, `${base}.synctex.gz`);
+      if (fs.existsSync(gz)) return gz;
+      const plain = path.join(dir, `${base}.synctex`);
+      if (fs.existsSync(plain)) return plain;
+    }
+    return null;
+  }
+
+  function parseSyncTexRaw(raw) {
+    const lineMap = new Map();
+    const lines = raw.split(/\r?\n/);
+    let curPage = 1;
+    const unit = 65536;
+
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (l.startsWith('{')) {
+        const p = parseInt(l.slice(1), 10);
+        if (!isNaN(p)) curPage = p;
+      } else {
+        const m = /[([xkgv](\d+),(\d+):(\d+),(\d+)/.exec(l);
+        if (m) {
+          const lineNum = parseInt(m[2], 10);
+          const xSp = parseInt(m[3], 10);
+          const ySp = parseInt(m[4], 10);
+          if (!lineMap.has(lineNum)) {
+            lineMap.set(lineNum, { page: curPage, xPt: xSp / unit, yPt: ySp / unit });
+          }
+        }
+      }
+    }
+    return lineMap;
+  }
+
+  function lookupSyncTexForward(lineNum) {
+    const synctexFile = getActiveSyncTexFile();
+    if (!synctexFile) return null;
+    try {
+      const stat = fs.statSync(synctexFile);
+      if (!cachedSyncTex || cachedSyncTex.file !== synctexFile || cachedSyncTex.mtime !== stat.mtimeMs) {
+        let content = '';
+        if (synctexFile.endsWith('.gz')) {
+          const buf = fs.readFileSync(synctexFile);
+          content = zlib.gunzipSync(buf).toString('utf8');
+        } else {
+          content = fs.readFileSync(synctexFile, 'utf8');
+        }
+        cachedSyncTex = {
+          file: synctexFile,
+          mtime: stat.mtimeMs,
+          map: parseSyncTexRaw(content)
+        };
+      }
+
+      if (cachedSyncTex && cachedSyncTex.map) {
+        if (cachedSyncTex.map.has(lineNum)) return cachedSyncTex.map.get(lineNum);
+        for (let offset = 1; offset <= 5; offset++) {
+          if (cachedSyncTex.map.has(lineNum - offset)) return cachedSyncTex.map.get(lineNum - offset);
+          if (cachedSyncTex.map.has(lineNum + offset)) return cachedSyncTex.map.get(lineNum + offset);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  async function triggerSyncTexToPdf() {
+    if (!cm || !cm.view) return;
+    const cursor = cm.view.state.selection.main.head;
+    const lineObj = cm.view.state.doc.lineAt(cursor);
+    const lineNum = lineObj.number;
+    const lineText = lineObj.text.trim();
+
+    // 1. Try SyncTeX data
+    const synctexResult = lookupSyncTexForward(lineNum);
+    if (synctexResult) {
+      await pdfViewer.goToSyncTexPosition(synctexResult.page, synctexResult.xPt, synctexResult.yPt);
+      showNotification(`SyncTeX: Pagina ${synctexResult.page}`, "info");
+      return;
+    }
+
+    // 2. Try section heading
+    const secMatch = /\\(?:part|chapter|(?:sub){0,2}section|paragraph)\*?\{([^}]+)\}/.exec(lineText);
+    if (secMatch) {
+      const title = secMatch[1].trim();
+      const found = await pdfViewer.goToSection(title);
+      if (found) {
+        showNotification(`SyncTeX: ${title}`, "info");
+        return;
+      }
+    }
+
+    // 3. Fallback to text matching
+    if (lineText.length > 2) {
+      const found = await pdfViewer.goToText(lineText);
+      if (found) {
+        showNotification(`SyncTeX: Riga ${lineNum}`, "info");
+        return;
+      }
+    }
+
+    showNotification("SyncTeX: Posizione nel PDF non trovata", "info");
+  }
+
+  function triggerSyncTexToCode() {
+    const text = pdfViewer.getVisiblePdfText();
+    if (!text) {
+      showNotification("Seleziona del testo nel PDF o fai doppio clic", "info");
+      return;
+    }
+
+    const docText = cm.getValue();
+    const clean = text.trim();
+    let idx = docText.indexOf(clean);
+    if (idx === -1) {
+      const words = clean.split(/\s+/).filter(w => w.length >= 4);
+      for (const w of words) {
+        idx = docText.indexOf(w);
+        if (idx !== -1) break;
+      }
+    }
+
+    if (idx !== -1) {
+      const line = cm.view.state.doc.lineAt(idx);
+      cm.jumpToLine(line.number);
+      showNotification(`SyncTeX: Riga ${line.number}`, "info");
+    } else {
+      showNotification("Nessuna riga corrispondente trovata nel sorgente", "warning");
+    }
+  }
+
+  document.getElementById("btn-synctex-to-pdf")?.addEventListener("click", () => triggerSyncTexToPdf());
+  document.getElementById("btn-synctex-to-code")?.addEventListener("click", () => triggerSyncTexToCode());
+
+  window.__lackTriggerSyncTexToPdf = triggerSyncTexToPdf;
+  window.__lackTriggerSyncTexToCode = triggerSyncTexToCode;
 
   document.getElementById("pdf-btn-zoom-in")?.addEventListener("click", () => pdfViewer.zoomIn());
   document.getElementById("pdf-btn-zoom-out")?.addEventListener("click", () => pdfViewer.zoomOut());

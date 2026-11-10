@@ -5,6 +5,7 @@ const fs = require('fs');
 let pdfjsLib = null;
 let currentPdfDoc = null;
 let currentPdfOutline = null;
+let currentPdfPath = null;
 let containerEl = null;
 let zoomLabelEl = null;
 let pageInputEl = null;
@@ -87,6 +88,7 @@ function updateFitButtonStates() {
 
 async function loadPdfDocument(pdfPathOrBytes) {
   const lib = await getPdfJs();
+  currentPdfPath = typeof pdfPathOrBytes === 'string' ? pdfPathOrBytes : null;
 
   let data;
   if (typeof pdfPathOrBytes === 'string') {
@@ -219,7 +221,7 @@ async function renderPage(pageNum, canvas, textLayerDiv, annotationLayerDiv) {
       span.style.top = `${viewport.height - ty * (viewport.height / page.view[3]) - (item.height * currentScale)}px`;
       span.style.fontSize = `${item.height * currentScale}px`;
 
-      // SyncTeX reverse click
+      // SyncTeX reverse click / double-click
       span.addEventListener('click', (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) {
           if (typeof onSyncTexCallback === 'function') {
@@ -228,6 +230,14 @@ async function renderPage(pageNum, canvas, textLayerDiv, annotationLayerDiv) {
               text: item.str
             });
           }
+        }
+      });
+      span.addEventListener('dblclick', () => {
+        if (typeof onSyncTexCallback === 'function') {
+          onSyncTexCallback({
+            page: pageNum,
+            text: item.str
+          });
         }
       });
 
@@ -363,6 +373,7 @@ async function navigateToDestination(dest) {
     if (pageInputEl) {
       pageInputEl.value = targetPageNum;
     }
+    flashPdfHighlight(wrapper, offsetY);
   } catch (err) {
     console.warn('Failed to navigate to PDF destination:', err);
   }
@@ -418,6 +429,125 @@ async function goToSection(sectionTitle) {
     }
   }
   return false;
+}
+
+function flashPdfHighlight(wrapper, offsetY) {
+  if (!wrapper) return;
+  const oldHighlight = wrapper.querySelector('.pdf-synctex-highlight');
+  if (oldHighlight) oldHighlight.remove();
+
+  const highlight = document.createElement('div');
+  highlight.className = 'pdf-synctex-highlight';
+  highlight.style.top = `${offsetY}px`;
+  wrapper.appendChild(highlight);
+
+  setTimeout(() => {
+    highlight.classList.add('fade-out');
+    setTimeout(() => highlight.remove(), 400);
+  }, 1400);
+}
+
+async function goToSyncTexPosition(pageNum, xPt, yPt) {
+  if (!currentPdfDoc || !containerEl) return false;
+  const targetPage = Math.max(1, Math.min(pageNum, currentPdfDoc.numPages));
+  const wrapper = containerEl.querySelector(`.pdf-page-wrapper[data-page-num="${targetPage}"]`);
+  if (!wrapper) return false;
+
+  let offsetY = 0;
+  try {
+    const page = await currentPdfDoc.getPage(targetPage);
+    const viewport = page.getViewport({ scale: currentScale });
+    const pt = viewport.convertToViewportPoint(xPt || 0, yPt ? (page.view[3] - yPt) : 0);
+    if (pt && typeof pt[1] === 'number') {
+      offsetY = Math.max(0, pt[1] - 40);
+    }
+  } catch (_) {}
+
+  const scrollContainer = getScrollContainer();
+  const scrollTarget = wrapper.offsetTop + offsetY;
+  if (scrollContainer) {
+    scrollContainer.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+  } else {
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  if (pageInputEl) pageInputEl.value = targetPage;
+  flashPdfHighlight(wrapper, offsetY);
+  return true;
+}
+
+async function goToText(textSnippet) {
+  if (!textSnippet || !currentPdfDoc || !containerEl) return false;
+  const clean = textSnippet.replace(/\\(?:section|subsection|subsubsection|textbf|textit|emph)\*?\{([^}]+)\}/g, '$1')
+                           .replace(/\\[a-zA-Z]+/g, ' ')
+                           .replace(/[{}\[\]$]/g, '')
+                           .trim();
+  if (clean.length < 3) return false;
+
+  const words = clean.split(/\s+/).filter(w => w.length >= 3);
+  if (words.length === 0) return false;
+
+  const scrollContainer = getScrollContainer();
+  for (const [pageNum, pageData] of renderedPages.entries()) {
+    if (!pageData || !pageData.textLayerDiv) continue;
+    const spans = pageData.textLayerDiv.querySelectorAll('span');
+    for (const span of spans) {
+      const spanText = (span.textContent || '').toLowerCase();
+      if (spanText.includes(words[0].toLowerCase())) {
+        let matchCount = 0;
+        for (const w of words) {
+          if (spanText.includes(w.toLowerCase())) matchCount++;
+        }
+        if (matchCount >= Math.min(2, words.length)) {
+          const wrapper = containerEl.querySelector(`.pdf-page-wrapper[data-page-num="${pageNum}"]`);
+          if (wrapper) {
+            const scrollTarget = Math.max(0, wrapper.offsetTop + span.offsetTop - 40);
+            if (scrollContainer) {
+              scrollContainer.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+            } else {
+              wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (pageInputEl) pageInputEl.value = pageNum;
+            flashPdfHighlight(wrapper, span.offsetTop);
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function getVisiblePdfText() {
+  if (!containerEl || !currentPdfDoc) return null;
+  const sel = window.getSelection();
+  if (sel && sel.toString().trim().length > 1) {
+    return sel.toString().trim();
+  }
+
+  const scrollContainer = getScrollContainer();
+  if (!scrollContainer) return null;
+  const containerTop = scrollContainer.scrollTop;
+  const containerMid = containerTop + 140;
+
+  const wrappers = containerEl.querySelectorAll('.pdf-page-wrapper');
+  for (const w of wrappers) {
+    if (w.offsetTop <= containerMid && (w.offsetTop + w.offsetHeight) > containerTop) {
+      const pageNum = parseInt(w.dataset.pageNum, 10);
+      const pageData = renderedPages.get(pageNum);
+      if (pageData && pageData.textLayerDiv) {
+        const spans = pageData.textLayerDiv.querySelectorAll('span');
+        for (const span of spans) {
+          const absTop = w.offsetTop + span.offsetTop;
+          if (absTop >= containerTop && absTop <= containerTop + 260) {
+            const txt = span.textContent.trim();
+            if (txt.length > 3) return txt;
+          }
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function updateZoomLabel() {
@@ -551,5 +681,9 @@ module.exports = {
   nextPage,
   prevPage,
   goToSection,
-  navigateToDestination
+  navigateToDestination,
+  goToSyncTexPosition,
+  goToText,
+  getVisiblePdfText,
+  getCurrentPdfPath: () => currentPdfPath
 };
