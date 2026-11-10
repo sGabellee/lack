@@ -6602,6 +6602,17 @@ body.dark .editor-gutter {
   border-color: var(--explorer-border);
 }
 
+.pdf-tool-btn.active {
+  background-color: var(--explorer-hover);
+  border-color: var(--purple-solid, #80007f);
+  color: var(--purple-solid, #80007f) !important;
+}
+
+body.dark .pdf-tool-btn.active {
+  border-color: var(--purple-text, #be76de);
+  color: var(--purple-text, #be76de) !important;
+}
+
 .pdf-page-display {
   display: inline-flex;
   align-items: center;
@@ -7327,6 +7338,32 @@ body.dark .log-issue-line-badge {
   cursor: text;
   transform-origin: 0% 0%;
 }
+
+/* PDF Annotation Layer (Internal links, TOC, URLs) */
+.pdf-annotation-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pdf-annotation-layer .link-annotation {
+  position: absolute;
+  cursor: pointer;
+  pointer-events: auto;
+  border-radius: 2px;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.pdf-annotation-layer .link-annotation:hover {
+  background-color: rgba(59, 130, 246, 0.18);
+}
+
 
 /* INLINE FILE TREE INPUT */
 .tree-inline-input-row {

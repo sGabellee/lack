@@ -3436,7 +3436,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     outlineTree.innerHTML = outline.map(item => `
-      <div class="outline-item outline-level-${item.type}" data-line="${item.line}">
+      <div class="outline-item outline-level-${item.type}" data-line="${item.line}" data-title="${escapeHtml(item.title)}">
         <span>${escapeHtml(item.title)}</span>
       </div>
     `).join('');
@@ -3444,7 +3444,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     outlineTree.querySelectorAll('.outline-item').forEach(el => {
       el.onclick = () => {
         const line = parseInt(el.dataset.line, 10);
+        const title = el.dataset.title;
         cm.jumpToLine(line);
+        if (title && typeof pdfViewer.goToSection === "function") {
+          pdfViewer.goToSection(title);
+        }
       };
     });
   }
