@@ -44,15 +44,15 @@ test('Virtual Pane: Light theme text (#2e2e2e) on virtual bg (#80007f @ 7% over 
   assert.ok(ratio >= 4.5, `Contrast ratio ${ratio} < 4.5`);
 });
 
-test('Virtual Pane: Dark theme text (#e0e0e0) on virtual bg (#d98cd9 @ 8% over #1f1f1f) contrast >= 4.5:1', () => {
-  const bg = blendAlpha('#d98cd9', 0.08, '#1f1f1f');
+test('Virtual Pane: Dark theme text (#e0e0e0) on virtual bg (#be76de @ 8% over #1f1f1f) contrast >= 4.5:1', () => {
+  const bg = blendAlpha('#be76de', 0.08, '#1f1f1f');
   const fg = hexToRgb('#e0e0e0');
   const ratio = getContrast(fg, bg);
   assert.ok(ratio >= 4.5, `Contrast ratio ${ratio} < 4.5`);
 });
 
-test('Virtual Pane: GitHub theme text (#c9d1d9) on virtual bg (#d98cd9 @ 8% over #0d1117) contrast >= 4.5:1', () => {
-  const bg = blendAlpha('#d98cd9', 0.08, '#0d1117');
+test('Virtual Pane: GitHub theme text (#c9d1d9) on virtual bg (#be76de @ 8% over #0d1117) contrast >= 4.5:1', () => {
+  const bg = blendAlpha('#be76de', 0.08, '#0d1117');
   const fg = hexToRgb('#c9d1d9');
   const ratio = getContrast(fg, bg);
   assert.ok(ratio >= 4.5, `Contrast ratio ${ratio} < 4.5`);

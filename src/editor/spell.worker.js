@@ -1,4 +1,5 @@
 const nspell = require('nspell');
+const { checkItemWithDictionaries } = require('./spell-checker-core');
 
 let spInstances = [];
 let currentLang = 'it+en';
@@ -50,10 +51,9 @@ function handleMessage(data) {
       const misspelled = [];
       for (let i = 0; i < words.length; i++) {
         const item = words[i];
-        // Bilingual check: correct if accepted by ANY loaded dictionary
-        const isCorrect = spInstances.some((sp) => sp.correct(item.word));
-        if (!isCorrect) {
-          misspelled.push(item);
+        const flagged = checkItemWithDictionaries(item, spInstances);
+        if (flagged && flagged.length > 0) {
+          misspelled.push(...flagged);
         }
       }
       respond({ type: 'checkResult', id, misspelled });

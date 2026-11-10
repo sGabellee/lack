@@ -1,0 +1,37 @@
+/**
+ * themes.css
+ * Single source of truth for color tokens and theme palettes in Lack.
+ *
+ * Rules:
+ * - --purple-solid: #80007f (actual background of the Compile button).
+ *   Used for backgrounds, rails, badges and solid selected rows with white text.
+ *   Never used as text on dark surfaces.
+ * - --purple-text:
+ *   - Light theme: #80007f (contrast ~8:1 on light surfaces)
+ *   - Dark & GitHub Dark: #be76de (lightened violet, hue 282°, sat 61%, contrast >= 4.5:1 against dark surfaces)
+ * - Zero pink/magenta in dark themes.
+ */
+
+:root {
+  --purple-solid: #80007f;
+  --purple-text: #80007f;
+  --accent: #80007f;
+}
+
+body.theme-light {
+  --purple-solid: #80007f;
+  --purple-text: #80007f;
+  --accent: #80007f;
+}
+
+body.theme-dark {
+  --purple-solid: #80007f;
+  --purple-text: #be76de;
+  --accent: #be76de;
+}
+
+body.theme-github {
+  --purple-solid: #80007f;
+  --purple-text: #be76de;
+  --accent: #be76de;
+}

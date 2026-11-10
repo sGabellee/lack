@@ -46,6 +46,7 @@
     "@replit/codemirror-vim": "^6.4.0",
     "@retorquere/bibtex-parser": "^13.0.15",
     "@unified-latex/unified-latex-ctan": "^1.8.4",
+    "@unified-latex/unified-latex-util-parse": "^1.8.4",
     "adm-zip": "^0.6.1",
     "archiver": "^8.0.0",
     "chokidar": "^6.0.0",

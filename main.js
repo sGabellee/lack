@@ -9,6 +9,7 @@ const { ProjectRegistry } = require("./src/projects/registry.js");
 const { ProjectManager } = require("./src/projects/manager.js");
 const { readLink, extractSnapshot, unlinkPdf } = require("./src/projects/pdf-link.js");
 const { resolveOpenAction } = require("./src/main/cli.js");
+const { installTectonic } = require("./src/main/engine-installer.js");
 
 app.setName("Lack");
 if (process.platform === 'linux') {
@@ -116,6 +117,14 @@ ipcMain.handle('get-install-command', () => {
   return latexCompiler.getInstallCommand();
 });
 
+ipcMain.handle('install-tectonic', async () => {
+  return await installTectonic(app.getPath('userData'), (prog) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('install-tectonic-progress', prog);
+    }
+  });
+});
+
 // Project Store & Manager IPC Handlers
 ipcMain.handle('project-get-store-root', () => {
   return projectManager.getStoreRoot();
@@ -215,11 +224,14 @@ function handleResolvedAction(action, targetWin) {
 
     if (currentWin && !currentWin.isDestroyed()) {
       openProjectWindows.set(action.projectId, currentWin);
+      let manifest = null;
+      try { manifest = projectManager.loadManifest(action.storePath); } catch (_) {}
       currentWin.webContents.send('open-linked-project', {
         projectId: action.projectId,
         name: action.name,
         storePath: action.storePath,
-        targetPath: action.targetPath
+        targetPath: action.targetPath,
+        mainFile: manifest ? manifest.main : null
       });
     }
   } else if (action.action === 'create-linked') {
@@ -235,6 +247,7 @@ function handleResolvedAction(action, targetWin) {
         name: manifest.name,
         storePath,
         targetPath: action.targetPath,
+        mainFile: manifest ? manifest.main : null,
         compileImmediate: true
       });
     }

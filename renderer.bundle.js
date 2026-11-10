@@ -47425,18 +47425,18 @@ var require_themes = __commonJS({
       { tag: tags.heading, color: "#80007f", fontWeight: "bold" }
     ]);
     var darkHighlightStyle = HighlightStyle.define([
-      { tag: latexCommandTag, color: "#d98cd9", fontWeight: "bold" },
-      { tag: latexDelimiterTag, color: "#d98cd9" },
+      { tag: latexCommandTag, color: "#be76de", fontWeight: "bold" },
+      { tag: latexDelimiterTag, color: "#be76de" },
       { tag: latexArgumentTag, color: "#7aa2e8", fontWeight: "500" },
       { tag: latexMathTag, color: "#7aa2e8" },
       { tag: latexCommentTag, color: "#9ca3af", fontStyle: "italic" },
-      { tag: tags.keyword, color: "#d98cd9", fontWeight: "bold" },
+      { tag: tags.keyword, color: "#be76de", fontWeight: "bold" },
       { tag: tags.name, color: "#7aa2e8" },
       { tag: tags.comment, color: "#9ca3af", fontStyle: "italic" },
       { tag: tags.string, color: "#7aa2e8" },
       { tag: tags.number, color: "#7aa2e8" },
-      { tag: tags.bracket, color: "#d98cd9" },
-      { tag: tags.heading, color: "#d98cd9", fontWeight: "bold" }
+      { tag: tags.bracket, color: "#be76de" },
+      { tag: tags.heading, color: "#be76de", fontWeight: "bold" }
     ]);
     function getThemeExtensions2(themeName = "light") {
       const isLight = themeName === "light";
@@ -55903,10 +55903,55 @@ var require_lib = __commonJS({
   }
 });
 
+// src/editor/spell-checker-core.js
+var require_spell_checker_core = __commonJS({
+  "src/editor/spell-checker-core.js"(exports2, module2) {
+    var HYPHEN_OR_APOSTROPHE_REGEX = /[-\u2010\u2011\u2013'’]/;
+    var SUBPART_REGEX = /([^\s\-\u2010\u2011\u2013'’]+)/gu;
+    function checkItemWithDictionaries(item, spInstances) {
+      if (!item || !item.word || !spInstances || spInstances.length === 0) return [];
+      const rawWord = item.word;
+      const normalizedWord = rawWord.replace(/’/g, "'");
+      const isWholeCorrect = spInstances.some((sp) => sp.correct(rawWord) || sp.correct(normalizedWord));
+      if (isWholeCorrect) {
+        return [];
+      }
+      if (HYPHEN_OR_APOSTROPHE_REGEX.test(rawWord)) {
+        const misspelledParts = [];
+        const partRegex = new RegExp(SUBPART_REGEX.source, "gu");
+        let match2;
+        while ((match2 = partRegex.exec(rawWord)) !== null) {
+          const subWord = match2[1];
+          const subStart = item.from + match2.index;
+          const subEnd = subStart + subWord.length;
+          if (subWord.length >= 3) {
+            const subNormalized = subWord.replace(/’/g, "'");
+            const subCorrect = spInstances.some((sp) => sp.correct(subWord) || sp.correct(subNormalized));
+            if (!subCorrect) {
+              misspelledParts.push({
+                word: subWord,
+                from: subStart,
+                to: subEnd
+              });
+            }
+          }
+        }
+        return misspelledParts;
+      }
+      return [item];
+    }
+    module2.exports = {
+      checkItemWithDictionaries,
+      HYPHEN_OR_APOSTROPHE_REGEX
+    };
+  }
+});
+
 // src/editor/spell.worker.js
 var require_spell_worker = __commonJS({
   "src/editor/spell.worker.js"(exports2, module2) {
     var nspell = require_lib();
+    var { checkItemWithDictionaries } = require_spell_checker_core();
     var spInstances = [];
     var currentLang = "it+en";
     function handleMessage(data) {
@@ -55951,9 +55996,9 @@ var require_spell_worker = __commonJS({
           const misspelled = [];
           for (let i2 = 0; i2 < words.length; i2++) {
             const item = words[i2];
-            const isCorrect = spInstances.some((sp) => sp.correct(item.word));
-            if (!isCorrect) {
-              misspelled.push(item);
+            const flagged = checkItemWithDictionaries(item, spInstances);
+            if (flagged && flagged.length > 0) {
+              misspelled.push(...flagged);
             }
           }
           respond({ type: "checkResult", id, misspelled });

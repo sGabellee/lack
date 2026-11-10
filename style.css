@@ -1349,8 +1349,10 @@ body.theme-github .tree-item.selected {
   font-weight: 500;
 }
 
-body.dark .tree-item.active {
-  color: #d98cd9;
+body.dark .tree-item.active,
+body.theme-dark .tree-item.active,
+body.theme-github .tree-item.active {
+  color: var(--purple-text);
 }
 
 .tree-item.active.selected {
@@ -2869,7 +2871,7 @@ body.dark .modal-content {
 }
 
 body.dark .settings-header-icon {
-  color: #d98cd9;
+  color: var(--purple-text);
 }
 
 .settings-layout {
@@ -3303,7 +3305,7 @@ body.dark .preview-export-btn {
 
 body.dark .preview-export-btn:hover {
   background: transparent !important;
-  color: #d98cd9 !important;
+  color: var(--purple-text) !important;
 }
 
 .preview-export-menu {
@@ -4352,8 +4354,8 @@ body.dark .pdf-export-modal-content {
 }
 
 body.dark .pdf-export-browse-btn:hover {
-  border-color: #d98cd9;
-  color: #d98cd9;
+  border-color: var(--purple-text);
+  color: var(--purple-text);
 }
 
 .pdf-export-summary-header {
@@ -4375,7 +4377,7 @@ body.dark .pdf-export-browse-btn:hover {
 }
 
 body.dark .pdf-export-edit-link {
-  color: #d98cd9;
+  color: var(--purple-text);
 }
 
 .pdf-export-edit-link:hover {
@@ -4462,8 +4464,8 @@ body.dark .pdf-summary-item:hover .pdf-summary-select {
 
 body.dark .pdf-summary-select:hover,
 body.dark .pdf-summary-select:focus {
-  border-color: #d98cd9 !important;
-  color: #d98cd9 !important;
+  border-color: var(--purple-text) !important;
+  color: var(--purple-text) !important;
 }
 
 .pdf-summary-select option {
@@ -4692,8 +4694,8 @@ body.dark .drop-card {
 }
 
 body.dark .drop-icon-wrapper {
-  background: rgba(190, 60, 190, 0.15);
-  color: #d98cd9;
+  background: rgba(128, 0, 127, 0.15);
+  color: var(--purple-text);
 }
 
 .drop-icon {
@@ -5100,7 +5102,7 @@ body.dark .new-file-popup-more:hover {
 
 body.dark .new-file-popup-more .new-file-popup-icon,
 body.dark .new-file-popup-more .new-file-popup-title {
-  color: #d98cd9;
+  color: var(--purple-text);
 }
 
 /* --- Overleaf-Style Template Gallery Modal --- */
@@ -5738,7 +5740,7 @@ body.dark .template-card-btn-use:hover {
 }
 
 body.dark .save-template-text-btn {
-  color: #d98cd9;
+  color: var(--purple-text);
 }
 
 .save-template-text-btn:hover {
@@ -6105,7 +6107,7 @@ body.dark .template-use-big-btn:hover {
 
 body.dark .app-confirm-icon-box.question {
   background: rgba(128, 0, 127, 0.28);
-  color: #d98cd9;
+  color: var(--purple-text);
 }
 
 .app-confirm-text-box {
@@ -6241,7 +6243,7 @@ body.dark .app-confirm-icon-box.question {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background-color: #d98cd9;
+  background-color: var(--purple-solid);
 }
 
 .compile-status-dot.error {
@@ -7099,11 +7101,30 @@ body.dark .log-issue-line-badge {
   flex: 1;
   background: var(--editor-bg);
   color: var(--fg);
-  border: 1px solid #80007f;
+  border: 1px solid var(--purple-solid, #80007f);
   border-radius: 3px;
   padding: 2px 6px;
   font-size: 12px;
   outline: none;
+}
+
+.tree-inline-input.invalid {
+  border-color: #e5534b !important;
+}
+
+.tree-inline-tooltip {
+  position: fixed;
+  background: #2a1515;
+  color: #ff9999;
+  border: 1px solid #e5534b;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.3;
+  z-index: 99999;
+  max-width: 240px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }
 
 /* DOCUMENT OUTLINE SIDEBAR */
@@ -7244,10 +7265,10 @@ body.dark .log-issue-line-badge {
   --virtual-halo: rgba(128, 0, 127, 0.12);
 }
 
-.dark, .theme-github {
-  --virtual-bg: rgba(217, 140, 217, 0.08);
-  --virtual-rail: #d98cd9;
-  --virtual-halo: rgba(217, 140, 217, 0.14);
+.dark, .theme-github, body.theme-dark, body.theme-github {
+  --virtual-bg: rgba(190, 118, 222, 0.08);
+  --virtual-rail: var(--purple-solid);
+  --virtual-halo: rgba(190, 118, 222, 0.14);
 }
 
 /* Sidebar Tab Container */

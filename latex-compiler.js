@@ -3,6 +3,8 @@ const { spawn, execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const crypto = require("crypto");
+const { convertLatexAstToHtml } = require("./src/compiler/ast-renderer.js");
 
 const SUPPORTED_ENGINES = [
   { id: "pdflatex", name: "pdfLaTeX", binary: "pdflatex", defaultArgs: ["-interaction=nonstopmode", "-synctex=1", "-file-line-error"] },
@@ -45,8 +47,56 @@ function stopCompilation() {
   return false;
 }
 
+function getUserDataEnginesPath(binaryName) {
+  let userDataPath = null;
+  try {
+    const electron = require("electron");
+    if (electron.app && electron.app.getPath) {
+      userDataPath = electron.app.getPath("userData");
+    } else if (electron.remote && electron.remote.app && electron.remote.app.getPath) {
+      userDataPath = electron.remote.app.getPath("userData");
+    }
+  } catch (_) {}
+  if (!userDataPath) {
+    userDataPath = path.join(os.homedir(), ".config", "Lack");
+  }
+  const ext = process.platform === "win32" ? ".exe" : "";
+  const candidate = path.join(userDataPath, "engines", binaryName + ext);
+  if (fs.existsSync(candidate)) {
+    return candidate;
+  }
+  return null;
+}
+
+function getClassicBuildDir(targetFile, projectDir) {
+  const root = projectDir || (targetFile ? path.dirname(targetFile) : "default");
+  const hash = crypto.createHash("sha1").update(path.resolve(root)).digest("hex");
+  let cacheBase = null;
+  try {
+    const electron = require("electron");
+    if (electron.app && electron.app.getPath) {
+      cacheBase = path.join(electron.app.getPath("cache"), "lack", "builds", hash);
+    } else if (electron.remote && electron.remote.app && electron.remote.app.getPath) {
+      cacheBase = path.join(electron.remote.app.getPath("cache"), "lack", "builds", hash);
+    }
+  } catch (_) {}
+  if (!cacheBase) {
+    cacheBase = path.join(os.homedir(), ".cache", "lack", "builds", hash);
+  }
+  return cacheBase;
+}
+
 function findBinaryPath(binaryName) {
-  // 1. Try which/where
+  // 0. Support LACK_ENGINE_CMD override hook
+  if (process.env.LACK_ENGINE_CMD) {
+    return process.env.LACK_ENGINE_CMD;
+  }
+
+  // 1. Check userData/engines/ (e.g. pinned Tectonic)
+  const userEngine = getUserDataEnginesPath(binaryName);
+  if (userEngine) return userEngine;
+
+  // 2. Try which/where
   try {
     const cmd = process.platform === "win32" ? `where ${binaryName}` : `which ${binaryName}`;
     const output = execSync(cmd, { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] }).trim();
@@ -55,7 +105,7 @@ function findBinaryPath(binaryName) {
     }
   } catch (e) {}
 
-  // 2. Check standard search locations
+  // 3. Check standard search locations
   const ext = process.platform === "win32" ? ".exe" : "";
   for (const dir of EXTRA_SEARCH_PATHS) {
     const fullPath = path.join(dir, binaryName + ext);
@@ -84,12 +134,17 @@ function detectEngines() {
   return detected;
 }
 
-function getBestAvailableEngine() {
-  const engines = detectEngines();
-  const availableNative = engines.find(e => e.available && e.id !== "builtin");
-  if (availableNative) {
-    return availableNative.id;
+function getBestAvailableEngine(preferredEngine = null) {
+  if (preferredEngine && preferredEngine !== "builtin") {
+    const bin = findBinaryPath(preferredEngine);
+    if (bin) return preferredEngine;
   }
+  // Detection order: Settings override -> userData/engines/tectonic -> latexmk -> pdflatex|xelatex|lualatex -> builtin
+  if (findBinaryPath("tectonic")) return "tectonic";
+  if (findBinaryPath("latexmk")) return "latexmk";
+  if (findBinaryPath("pdflatex")) return "pdflatex";
+  if (findBinaryPath("xelatex")) return "xelatex";
+  if (findBinaryPath("lualatex")) return "lualatex";
   return "builtin";
 }
 
@@ -267,7 +322,7 @@ async function compileLatex(options = {}) {
     workDir = targetFile ? path.dirname(targetFile) : cacheDir;
   }
 
-  const outDir = outputDir || path.join(workDir, "build");
+  const outDir = outputDir || getClassicBuildDir(targetFile, workDir);
   if (!fs.existsSync(outDir)) {
     try { fs.mkdirSync(outDir, { recursive: true }); } catch (e) {}
   }
@@ -297,7 +352,10 @@ async function compileLatex(options = {}) {
 
   // Build command arguments
   let args = [];
-  if (engine === "tectonic") {
+  if (process.env.LACK_ENGINE_CMD) {
+    binPath = process.env.LACK_ENGINE_CMD;
+    args = [outDir, compileSourceFile];
+  } else if (engine === "tectonic") {
     args = ["--synctex", "--outdir", outDir, compileSourceFile];
   } else if (engine === "latexmk") {
     args = ["-pdf", "-interaction=nonstopmode", "-synctex=1", "-file-line-error", `-outdir=${outDir}`, compileSourceFile];
@@ -385,7 +443,7 @@ async function compileLatex(options = {}) {
 function compileWithBuiltin({ filePath, content, projectDir, outputDir, startTime, fallbackNotice = false }) {
   let outDir = outputDir;
   if (!outDir) {
-    outDir = projectDir ? path.join(projectDir, "build") : path.join(os.homedir(), ".cache", "lack", "build");
+    outDir = getClassicBuildDir(filePath, projectDir);
     try { fs.mkdirSync(outDir, { recursive: true }); } catch (e) {}
   }
 
@@ -394,11 +452,11 @@ function compileWithBuiltin({ filePath, content, projectDir, outputDir, startTim
 
   let log = `[LACK Built-in Compiler Engine]\nCompiling '${baseName}.tex'...\n`;
   if (fallbackNotice) {
-    log += `[Notice] No native LaTeX compiler found on system. Using Lack high-speed internal renderer.\n`;
-    log += `[Tip] Install TeX Live on Ubuntu via: sudo apt install texlive-latex-base texlive-latex-extra\n`;
+    log += `[Notice] No native LaTeX compiler found on system. Using Lack high-speed internal AST renderer.\n`;
+    log += `[Tip] Install TeX Live or use one-click Tectonic installer in Settings.\n`;
   }
 
-  const parsed = convertLatexToHtml(content);
+  const parsed = convertLatexAstToHtml(content);
   log += `Parsed ${parsed.sectionsCount} sections, ${parsed.mathCount} math formulas, ${parsed.figuresCount} figures across ${parsed.pagesCount} pages.\n`;
   log += `Output destination: ${pdfPath}\nCompilation finished.`;
 
@@ -415,140 +473,8 @@ function compileWithBuiltin({ filePath, content, projectDir, outputDir, startTim
   };
 }
 
-/**
- * Fast LaTeX to HTML translator rendering realistic A4 pages (.page-sheet-a4)
- */
-function convertLatexToHtml(latexText) {
-  const issues = [];
-  let sectionsCount = 0;
-  let mathCount = 0;
-  let figuresCount = 0;
-
-  if (!latexText) {
-    return { html: "<p></p>", issues, sectionsCount, mathCount, figuresCount, pagesCount: 1 };
-  }
-
-  let bodyText = latexText;
-
-  // Extract \begin{document} ... \end{document} if present
-  const docMatch = latexText.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
-  if (docMatch) {
-    bodyText = docMatch[1];
-  }
-
-  // Parse title, author, date if declared in preamble
-  let title = "";
-  let author = "";
-  let date = "";
-  const titleMatch = latexText.match(/\\title\{([^}]+)\}/);
-  const authorMatch = latexText.match(/\\author\{([^}]+)\}/);
-  const dateMatch = latexText.match(/\\date\{([^}]+)\}/);
-  if (titleMatch) title = titleMatch[1];
-  if (authorMatch) author = authorMatch[1];
-  if (dateMatch) date = dateMatch[1];
-  const todayStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-  date = date.replace(/\\today\b/g, todayStr);
-
-  // Clean comments
-  const lines = bodyText.split("\n");
-  const processedLines = lines.map(line => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("%")) return "";
-    return line.replace(/([^\\])%.*$/, "$1");
-  });
-  let cleanBody = processedLines.join("\n");
-
-  // Split into pages by \newpage or \clearpage
-  const rawPages = cleanBody.split(/\\(?:newpage|clearpage)\b/);
-  const pagesCount = Math.max(1, rawPages.length);
-
-  let fullHtml = '<div class="latex-pages-stack">';
-
-  for (let pIdx = 0; pIdx < pagesCount; pIdx++) {
-    let pageContent = rawPages[pIdx];
-
-    let pageHtml = "";
-
-    // On first page, render title banner if declared
-    if (pIdx === 0 && (title || author || date)) {
-      pageHtml += `<div class="latex-title-banner">`;
-      if (title) pageHtml += `<h1 class="latex-doc-title">${escapeHtml(title)}</h1>`;
-      if (author) pageHtml += `<div class="latex-doc-author">${escapeHtml(author)}</div>`;
-      if (date) pageHtml += `<div class="latex-doc-date">${escapeHtml(date)}</div>`;
-      pageHtml += `</div><hr class="latex-title-divider" />`;
-    }
-
-    pageContent = pageContent.replace(/\\maketitle\b/g, "");
-    pageContent = pageContent.replace(/\\today\b/g, todayStr);
-    pageContent = pageContent.replace(/\\tableofcontents\b/g, "<div class='latex-toc'><strong>Indice</strong></div>");
-
-    // Sections
-    pageContent = pageContent.replace(/\\section\*?\{([^}]+)\}/g, (_m, s) => {
-      sectionsCount++;
-      return `<h2 class="latex-section">${escapeHtml(s)}</h2>`;
-    });
-    pageContent = pageContent.replace(/\\subsection\*?\{([^}]+)\}/g, (_m, s) => {
-      sectionsCount++;
-      return `<h3 class="latex-subsection">${escapeHtml(s)}</h3>`;
-    });
-    pageContent = pageContent.replace(/\\subsubsection\*?\{([^}]+)\}/g, (_m, s) => {
-      sectionsCount++;
-      return `<h4 class="latex-subsubsection">${escapeHtml(s)}</h4>`;
-    });
-    pageContent = pageContent.replace(/\\paragraph\*?\{([^}]+)\}/g, (_m, s) => {
-      return `<h5 class="latex-paragraph">${escapeHtml(s)}</h5>`;
-    });
-
-    // Formatting
-    pageContent = pageContent.replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>");
-    pageContent = pageContent.replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>");
-    pageContent = pageContent.replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>");
-    pageContent = pageContent.replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>");
-
-    // Mathematics counters
-    const displayMath = pageContent.match(/\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$/g);
-    if (displayMath) mathCount += displayMath.length;
-    const inlineMath = pageContent.match(/\$[^$]+\$|\\\([\s\S]*?\\\)/g);
-    if (inlineMath) mathCount += inlineMath.length;
-
-    // Itemize & enumerate
-    pageContent = pageContent.replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_m, body) => {
-      const items = body.split(/\\item\b/).slice(1).map(it => `<li>${it.trim()}</li>`).join("");
-      return `<ul class="latex-list">${items}</ul>`;
-    });
-    pageContent = pageContent.replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_m, body) => {
-      const items = body.split(/\\item\b/).slice(1).map(it => `<li>${it.trim()}</li>`).join("");
-      return `<ol class="latex-list">${items}</ol>`;
-    });
-
-    // Paragraphs
-    const paras = pageContent.split(/\n\s*\n/).filter(p => p.trim());
-    for (const p of paras) {
-      if (p.trim().startsWith("<h") || p.trim().startsWith("<ul") || p.trim().startsWith("<ol") || p.trim().startsWith("<div")) {
-        pageHtml += p;
-      } else {
-        pageHtml += `<p class="latex-p">${p.trim().replace(/\n/g, " ")}</p>`;
-      }
-    }
-
-    fullHtml += `
-      <div class="page-sheet-container">
-        <div class="page-sheet-a4">
-          <div class="page-sheet-content">
-            ${pageHtml}
-          </div>
-          <div class="page-sheet-footer">
-            <span></span>
-            <span class="page-sheet-num">Pagina ${pIdx + 1} di ${pagesCount}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  fullHtml += '</div>';
-
-  return { html: fullHtml, issues, sectionsCount, mathCount, figuresCount, pagesCount };
+function convertLatexToHtml(latexText, options = {}) {
+  return convertLatexAstToHtml(latexText, options);
 }
 
 function escapeHtml(str) {

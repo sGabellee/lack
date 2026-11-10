@@ -53,18 +53,69 @@ function filterProjectEntries(entries) {
     });
 }
 
+const WINDOWS_RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i;
+
 function validateItemName(name) {
   const trimmed = (name || '').trim();
   if (!trimmed) {
     return { valid: false, error: 'Il nome non può essere vuoto.' };
   }
   if (trimmed === '.' || trimmed === '..') {
-    return { valid: false, error: 'Nome non consentito.' };
+    return { valid: false, error: 'Nome non consentito: "." o ".."' };
   }
   if (/[\/\\:*?"<>|]/.test(trimmed)) {
     return { valid: false, error: 'Il nome contiene caratteri non validi: / \\ : * ? " < > |' };
   }
+  if (WINDOWS_RESERVED_NAMES.test(trimmed)) {
+    return { valid: false, error: 'Nome riservato di sistema non consentito.' };
+  }
+  if (Buffer.byteLength(trimmed, 'utf8') > 255) {
+    return { valid: false, error: 'Il nome supera la lunghezza massima di 255 byte.' };
+  }
   return { valid: true, name: trimmed };
+}
+
+/**
+ * Returns a collision-free filename or foldername by appending -1, -2, etc. if needed.
+ * Strips any trailing -<n> from base before checking.
+ * Case-insensitive on Windows/macOS.
+ */
+function uniqueName(dir, base, ext = '', fsModule = null, platformOverride = null) {
+  const fsys = fsModule || fs;
+  const platform = platformOverride || process.platform;
+  const isCaseInsensitive = platform === 'win32' || platform === 'darwin';
+
+  const cleanBase = (base || '').replace(/-\d+$/, '');
+  let existingList = [];
+
+  if (dir && fsys.existsSync(dir)) {
+    try {
+      existingList = fsys.readdirSync(dir);
+    } catch (_) {}
+  }
+
+  const exists = (name) => {
+    if (!dir) return false;
+    if (isCaseInsensitive) {
+      const lower = name.toLowerCase();
+      return existingList.some(item => item.toLowerCase() === lower);
+    }
+    return existingList.includes(name);
+  };
+
+  const initial = `${cleanBase}${ext}`;
+  if (!exists(initial)) {
+    return initial;
+  }
+
+  let n = 1;
+  while (true) {
+    const candidate = `${cleanBase}-${n}${ext}`;
+    if (!exists(candidate)) {
+      return candidate;
+    }
+    n++;
+  }
 }
 
 module.exports = {
@@ -72,5 +123,6 @@ module.exports = {
   calculateDirSize,
   isCompilableLatexFile,
   filterProjectEntries,
-  validateItemName
+  validateItemName,
+  uniqueName
 };

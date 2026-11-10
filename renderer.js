@@ -41,7 +41,8 @@ const {
   calculateDirSize,
   isCompilableLatexFile,
   filterProjectEntries,
-  validateItemName
+  validateItemName,
+  uniqueName
 } = require("./src/projects/ui-controller.js");
 
 // ====== UTILS ======
@@ -1193,8 +1194,47 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!tab && !mainDocumentPath) return;
 
     if (isLinkedProject && config.engine === "builtin") {
-      showNotification("I progetti collegati richiedono un motore TeX reale (pdfLaTeX, Tectonic, XeLaTeX)", "warning");
-      return;
+      const wantInstall = await showCustomConfirmDialog({
+        title: "Motore TeX richiesto per progetti collegati",
+        message: "I progetti collegati con output PDF richiedono un compilatore TeX (come Tectonic). Vuoi installare automaticamente Tectonic (~20MB) adesso?",
+        confirmText: "Installa Tectonic",
+        cancelText: "Annulla"
+      });
+      if (wantInstall) {
+        showNotification("Download ed estrazione di Tectonic in corso...", "info");
+        try {
+          await ipcRenderer.invoke('install-tectonic');
+          config.engine = "tectonic";
+          localStorage.setItem("lack-engine", "tectonic");
+          updateEngineFooter();
+          showNotification("Tectonic installato con successo! Avvio compilazione...", "info");
+        } catch (instErr) {
+          showNotification("Errore installazione Tectonic: " + instErr.message, "error");
+          return;
+        }
+      } else {
+        return;
+      }
+    } else if (!isLinkedProject && config.engine === "builtin" && !localStorage.getItem("lack-tectonic-prompted") && !isAuto) {
+      localStorage.setItem("lack-tectonic-prompted", "true");
+      const wantInstall = await showCustomConfirmDialog({
+        title: "Installare compilatore Tectonic?",
+        message: "Vuoi installare Tectonic (~20MB, raccomandato) in un clic per produrre PDF completi, o continuare con l'anteprima integrata veloce?",
+        confirmText: "Installa Tectonic",
+        cancelText: "Usa anteprima integrata"
+      });
+      if (wantInstall) {
+        showNotification("Download ed estrazione di Tectonic in corso...", "info");
+        try {
+          await ipcRenderer.invoke('install-tectonic');
+          config.engine = "tectonic";
+          localStorage.setItem("lack-engine", "tectonic");
+          updateEngineFooter();
+          showNotification("Tectonic installato con successo! Avvio compilazione...", "info");
+        } catch (instErr) {
+          showNotification("Errore installazione Tectonic: " + instErr.message, "error");
+        }
+      }
     }
 
     isCompiling = true;
@@ -1515,11 +1555,28 @@ window.addEventListener("DOMContentLoaded", async () => {
     // Project pane = storePath
     renderProjectPane(opts.storePath);
 
-    // Set main document to main.tex in store
-    const mainTex = path.join(opts.storePath, "main.tex");
-    if (fs.existsSync(mainTex)) {
-      setMainDocument(mainTex);
-      openFileFromPath(mainTex);
+    // Determine main document from opts.mainFile, manifest, <name>.tex, or main.tex
+    let mainFileName = opts.mainFile;
+    if (!mainFileName) {
+      try {
+        const manifest = await ipcRenderer.invoke('project-load-manifest', opts.storePath);
+        if (manifest && manifest.main) {
+          mainFileName = manifest.main;
+        }
+      } catch (_) {}
+    }
+    if (!mainFileName) {
+      const candidateName = `${opts.name}.tex`;
+      if (fs.existsSync(path.join(opts.storePath, candidateName))) {
+        mainFileName = candidateName;
+      } else {
+        mainFileName = "main.tex";
+      }
+    }
+    const mainTexPath = path.isAbsolute(mainFileName) ? mainFileName : path.join(opts.storePath, mainFileName);
+    if (fs.existsSync(mainTexPath)) {
+      setMainDocument(mainTexPath);
+      openFileFromPath(mainTexPath);
     }
 
     if (opts.compileImmediate) {
@@ -1653,6 +1710,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     let html = `
       <div class="context-menu-item" id="ctx-open">Apri</div>
+      <div class="context-menu-item" id="ctx-duplicate">Duplica</div>
       <div class="context-menu-item" id="ctx-rename">Rinomina</div>
       <div class="context-menu-item" id="ctx-reveal">Mostra nel file manager</div>
       <div class="context-menu-item" id="ctx-copy-path">Copia percorso</div>
@@ -1675,6 +1733,25 @@ window.addEventListener("DOMContentLoaded", async () => {
       menu.remove();
       if (fullPath.toLowerCase().endsWith(".pdf")) pdfViewer.loadPdfDocument(fullPath);
       else openFileFromPath(fullPath);
+    };
+    menu.querySelector("#ctx-duplicate").onclick = () => {
+      menu.remove();
+      try {
+        const isDir = fs.statSync(fullPath).isDirectory();
+        const ext = isDir ? "" : path.extname(fullPath);
+        const base = isDir ? path.basename(fullPath) : path.basename(fullPath, ext);
+        const copyName = uniqueName(path.dirname(fullPath), base, ext);
+        const copyPath = path.join(path.dirname(fullPath), copyName);
+        if (isDir) {
+          fs.cpSync(fullPath, copyPath, { recursive: true });
+        } else {
+          fs.copyFileSync(fullPath, copyPath);
+        }
+        showNotification(`Elemento duplicato in "${copyName}"`, "info");
+        if (currentProjectDir) renderFolderPane(currentProjectDir);
+      } catch (err) {
+        showNotification("Errore duplicazione: " + err.message, "error");
+      }
     };
     menu.querySelector("#ctx-rename").onclick = () => {
       menu.remove();
@@ -1936,15 +2013,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     menu.querySelector("#ctx-proj-duplicate").onclick = async () => {
       menu.remove();
       try {
-        const ext = path.extname(fullPath);
-        const base = path.basename(fullPath, ext);
-        const copyPath = path.join(path.dirname(fullPath), `${base}-copy${ext}`);
+        const ext = isDir ? "" : path.extname(fullPath);
+        const base = isDir ? path.basename(fullPath) : path.basename(fullPath, ext);
+        const copyName = uniqueName(path.dirname(fullPath), base, ext);
+        const copyPath = path.join(path.dirname(fullPath), copyName);
         if (isDir) {
           fs.cpSync(fullPath, copyPath, { recursive: true });
         } else {
           fs.copyFileSync(fullPath, copyPath);
         }
-        showNotification(`Elemento duplicato in "${path.basename(copyPath)}"`, "info");
+        showNotification(`Elemento duplicato in "${copyName}"`, "info");
         renderProjectPane(currentProject.storePath);
       } catch (err) {
         showNotification("Errore duplicazione: " + err.message, "error");
@@ -1997,49 +2075,108 @@ window.addEventListener("DOMContentLoaded", async () => {
     const labelSpan = itemDiv.querySelector(".tree-label");
     if (!labelSpan) return;
     const oldName = path.basename(filePath);
+    let isDirectory = false;
+    try {
+      isDirectory = fs.statSync(filePath).isDirectory();
+    } catch (_) {}
+    const oldExt = isDirectory ? "" : path.extname(oldName);
+    const oldBase = isDirectory ? oldName : path.basename(oldName, oldExt);
 
     const input = document.createElement("input");
     input.type = "text";
     input.className = "tree-inline-input";
     input.value = oldName;
+    input.spellcheck = false;
+
+    let tooltipEl = null;
+    function updateValidation(valResult) {
+      if (!valResult.valid) {
+        input.classList.add("invalid");
+        if (!tooltipEl) {
+          tooltipEl = document.createElement("div");
+          tooltipEl.className = "tree-inline-tooltip";
+          document.body.appendChild(tooltipEl);
+        }
+        tooltipEl.textContent = valResult.error;
+        const rect = input.getBoundingClientRect();
+        tooltipEl.style.left = `${rect.left}px`;
+        tooltipEl.style.top = `${rect.bottom + 4}px`;
+      } else {
+        input.classList.remove("invalid");
+        if (tooltipEl) {
+          tooltipEl.remove();
+          tooltipEl = null;
+        }
+      }
+    }
+
+    function cleanupTooltip() {
+      if (tooltipEl) {
+        tooltipEl.remove();
+        tooltipEl = null;
+      }
+    }
 
     labelSpan.replaceWith(input);
     input.focus();
-    input.select();
+    if (!isDirectory && oldExt && oldBase.length > 0) {
+      input.setSelectionRange(0, oldBase.length);
+    } else {
+      input.select();
+    }
+
+    input.addEventListener("input", () => {
+      const val = validateItemName(input.value.trim());
+      updateValidation(val);
+    });
 
     let committed = false;
     const commit = async () => {
       if (committed) return;
       committed = true;
-      const newName = input.value.trim();
+      cleanupTooltip();
+
+      let newName = input.value.trim();
       if (!newName || newName === oldName) {
         refreshFn();
         return;
       }
+
+      if (!isDirectory && !path.extname(newName) && oldExt) {
+        newName += oldExt;
+      }
+
       const val = validateItemName(newName);
       if (!val.valid) {
         showNotification(val.error, "error");
         refreshFn();
         return;
       }
-      const newPath = path.join(path.dirname(filePath), newName);
-      if (fs.existsSync(newPath)) {
-        showNotification(`"${newName}" esiste già.`, "warning");
-        refreshFn();
-        return;
+
+      const dir = path.dirname(filePath);
+      const newExt = isDirectory ? "" : path.extname(newName);
+      const newBase = isDirectory ? newName : path.basename(newName, newExt);
+      let finalName = newName;
+
+      const directNewPath = path.join(dir, newName);
+      if (fs.existsSync(directNewPath) && path.resolve(directNewPath).toLowerCase() !== path.resolve(filePath).toLowerCase()) {
+        finalName = uniqueName(dir, newBase, newExt);
+        showNotification(`Nome in uso: rinominato in "${finalName}"`, "info");
       }
+
+      const newPath = path.join(dir, finalName);
       try {
         fs.renameSync(filePath, newPath);
         const tab = tabs.find(t => t.filePath === filePath);
         if (tab) {
           tab.filePath = newPath;
-          tab.title = newName;
+          tab.title = finalName;
           renderTabs();
         }
         if (mainDocumentPath === filePath) {
           setMainDocument(newPath);
         }
-        showNotification(`Rinominato in "${newName}"`, "info");
+        showNotification(`Rinominato in "${finalName}"`, "info");
         refreshFn();
       } catch (err) {
         showNotification("Errore rinomina: " + err.message, "error");
@@ -2048,10 +2185,20 @@ window.addEventListener("DOMContentLoaded", async () => {
     };
 
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") commit();
-      else if (e.key === "Escape") { committed = true; refreshFn(); }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        committed = true;
+        cleanupTooltip();
+        refreshFn();
+      }
     });
-    input.addEventListener("blur", () => setTimeout(commit, 120));
+
+    input.addEventListener("blur", () => {
+      setTimeout(commit, 120);
+    });
   }
 
   function openFileFromPath(filePath) {
@@ -2065,6 +2212,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     createTab(path.basename(filePath), content, filePath);
   }
   window.openFileFromPath = openFileFromPath;
+  window.createTab = createTab;
+  window.applyTheme = applyTheme;
+  window.cycleTheme = cycleTheme;
   window.openFolder = openFolder;
   window.openLinkedProject = openLinkedProject;
   window.openProjectsManager = openProjectsManager;
@@ -2107,23 +2257,64 @@ window.addEventListener("DOMContentLoaded", async () => {
     const iconSvg = type === "folder"
       ? '<svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>'
       : '<svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
-    const defaultVal = type === "folder" ? "nuova-cartella" : "nuovo-file.tex";
+    // Default names: new_file.tex, new_folder: constants, never translated
+    const defaultVal = type === "folder" ? "new_folder" : "new_file.tex";
 
     row.innerHTML = `
       <span class="tree-icon" style="display:flex;align-items:center;">${iconSvg}</span>
-      <input type="text" class="tree-inline-input" value="${defaultVal}" />
+      <input type="text" class="tree-inline-input" value="${defaultVal}" spellcheck="false" />
     `;
 
     containerEl.prepend(row);
     const input = row.querySelector(".tree-inline-input");
     input.focus();
-    input.select();
+    if (type === "file") {
+      // Selection range [0, 8] - base name selected, extension unselected
+      input.setSelectionRange(0, 8);
+    } else {
+      input.setSelectionRange(0, defaultVal.length);
+    }
+
+    let tooltipEl = null;
+    function updateValidation(valResult) {
+      if (!valResult.valid) {
+        input.classList.add("invalid");
+        if (!tooltipEl) {
+          tooltipEl = document.createElement("div");
+          tooltipEl.className = "tree-inline-tooltip";
+          document.body.appendChild(tooltipEl);
+        }
+        tooltipEl.textContent = valResult.error;
+        const rect = input.getBoundingClientRect();
+        tooltipEl.style.left = `${rect.left}px`;
+        tooltipEl.style.top = `${rect.bottom + 4}px`;
+      } else {
+        input.classList.remove("invalid");
+        if (tooltipEl) {
+          tooltipEl.remove();
+          tooltipEl = null;
+        }
+      }
+    }
+
+    function cleanupTooltip() {
+      if (tooltipEl) {
+        tooltipEl.remove();
+        tooltipEl = null;
+      }
+    }
+
+    input.addEventListener("input", () => {
+      const val = validateItemName(input.value.trim());
+      updateValidation(val);
+    });
 
     let committed = false;
 
     const commit = async () => {
       if (committed) return;
       committed = true;
+      cleanupTooltip();
       const rawName = input.value.trim();
       row.remove();
 
@@ -2138,11 +2329,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         name += ".tex";
       }
 
-      const targetPath = path.join(targetDir, name);
-      if (fs.existsSync(targetPath)) {
-        showNotification(`"${name}" esiste già.`, "warning");
-        return;
+      const ext = type === "folder" ? "" : path.extname(name);
+      const base = type === "folder" ? name : path.basename(name, ext);
+      const finalName = uniqueName(targetDir, base, ext);
+      if (finalName !== name) {
+        showNotification(`Nome in uso: creato come "${finalName}"`, "info");
       }
+      name = finalName;
+
+      const targetPath = path.join(targetDir, name);
 
       try {
         if (type === "folder") {
@@ -2166,9 +2361,12 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
+        e.preventDefault();
         commit();
       } else if (e.key === "Escape") {
+        e.preventDefault();
         committed = true;
+        cleanupTooltip();
         row.remove();
       }
     });
@@ -2250,12 +2448,19 @@ window.addEventListener("DOMContentLoaded", async () => {
       for (const f of droppedFiles) {
         const src = f.path;
         if (!src || !fs.existsSync(src)) continue;
-        const dest = path.join(currentProject.storePath, path.basename(src));
+        const isDir = fs.statSync(src).isDirectory();
+        const ext = isDir ? "" : path.extname(src);
+        const base = isDir ? path.basename(src) : path.basename(src, ext);
+        const targetName = uniqueName(currentProject.storePath, base, ext);
+        const dest = path.join(currentProject.storePath, targetName);
         try {
-          if (fs.statSync(src).isDirectory()) {
+          if (isDir) {
             fs.cpSync(src, dest, { recursive: true });
           } else {
             fs.copyFileSync(src, dest);
+          }
+          if (targetName !== path.basename(src)) {
+            showNotification(`Importato come "${targetName}"`, "info");
           }
           count++;
         } catch (err) {
@@ -2265,6 +2470,57 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (count > 0) {
         showNotification(`${count} element${count === 1 ? 'o importato' : 'i importati'} nello store di progetto`, "info");
         renderProjectPane(currentProject.storePath);
+      }
+    });
+  }
+
+  // Drag & drop files onto Folder Pane
+  if (folderPane) {
+    folderPane.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      folderPane.classList.add("drag-over");
+    });
+    folderPane.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      folderPane.classList.remove("drag-over");
+    });
+    folderPane.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      folderPane.classList.remove("drag-over");
+      if (!currentProjectDir || !fs.existsSync(currentProjectDir)) return;
+
+      const droppedFiles = e.dataTransfer.files;
+      if (!droppedFiles || droppedFiles.length === 0) return;
+
+      let count = 0;
+      for (const f of droppedFiles) {
+        const src = f.path;
+        if (!src || !fs.existsSync(src)) continue;
+        const isDir = fs.statSync(src).isDirectory();
+        const ext = isDir ? "" : path.extname(src);
+        const base = isDir ? path.basename(src) : path.basename(src, ext);
+        const targetName = uniqueName(currentProjectDir, base, ext);
+        const dest = path.join(currentProjectDir, targetName);
+        try {
+          if (isDir) {
+            fs.cpSync(src, dest, { recursive: true });
+          } else {
+            fs.copyFileSync(src, dest);
+          }
+          if (targetName !== path.basename(src)) {
+            showNotification(`Importato come "${targetName}"`, "info");
+          }
+          count++;
+        } catch (err) {
+          console.warn("[LACK] Folder drag-drop import error:", err);
+        }
+      }
+      if (count > 0) {
+        showNotification(`${count} element${count === 1 ? 'o importato' : 'i importati'} nella cartella`, "info");
+        renderFolderPane(currentProjectDir);
       }
     });
   }

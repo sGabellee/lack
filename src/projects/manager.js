@@ -42,7 +42,8 @@ class ProjectManager {
   createProject({ name = 'Untitled Document', targetPath, template = 'standard', templateContent = null }) {
     const id = crypto.randomUUID();
     const id8 = id.slice(0, 8);
-    const slug = this.slugify(name);
+    const baseName = targetPath ? path.basename(targetPath, path.extname(targetPath)) : (name || 'main');
+    const slug = this.slugify(baseName);
     const folderName = `${slug}-${id8}`;
     const storePath = path.join(this.storeRoot, folderName);
 
@@ -50,16 +51,17 @@ class ProjectManager {
     fs.mkdirSync(path.join(storePath, '.lack', 'build'), { recursive: true });
     fs.mkdirSync(path.join(storePath, '.lack', 'history'), { recursive: true });
 
+    const mainFileName = `${baseName}.tex`;
     const defaultContent = templateContent ||
       `\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}\n\n\\title{${name}}\n\\author{Author}\n\\date{\\today}\n\n\\begin{document}\n\\maketitle\n\n\\section{Introduction}\nWrite your content here...\n\n\\end{document}\n`;
 
-    fs.writeFileSync(path.join(storePath, 'main.tex'), defaultContent, 'utf8');
+    fs.writeFileSync(path.join(storePath, mainFileName), defaultContent, 'utf8');
 
     const manifest = {
       schema: 1,
       id,
       name,
-      main: 'main.tex',
+      main: mainFileName,
       engine: 'pdflatex',
       target: targetPath ? path.resolve(targetPath) : '',
       embedSnapshot: false,

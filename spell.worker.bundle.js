@@ -978,10 +978,55 @@
     }
   });
 
+  // src/editor/spell-checker-core.js
+  var require_spell_checker_core = __commonJS({
+    "src/editor/spell-checker-core.js"(exports, module) {
+      var HYPHEN_OR_APOSTROPHE_REGEX = /[-\u2010\u2011\u2013'’]/;
+      var SUBPART_REGEX = /([^\s\-\u2010\u2011\u2013'’]+)/gu;
+      function checkItemWithDictionaries(item, spInstances) {
+        if (!item || !item.word || !spInstances || spInstances.length === 0) return [];
+        const rawWord = item.word;
+        const normalizedWord = rawWord.replace(/’/g, "'");
+        const isWholeCorrect = spInstances.some((sp) => sp.correct(rawWord) || sp.correct(normalizedWord));
+        if (isWholeCorrect) {
+          return [];
+        }
+        if (HYPHEN_OR_APOSTROPHE_REGEX.test(rawWord)) {
+          const misspelledParts = [];
+          const partRegex = new RegExp(SUBPART_REGEX.source, "gu");
+          let match;
+          while ((match = partRegex.exec(rawWord)) !== null) {
+            const subWord = match[1];
+            const subStart = item.from + match.index;
+            const subEnd = subStart + subWord.length;
+            if (subWord.length >= 3) {
+              const subNormalized = subWord.replace(/’/g, "'");
+              const subCorrect = spInstances.some((sp) => sp.correct(subWord) || sp.correct(subNormalized));
+              if (!subCorrect) {
+                misspelledParts.push({
+                  word: subWord,
+                  from: subStart,
+                  to: subEnd
+                });
+              }
+            }
+          }
+          return misspelledParts;
+        }
+        return [item];
+      }
+      module.exports = {
+        checkItemWithDictionaries,
+        HYPHEN_OR_APOSTROPHE_REGEX
+      };
+    }
+  });
+
   // src/editor/spell.worker.js
   var require_spell_worker = __commonJS({
     "src/editor/spell.worker.js"(exports, module) {
       var nspell = require_lib();
+      var { checkItemWithDictionaries } = require_spell_checker_core();
       var spInstances = [];
       var currentLang = "it+en";
       function handleMessage(data) {
@@ -1026,9 +1071,9 @@
             const misspelled = [];
             for (let i = 0; i < words.length; i++) {
               const item = words[i];
-              const isCorrect = spInstances.some((sp) => sp.correct(item.word));
-              if (!isCorrect) {
-                misspelled.push(item);
+              const flagged = checkItemWithDictionaries(item, spInstances);
+              if (flagged && flagged.length > 0) {
+                misspelled.push(...flagged);
               }
             }
             respond({ type: "checkResult", id, misspelled });

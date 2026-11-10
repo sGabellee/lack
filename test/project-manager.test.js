@@ -22,12 +22,13 @@ test('ProjectManager: create project, manifest schema, safe path confinement', (
   assert.ok(id);
   assert.equal(manifest.schema, 1);
   assert.equal(manifest.name, 'Neural Network Report');
-  assert.ok(fs.existsSync(path.join(storePath, 'main.tex')));
+  assert.equal(manifest.main, 'output.tex');
+  assert.ok(fs.existsSync(path.join(storePath, 'output.tex')));
   assert.ok(fs.existsSync(path.join(storePath, '.lack', 'build')));
 
   // Safe path confinement
-  const safePath = manager.resolveSafeStorePath(storePath, 'main.tex');
-  assert.equal(safePath, path.join(storePath, 'main.tex'));
+  const safePath = manager.resolveSafeStorePath(storePath, 'output.tex');
+  assert.equal(safePath, path.join(storePath, 'output.tex'));
 
   // Path escape attempt should throw security error
   assert.throws(() => {
@@ -86,7 +87,7 @@ test('ProjectManager: linked assets and standalone export', async () => {
   const exportDir = path.join(tmpDir, 'exported-folder');
   await manager.exportProject(storePath, exportDir, false);
 
-  assert.ok(fs.existsSync(path.join(exportDir, 'main.tex')));
+  assert.ok(fs.existsSync(path.join(exportDir, 'Experiment.tex')));
   assert.ok(fs.existsSync(path.join(exportDir, 'figures', 'plot.png')));
   assert.equal(fs.readFileSync(path.join(exportDir, 'figures', 'plot.png'), 'utf8'), 'fake-png-binary-data');
   // .lack should NOT be exported

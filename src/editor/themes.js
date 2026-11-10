@@ -3,7 +3,7 @@
  * CodeMirror 6 theme definitions driven by Lack's CSS variables and accessible palette.
  *
  * Rules:
- * - Commands & delimiters: Light #80007f (Lack purple), Dark #d98cd9 (accessible light purple)
+ * - Commands & delimiters: Light #80007f (Lack purple), Dark #be76de (accessible violet)
  * - Arguments, environments, math: Light #1a4d8f (dark blue), Dark #7aa2e8 (light blue)
  * - Selection: Light #b3d4fc (classic blue), Dark #264f78 (classic dark blue)
  * - Inactive selection: Light #dcdcdc, Dark #383838
@@ -168,20 +168,20 @@ const lightHighlightStyle = HighlightStyle.define([
 ]);
 
 // Dark syntax highlighting (contrast against #1f1f1f / #0d1117)
-// Commands: #d98cd9 (ratio ~6.87:1), Arguments & Math: #7aa2e8 (ratio ~6.46:1)
+// Commands: #be76de (ratio >= 4.5:1), Arguments & Math: #7aa2e8 (ratio ~6.46:1)
 const darkHighlightStyle = HighlightStyle.define([
-  { tag: latexCommandTag, color: '#d98cd9', fontWeight: 'bold' },
-  { tag: latexDelimiterTag, color: '#d98cd9' },
+  { tag: latexCommandTag, color: '#be76de', fontWeight: 'bold' },
+  { tag: latexDelimiterTag, color: '#be76de' },
   { tag: latexArgumentTag, color: '#7aa2e8', fontWeight: '500' },
   { tag: latexMathTag, color: '#7aa2e8' },
   { tag: latexCommentTag, color: '#9ca3af', fontStyle: 'italic' },
-  { tag: tags.keyword, color: '#d98cd9', fontWeight: 'bold' },
+  { tag: tags.keyword, color: '#be76de', fontWeight: 'bold' },
   { tag: tags.name, color: '#7aa2e8' },
   { tag: tags.comment, color: '#9ca3af', fontStyle: 'italic' },
   { tag: tags.string, color: '#7aa2e8' },
   { tag: tags.number, color: '#7aa2e8' },
-  { tag: tags.bracket, color: '#d98cd9' },
-  { tag: tags.heading, color: '#d98cd9', fontWeight: 'bold' }
+  { tag: tags.bracket, color: '#be76de' },
+  { tag: tags.heading, color: '#be76de', fontWeight: 'bold' }
 ]);
 
 function getThemeExtensions(themeName = 'light') {
