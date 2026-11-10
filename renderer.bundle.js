@@ -47314,7 +47314,7 @@ var require_themes = __commonJS({
         backgroundColor: "var(--editor-bg)",
         color: "#777777",
         borderRight: "1px solid var(--explorer-border)",
-        padding: "12px 0 50vh 0",
+        padding: "0 !important",
         minWidth: "44px",
         userSelect: "none"
       },
@@ -47390,6 +47390,17 @@ var require_themes = __commonJS({
         boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35) !important",
         borderRadius: "8px !important",
         color: "var(--fg) !important"
+      },
+      ".cm-tooltip-lint": {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important',
+        fontSize: "12.5px !important"
+      },
+      ".cm-diagnostic": {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important',
+        fontSize: "12.5px !important"
+      },
+      ".cm-diagnosticText": {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important'
       },
       ".cm-tooltip-autocomplete": {
         "& > ul": {

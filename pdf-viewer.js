@@ -346,20 +346,41 @@ async function navigateToDestination(dest) {
     if (!wrapper) return;
 
     let offsetY = 0;
-    // Inspect destination parameters for y-coordinate
-    for (let i = 1; i < explicitDest.length; i++) {
-      if (typeof explicitDest[i] === 'number' && explicitDest[i] > 0) {
-        const yCoord = explicitDest[i];
-        try {
-          const targetPage = await currentPdfDoc.getPage(targetPageNum);
-          const targetViewport = targetPage.getViewport({ scale: currentScale });
-          const pt = targetViewport.convertToViewportPoint(0, yCoord);
-          if (pt && typeof pt[1] === 'number') {
-            offsetY = Math.max(0, pt[1] - 30);
-          }
-        } catch (_) {}
-        break;
+    // Inspect destination parameters for y-coordinate (XYZ has [page, /XYZ, left, top, zoom])
+    let yCoord = null;
+    const destKind = explicitDest[1] && explicitDest[1].name
+      ? explicitDest[1].name
+      : (typeof explicitDest[1] === 'string' ? explicitDest[1] : null);
+
+    if (destKind === 'XYZ') {
+      if (typeof explicitDest[3] === 'number') {
+        yCoord = explicitDest[3];
       }
+    } else if (destKind === 'FitH' || destKind === 'FitBH') {
+      if (typeof explicitDest[2] === 'number') {
+        yCoord = explicitDest[2];
+      }
+    } else if (destKind === 'FitR') {
+      if (typeof explicitDest[5] === 'number') {
+        yCoord = explicitDest[5];
+      }
+    } else {
+      if (typeof explicitDest[3] === 'number') {
+        yCoord = explicitDest[3];
+      } else if (typeof explicitDest[2] === 'number') {
+        yCoord = explicitDest[2];
+      }
+    }
+
+    if (yCoord !== null) {
+      try {
+        const targetPage = await currentPdfDoc.getPage(targetPageNum);
+        const targetViewport = targetPage.getViewport({ scale: currentScale });
+        const pt = targetViewport.convertToViewportPoint(0, yCoord);
+        if (pt && typeof pt[1] === 'number') {
+          offsetY = Math.max(0, pt[1] - 30);
+        }
+      } catch (_) {}
     }
 
     const scrollContainer = getScrollContainer();
