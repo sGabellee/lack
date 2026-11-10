@@ -47413,14 +47413,14 @@ var require_themes = __commonJS({
     var lightHighlightStyle = HighlightStyle.define([
       { tag: latexCommandTag, color: "#80007f", fontWeight: "bold" },
       { tag: latexDelimiterTag, color: "#80007f" },
-      { tag: latexArgumentTag, color: "#1a4d8f", fontWeight: "500" },
-      { tag: latexMathTag, color: "#1a4d8f" },
+      { tag: latexArgumentTag, color: "#0000CD", fontWeight: "500" },
+      { tag: latexMathTag, color: "#0000CD" },
       { tag: latexCommentTag, color: "#6b7280", fontStyle: "italic" },
       { tag: tags.keyword, color: "#80007f", fontWeight: "bold" },
-      { tag: tags.name, color: "#1a4d8f" },
+      { tag: tags.name, color: "#0000CD" },
       { tag: tags.comment, color: "#6b7280", fontStyle: "italic" },
-      { tag: tags.string, color: "#1a4d8f" },
-      { tag: tags.number, color: "#1a4d8f" },
+      { tag: tags.string, color: "#0000CD" },
+      { tag: tags.number, color: "#0000CD" },
       { tag: tags.bracket, color: "#80007f" },
       { tag: tags.heading, color: "#80007f", fontWeight: "bold" }
     ]);
@@ -47438,7 +47438,7 @@ var require_themes = __commonJS({
       { tag: tags.bracket, color: "#d98cd9" },
       { tag: tags.heading, color: "#d98cd9", fontWeight: "bold" }
     ]);
-    function getThemeExtensions2(themeName = "dark") {
+    function getThemeExtensions2(themeName = "light") {
       const isLight = themeName === "light";
       return [
         lackBaseTheme,
@@ -56412,6 +56412,7 @@ var CodeMirrorManager = class {
     this.onDocChangeCallback = null;
     this.onCursorChangeCallback = null;
     this.onCompileCallback = options.onCompile || null;
+    this.onRotateThemeCallback = options.onRotateTheme || null;
     this.projectContext = {
       getBibKeys: options.getBibKeys || (() => []),
       getImageFiles: options.getImageFiles || (() => []),
@@ -56453,6 +56454,23 @@ var CodeMirrorManager = class {
       },
       {
         key: "Mod-m",
+        run: () => {
+          if (typeof self2.onRotateThemeCallback === "function") {
+            self2.onRotateThemeCallback();
+            return true;
+          }
+          return false;
+        }
+      },
+      {
+        key: "Mod-Shift-m",
+        run: () => {
+          self2.toggleMath();
+          return true;
+        }
+      },
+      {
+        key: "Mod-Alt-m",
         run: () => {
           self2.toggleMath();
           return true;
@@ -56501,7 +56519,7 @@ var CodeMirrorManager = class {
         search({ top: true }),
         lintGutter(),
         latexLanguage,
-        this.themeCompartment.of(getThemeExtensions(this.options.theme || "dark")),
+        this.themeCompartment.of(getThemeExtensions(this.options.theme || "light")),
         this.wrappingCompartment.of(EditorView2.lineWrapping),
         this.vimCompartment.of([]),
         this.collabCompartment.of([]),
@@ -56704,6 +56722,9 @@ var CodeMirrorManager = class {
   }
   onCursorChange(fn) {
     this.onCursorChangeCallback = fn;
+  }
+  onRotateTheme(fn) {
+    this.onRotateThemeCallback = fn;
   }
   getWordCount() {
     return getLatexWordCount(this.getValue());

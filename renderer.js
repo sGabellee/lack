@@ -11,7 +11,7 @@ const editorLib = require("./renderer.bundle.js");
 const pdfViewer = require("./pdf-viewer.js");
 
 // --- INITIAL THEME & LANGUAGE ---
-const savedTheme = localStorage.getItem('lack-theme') || 'dark';
+const savedTheme = localStorage.getItem('lack-theme') || 'light';
 if (savedTheme === 'dark') {
   document.documentElement.classList.add('dark');
   document.body.classList.add('dark');
@@ -36,6 +36,13 @@ const {
 
 const LackTemplates = (typeof window !== 'undefined' && window.LackTemplates) || (typeof require === 'function' ? require('./templates.js') : null);
 const latexCompiler = require("./latex-compiler.js");
+const {
+  formatBytes,
+  calculateDirSize,
+  isCompilableLatexFile,
+  filterProjectEntries,
+  validateItemName
+} = require("./src/projects/ui-controller.js");
 
 // ====== UTILS ======
 function escapeHtml(s) {
@@ -94,47 +101,105 @@ function showNotification(message, type = 'info') {
 }
 
 // ====== CUSTOM CONFIRM DIALOG ======
-function showCustomConfirmDialog({ title, message, okText, cancelText, abortText }) {
+let currentConfirmResolver = null;
+let currentCancelValue = false;
+
+const CONFIRM_ICONS = {
+  warning: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  question: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  info: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+};
+
+function closeCustomConfirmDialog(value = false) {
+  const modal = document.getElementById('app-confirm-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+  if (typeof currentConfirmResolver === 'function') {
+    const resolver = currentConfirmResolver;
+    currentConfirmResolver = null;
+    resolver(value);
+  }
+}
+
+function showCustomConfirmDialog(options = {}) {
   return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'app-confirm-overlay';
-    overlay.innerHTML = `
-      <div class="app-confirm-box">
-        <div class="app-confirm-header">
-          <div class="app-confirm-icon-box question">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <div class="app-confirm-title">${escapeHtml(title)}</div>
-        </div>
-        <div class="app-confirm-message">${escapeHtml(message)}</div>
-        <div class="app-confirm-actions">
-          ${abortText ? `<button type="button" class="app-confirm-btn app-confirm-btn-secondary" id="confirm-abort">${escapeHtml(abortText)}</button>` : ''}
-          <button type="button" class="app-confirm-btn app-confirm-btn-secondary" id="confirm-no">${escapeHtml(cancelText || "No")}</button>
-          <button type="button" class="app-confirm-btn app-confirm-btn-primary" id="confirm-yes">${escapeHtml(okText || "Sì")}</button>
-        </div>
-      </div>
-    `;
+    const existingTabCtx = document.getElementById("tab-context-menu");
+    if (existingTabCtx) existingTabCtx.remove();
+    const existingTreeCtx = document.getElementById("tree-context-menu");
+    if (existingTreeCtx) existingTreeCtx.remove();
 
-    document.body.appendChild(overlay);
+    const modal = document.getElementById('app-confirm-modal');
+    const titleEl = document.getElementById('app-confirm-title');
+    const messageEl = document.getElementById('app-confirm-message');
+    const iconBox = document.getElementById('app-confirm-icon-box');
+    const actionsEl = document.getElementById('app-confirm-actions');
 
-    overlay.querySelector('#confirm-yes').onclick = () => {
-      overlay.remove();
-      resolve(abortText ? 'yes' : true);
-    };
-    overlay.querySelector('#confirm-no').onclick = () => {
-      overlay.remove();
-      resolve(abortText ? 'no' : false);
-    };
-    if (abortText) {
-      overlay.querySelector('#confirm-abort').onclick = () => {
-        overlay.remove();
-        resolve('cancel');
-      };
+    if (!modal) {
+      resolve(options.defaultValue !== undefined ? options.defaultValue : false);
+      return;
     }
+
+    currentConfirmResolver = resolve;
+
+    if (titleEl) {
+      titleEl.textContent = options.title || (typeof i18n !== 'undefined' ? i18n.t('confirm') : 'Conferma') || 'Conferma';
+    }
+    if (messageEl) {
+      messageEl.textContent = options.message || '';
+    }
+
+    const iconType = options.icon || (options.type === 'question' ? 'question' : options.type === 'info' ? 'info' : 'warning');
+    if (iconBox) {
+      iconBox.className = `app-confirm-icon-box ${iconType}`;
+      iconBox.innerHTML = CONFIRM_ICONS[iconType] || CONFIRM_ICONS.warning;
+    }
+
+    let buttons = options.buttons;
+    if (!buttons) {
+      if (options.abortText) {
+        buttons = [
+          { text: options.abortText, value: 'cancel', isCancel: true },
+          { text: options.cancelText || (typeof i18n !== 'undefined' ? i18n.t('dialog_dont_save') : 'Non salvare') || 'Non salvare', value: 'no', isSecondary: true },
+          { text: options.okText || (typeof i18n !== 'undefined' ? i18n.t('dialog_save') : 'Salva') || 'Salva', value: 'yes', isPrimary: true }
+        ];
+      } else {
+        buttons = [
+          { text: options.cancelText || (typeof i18n !== 'undefined' ? i18n.t('dialog_cancel') : 'Annulla') || 'Annulla', value: false, isCancel: true },
+          { text: options.okText || (typeof i18n !== 'undefined' ? i18n.t('confirm') : 'OK') || 'OK', value: true, isPrimary: true, isDanger: !!options.isDanger }
+        ];
+      }
+    }
+
+    const cancelBtnConfig = buttons.find(b => b.isCancel) || buttons[buttons.length - 1];
+    currentCancelValue = cancelBtnConfig ? cancelBtnConfig.value : false;
+
+    if (actionsEl) {
+      actionsEl.innerHTML = '';
+      buttons.forEach((btnConfig, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = btnConfig.text;
+        if (btnConfig.isDanger) {
+          btn.className = btnConfig.isPrimary ? 'app-confirm-btn-danger app-confirm-btn-primary' : 'app-confirm-btn-danger';
+        } else if (btnConfig.isPrimary) {
+          btn.className = 'app-confirm-btn-primary';
+        } else if (btnConfig.isSecondary) {
+          btn.className = 'app-confirm-btn-secondary';
+        } else {
+          btn.className = 'app-confirm-btn-cancel';
+        }
+        btn.addEventListener('click', () => {
+          closeCustomConfirmDialog(btnConfig.value);
+        });
+        actionsEl.appendChild(btn);
+        if (btnConfig.isPrimary || (!buttons.some(b => b.isPrimary) && idx === 0)) {
+          setTimeout(() => { try { btn.focus(); } catch (e) {} }, 40);
+        }
+      });
+    }
+
+    modal.classList.remove('hidden');
   });
 }
 
@@ -149,9 +214,30 @@ window.addEventListener("DOMContentLoaded", async () => {
   const winMaximizeBtn = document.getElementById("win-maximize");
   const winCloseBtn = document.getElementById("win-close");
 
+  const btnCloseAppConfirm = document.getElementById('btn-close-app-confirm');
+  if (btnCloseAppConfirm) {
+    btnCloseAppConfirm.addEventListener('click', () => closeCustomConfirmDialog(currentCancelValue));
+  }
+  const appConfirmOverlay = document.getElementById('app-confirm-overlay');
+  if (appConfirmOverlay) {
+    appConfirmOverlay.addEventListener('click', () => closeCustomConfirmDialog(currentCancelValue));
+  }
+
   winMinimizeBtn?.addEventListener("click", () => ipcRenderer.send("window-minimize"));
   winMaximizeBtn?.addEventListener("click", () => ipcRenderer.send("window-maximize"));
-  winCloseBtn?.addEventListener("click", () => ipcRenderer.send("window-close"));
+  winCloseBtn?.addEventListener("click", async () => {
+    saveActiveTabState();
+    const dirtyTabs = tabs.filter(t => t.dirty);
+    if (dirtyTabs.length > 0) {
+      const canClose = await handleAppCloseRequest();
+      if (canClose) {
+        isAppForceClosing = true;
+        ipcRenderer.send('window-close-confirmed');
+      }
+    } else {
+      ipcRenderer.send("window-close");
+    }
+  });
 
   ipcRenderer.on("window-maximize-changed", (_event, isMax) => {
     document.body.classList.toggle("window-maximized", isMax);
@@ -168,6 +254,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   let currentZoomLevel = 1.0;
   let isCompiling = false;
   let autoCompileTimer = null;
+  let currentProject = null;
+  let isLinkedProject = false;
 
   // Settings state
   let config = {
@@ -180,6 +268,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     engine: localStorage.getItem('lack-engine') || 'pdflatex',
     customEnginePath: localStorage.getItem('lack-customEnginePath') || '',
     autoCompile: localStorage.getItem('lack-autoCompile') === 'true',
+    compileOnSave: localStorage.getItem('lack-compileOnSave') !== 'false',
+    embedSnapshotDefault: localStorage.getItem('lack-embedSnapshotDefault') === 'true',
     cleanAux: localStorage.getItem('lack-cleanAux') === 'true',
     viewMode: localStorage.getItem('lack-viewMode') || 'split'
   };
@@ -226,6 +316,27 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   updateAutoCompileMenuLabel();
 
+  function updateCompileOnSaveMenuLabel() {
+    const lbl = document.getElementById("menu-label-compile-on-save");
+    if (lbl) {
+      lbl.textContent = `Compile on Save: ${config.compileOnSave ? 'On' : 'Off'}`;
+    }
+    const checkEl = document.getElementById("toggle-compile-on-save");
+    if (checkEl) checkEl.checked = config.compileOnSave;
+  }
+  updateCompileOnSaveMenuLabel();
+
+  const checkCompileOnSave = document.getElementById("toggle-compile-on-save");
+  if (checkCompileOnSave) {
+    checkCompileOnSave.checked = config.compileOnSave;
+    checkCompileOnSave.addEventListener("change", (e) => {
+      config.compileOnSave = e.target.checked;
+      localStorage.setItem("lack-compileOnSave", config.compileOnSave);
+      updateCompileOnSaveMenuLabel();
+      showNotification(`Compila al salvataggio (Ctrl+S): ${config.compileOnSave ? 'Attivo' : 'Disattivato'}`, "info");
+    });
+  }
+
   // Detect available TeX engines on startup
   try {
     const detected = await ipcRenderer.invoke('detect-latex-engines');
@@ -246,7 +357,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const cm = editorLib.createCodeMirrorEditor(editorMount, {
     initialValue: '',
+    theme: config.theme,
     onCompile: () => triggerCompile(),
+    onRotateTheme: () => cycleTheme(),
     getBibKeys: projectContext.getBibKeys,
     getImageFiles: projectContext.getImageFiles,
     getTexFiles: projectContext.getTexFiles
@@ -255,6 +368,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.__lackCmInstance = cm;
   window.__lackGetActiveTab = getActiveTab;
   window.__lackTabs = tabs;
+
+  // Immediately apply the saved theme to CodeMirror, the DOM, and segmented controls
+  applyTheme(config.theme);
 
   cm.setLineWrapping(config.lineWrapping);
   cm.setVimMode(config.vimMode);
@@ -491,7 +607,13 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function updateTitle() {
     const tab = getActiveTab();
-    if (!tab) {
+    const hasDirty = tabs.some(t => t.dirty);
+    if (isLinkedProject && currentProject && currentProject.targetPath) {
+      const pdfBase = path.basename(currentProject.targetPath);
+      const fullTitle = `${pdfBase}${hasDirty ? " *" : ""} — Lack`;
+      titlebarTitle.textContent = fullTitle;
+      document.title = fullTitle;
+    } else if (!tab) {
       titlebarTitle.textContent = "Lack";
       document.title = "Lack";
     } else {
@@ -521,7 +643,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       tabEl.dataset.tabId = tab.id;
       tabEl.title = tab.filePath || tab.title;
 
+      const isProjectFile = isLinkedProject && currentProject && tab.filePath && tab.filePath.startsWith(currentProject.storePath);
+
       tabEl.innerHTML = `
+        ${isProjectFile ? '<span class="tab-link-badge" title="File del progetto collegato"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>' : ''}
         <span class="tab-title">${escapeHtml(tab.title)}${tab.dirty ? " *" : ""}</span>
         <span class="tab-dirty ${tab.dirty ? 'visible' : ''}"></span>
         <button type="button" class="tab-close-btn" title="Chiudi">&times;</button>
@@ -534,6 +659,22 @@ window.addEventListener("DOMContentLoaded", async () => {
         } else {
           switchTab(tab.id);
         }
+      });
+
+      // Middle click (auxclick with button 1) closes tab like VS Code
+      tabEl.addEventListener("auxclick", (e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeTab(tab.id);
+        }
+      });
+
+      // Right-click context menu (VS Code style)
+      tabEl.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showTabContextMenu(e, tab);
       });
 
       tabsScrollArea.appendChild(tabEl);
@@ -574,6 +715,22 @@ window.addEventListener("DOMContentLoaded", async () => {
       cm.setValue(tab.content || "");
       cm.clearErrorHighlight();
       cm.focus();
+
+      // Phase 8: Text editor mode for non-compilable files
+      const isLatex = isCompilableLatexFile(tab.filePath);
+      const mainStageEl = document.getElementById("main-stage");
+      const compileOptions = document.getElementById("compile-options-container");
+
+      if (!isLatex && tab.filePath) {
+        mainStageEl?.classList.add("editor-only-mode");
+        if (btnRecompile) btnRecompile.style.display = "none";
+        if (compileOptions) compileOptions.style.display = "none";
+      } else {
+        mainStageEl?.classList.remove("editor-only-mode");
+        if (btnRecompile) btnRecompile.style.display = "";
+        if (compileOptions) compileOptions.style.display = "";
+        setViewMode(config.viewMode);
+      }
     }
     renderTabs();
     updateWordCount();
@@ -582,25 +739,35 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   async function closeTab(tabId) {
     const tab = tabs.find(t => t.id === tabId);
-    if (!tab) return;
+    if (!tab) return false;
 
     if (tab.dirty) {
-      const choice = await showCustomConfirmDialog({
-        title: i18n.t("save_changes_title") || "Modifiche non salvate",
-        message: i18n.t("save_changes_message", { name: tab.title }) || `Salvare le modifiche a "${tab.title}" prima di chiudere?`,
-        okText: i18n.t("save") || "Salva",
-        cancelText: i18n.t("save_dont_save") || "Non salvare",
-        abortText: i18n.t("cancel") || "Annulla"
-      });
-      if (choice === 'cancel') {
-        return; // Abort closing
+      if (activeTabId !== tabId) {
+        switchTab(tabId);
       }
-      if (choice === 'yes') {
-        await saveFile(tab);
+      const answer = await showCustomConfirmDialog({
+        type: 'question',
+        icon: 'question',
+        title: i18n.t("dialog_unsaved_title") || "Modifiche non salvate",
+        message: i18n.t("dialog_unsaved_tab_message", { name: tab.title }) || `Vuoi salvare le modifiche apportate a "${tab.title}" prima di chiudere?`,
+        buttons: [
+          { text: i18n.t("dialog_save") || "Salva", value: 0, isPrimary: true },
+          { text: i18n.t("dialog_dont_save") || "Non salvare", value: 1, isSecondary: true },
+          { text: i18n.t("dialog_cancel") || "Annulla", value: 2, isCancel: true }
+        ]
+      });
+
+      if (answer === 2) {
+        return false; // Abort closing
+      }
+      if (answer === 0) {
+        const saved = await saveFile(tab);
+        if (saved === false && tab.dirty) return false;
       }
     }
 
     const index = tabs.findIndex(t => t.id === tabId);
+    if (index === -1) return false;
     tabs.splice(index, 1);
 
     if (activeTabId === tabId) {
@@ -615,6 +782,156 @@ window.addEventListener("DOMContentLoaded", async () => {
     } else {
       renderTabs();
     }
+    return true;
+  }
+
+  async function closeOtherTabs(targetTabId) {
+    const tabsToClose = tabs.filter(t => t.id !== targetTabId);
+    for (const t of tabsToClose) {
+      const ok = await closeTab(t.id);
+      if (!ok) break;
+    }
+  }
+
+  async function closeTabsToRight(targetTabId) {
+    const targetIdx = tabs.findIndex(t => t.id === targetTabId);
+    if (targetIdx === -1) return;
+    const tabsToClose = tabs.slice(targetIdx + 1);
+    for (const t of tabsToClose) {
+      const ok = await closeTab(t.id);
+      if (!ok) break;
+    }
+  }
+
+  async function closeSavedTabs() {
+    const savedTabs = tabs.filter(t => !t.dirty);
+    for (const t of savedTabs) {
+      await closeTab(t.id);
+    }
+  }
+
+  async function closeAllTabs() {
+    const allTabs = [...tabs];
+    for (const t of allTabs) {
+      const ok = await closeTab(t.id);
+      if (!ok) break;
+    }
+  }
+
+  function showTabContextMenu(e, tab) {
+    const existing = document.getElementById("tab-context-menu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "tab-context-menu";
+    menu.className = "tree-context-menu tab-context-menu";
+
+    const hasPath = !!tab.filePath;
+    const isDarwin = platform === 'darwin';
+    const targetIdx = tabs.findIndex(t => t.id === tab.id);
+    const hasTabsToRight = targetIdx < tabs.length - 1;
+    const hasOtherTabs = tabs.length > 1;
+    const hasSavedTabs = tabs.some(t => !t.dirty);
+
+    const relativePath = hasPath ? (
+      (currentProject && currentProject.storePath && tab.filePath.startsWith(currentProject.storePath))
+        ? path.relative(currentProject.storePath, tab.filePath)
+        : (currentProjectDir && tab.filePath.startsWith(currentProjectDir))
+          ? path.relative(currentProjectDir, tab.filePath)
+          : path.basename(tab.filePath)
+    ) : "";
+
+    menu.innerHTML = `
+      <div class="context-menu-item" id="tab-ctx-close">
+        <span>${escapeHtml(i18n.t("tab_ctx_close") || "Chiudi")}</span>
+        <span class="context-menu-shortcut">${isDarwin ? "⌘W" : "Ctrl+W"}</span>
+      </div>
+      <div class="context-menu-item ${hasOtherTabs ? '' : 'disabled'}" id="tab-ctx-close-others">
+        <span>${escapeHtml(i18n.t("tab_ctx_close_others") || "Chiudi altri")}</span>
+      </div>
+      <div class="context-menu-item ${hasTabsToRight ? '' : 'disabled'}" id="tab-ctx-close-right">
+        <span>${escapeHtml(i18n.t("tab_ctx_close_right") || "Chiudi a destra")}</span>
+      </div>
+      <div class="context-menu-item ${hasSavedTabs ? '' : 'disabled'}" id="tab-ctx-close-saved">
+        <span>${escapeHtml(i18n.t("tab_ctx_close_saved") || "Chiudi salvati")}</span>
+      </div>
+      <div class="context-menu-item" id="tab-ctx-close-all">
+        <span>${escapeHtml(i18n.t("tab_ctx_close_all") || "Chiudi tutti")}</span>
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item ${hasPath ? '' : 'disabled'}" id="tab-ctx-copy-path">
+        <span>${escapeHtml(i18n.t("tab_ctx_copy_path") || "Copia percorso")}</span>
+      </div>
+      <div class="context-menu-item ${hasPath ? '' : 'disabled'}" id="tab-ctx-copy-rel-path">
+        <span>${escapeHtml(i18n.t("tab_ctx_copy_rel_path") || "Copia percorso relativo")}</span>
+      </div>
+      <div class="context-menu-item ${hasPath ? '' : 'disabled'}" id="tab-ctx-reveal">
+        <span>${escapeHtml(i18n.t("tab_ctx_reveal") || "Mostra nel gestore file")}</span>
+      </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    const menuWidth = 230;
+    const menuHeight = 270;
+    const left = Math.max(10, Math.min(e.clientX, window.innerWidth - menuWidth - 10));
+    const top = Math.max(10, Math.min(e.clientY, window.innerHeight - menuHeight - 10));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+
+    menu.querySelector("#tab-ctx-close")?.addEventListener("click", () => {
+      menu.remove();
+      closeTab(tab.id);
+    });
+
+    if (hasOtherTabs) {
+      menu.querySelector("#tab-ctx-close-others")?.addEventListener("click", () => {
+        menu.remove();
+        closeOtherTabs(tab.id);
+      });
+    }
+
+    if (hasTabsToRight) {
+      menu.querySelector("#tab-ctx-close-right")?.addEventListener("click", () => {
+        menu.remove();
+        closeTabsToRight(tab.id);
+      });
+    }
+
+    if (hasSavedTabs) {
+      menu.querySelector("#tab-ctx-close-saved")?.addEventListener("click", () => {
+        menu.remove();
+        closeSavedTabs();
+      });
+    }
+
+    menu.querySelector("#tab-ctx-close-all")?.addEventListener("click", () => {
+      menu.remove();
+      closeAllTabs();
+    });
+
+    if (hasPath) {
+      menu.querySelector("#tab-ctx-copy-path")?.addEventListener("click", () => {
+        menu.remove();
+        clipboard.writeText(tab.filePath);
+        showNotification(i18n.t("notif_copied") || "Percorso copiato negli appunti!", "info");
+      });
+      menu.querySelector("#tab-ctx-copy-rel-path")?.addEventListener("click", () => {
+        menu.remove();
+        clipboard.writeText(relativePath);
+        showNotification(i18n.t("notif_copied") || "Percorso relativo copiato negli appunti!", "info");
+      });
+      menu.querySelector("#tab-ctx-reveal")?.addEventListener("click", () => {
+        menu.remove();
+        ipcRenderer.invoke('project-reveal-item', tab.filePath);
+      });
+    }
+
+    const closeHandler = () => {
+      menu.remove();
+      window.removeEventListener("click", closeHandler);
+    };
+    setTimeout(() => window.addEventListener("click", closeHandler), 10);
   }
 
   function newFile(templateContent = null) {
@@ -628,7 +945,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   async function saveFile(tab = null) {
     const targetTab = tab || getActiveTab();
-    if (!targetTab) return;
+    if (!targetTab) return false;
 
     saveActiveTabState();
 
@@ -638,7 +955,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         defaultPath: targetTab.title,
         filters: [{ name: "LaTeX Document", extensions: ["tex"] }]
       });
-      if (result.canceled || !result.filePath) return;
+      if (result.canceled || !result.filePath) return false;
       targetTab.filePath = result.filePath;
       targetTab.title = path.basename(result.filePath);
       if (!currentProjectDir) {
@@ -650,20 +967,88 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      await fs.promises.writeFile(targetTab.filePath, targetTab.content, "utf8");
+      const targetDir = path.dirname(targetTab.filePath);
+      const tmpPath = path.join(targetDir, `.tmp-${process.pid}-${Date.now()}`);
+      await fs.promises.writeFile(tmpPath, targetTab.content, "utf8");
+      await fs.promises.rename(tmpPath, targetTab.filePath);
+
       targetTab.savedContent = targetTab.content;
       updateTabDirty(targetTab.id, false);
       showNotification(`File salvato con successo: ${targetTab.title}`, "info");
 
-      // Save local history revision in .lack-history/
+      // Save local history revision in .lack/history/ (or .lack-history/)
       saveFileHistorySnapshot(targetTab.filePath, targetTab.content);
       if (targetTab.filePath) watchFileForChanges(targetTab.filePath);
 
-      if (currentProjectDir) renderFileTree(currentProjectDir);
+      if (isLinkedProject && currentProject) {
+        renderProjectPane(currentProject.storePath);
+      } else if (currentProjectDir) {
+        renderFolderPane(currentProjectDir);
+      }
+
+      // Phase 1: Ctrl+S saves AND compiles
+      if (config.compileOnSave && isCompilableLatexFile(targetTab.filePath)) {
+        if (autoCompileTimer) {
+          clearTimeout(autoCompileTimer);
+          autoCompileTimer = null;
+        }
+        triggerCompile(false).catch(err => {
+          console.warn("[LACK] Compile on save error:", err);
+        });
+      }
+      return true;
     } catch (err) {
       showNotification("Errore di salvataggio: " + err.message, "error");
+      return false;
     }
   }
+
+  let isAppForceClosing = false;
+
+  async function handleAppCloseRequest() {
+    saveActiveTabState();
+    const dirtyTabs = tabs.filter(t => t.dirty);
+    for (const t of dirtyTabs) {
+      switchTab(t.id);
+      const answer = await showCustomConfirmDialog({
+        type: 'question',
+        icon: 'question',
+        title: i18n.t("dialog_unsaved_title") || "Modifiche non salvate",
+        message: i18n.t("dialog_unsaved_tab_message", { name: t.title }) || `Vuoi salvare le modifiche apportate a "${t.title}" prima di chiudere?`,
+        buttons: [
+          { text: i18n.t("dialog_save") || "Salva", value: 0, isPrimary: true },
+          { text: i18n.t("dialog_dont_save") || "Non salvare", value: 1, isSecondary: true },
+          { text: i18n.t("dialog_cancel") || "Annulla", value: 2, isCancel: true }
+        ]
+      });
+
+      if (answer === 2) {
+        return false; // User cancelled
+      }
+      if (answer === 0) {
+        const saved = await saveFile(t);
+        if (!saved && t.dirty) return false;
+      }
+    }
+    return true;
+  }
+
+  window.addEventListener('beforeunload', (e) => {
+    if (isAppForceClosing) return;
+    saveActiveTabState();
+    const dirtyTabs = tabs.filter(t => t.dirty);
+    if (dirtyTabs.length > 0) {
+      e.preventDefault();
+      e.returnValue = false;
+      handleAppCloseRequest().then(canClose => {
+        if (canClose) {
+          isAppForceClosing = true;
+          ipcRenderer.send('window-close-confirmed');
+        }
+      });
+      return false;
+    }
+  });
 
   async function saveFileAs() {
     const tab = getActiveTab();
@@ -680,13 +1065,32 @@ window.addEventListener("DOMContentLoaded", async () => {
     tab.filePath = result.filePath;
     tab.title = path.basename(result.filePath);
     try {
-      await fs.promises.writeFile(tab.filePath, tab.content, "utf8");
+      const targetDir = path.dirname(tab.filePath);
+      const tmpPath = path.join(targetDir, `.tmp-${process.pid}-${Date.now()}`);
+      await fs.promises.writeFile(tmpPath, tab.content, "utf8");
+      await fs.promises.rename(tmpPath, tab.filePath);
+
       tab.savedContent = tab.content;
       updateTabDirty(tab.id, false);
       showNotification(`File salvato: ${tab.title}`, "info");
       saveFileHistorySnapshot(tab.filePath, tab.content);
       watchFileForChanges(tab.filePath);
-      if (currentProjectDir) renderFileTree(currentProjectDir);
+
+      if (isLinkedProject && currentProject) {
+        renderProjectPane(currentProject.storePath);
+      } else if (currentProjectDir) {
+        renderFolderPane(currentProjectDir);
+      }
+
+      if (config.compileOnSave && isCompilableLatexFile(tab.filePath)) {
+        if (autoCompileTimer) {
+          clearTimeout(autoCompileTimer);
+          autoCompileTimer = null;
+        }
+        triggerCompile(false).catch(err => {
+          console.warn("[LACK] Compile on save error:", err);
+        });
+      }
     } catch (err) {
       showNotification("Errore durante il salvataggio: " + err.message, "error");
     }
@@ -695,8 +1099,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Local history snapshot writer (caps at 50 revisions)
   async function saveFileHistorySnapshot(filePath, content) {
     try {
-      const dir = path.dirname(filePath);
-      const historyDir = path.join(dir, '.lack-history');
+      let historyDir;
+      if (isLinkedProject && currentProject && filePath && filePath.startsWith(currentProject.storePath)) {
+        historyDir = path.join(currentProject.storePath, '.lack', 'history');
+      } else {
+        const dir = path.dirname(filePath);
+        historyDir = path.join(dir, '.lack-history');
+      }
       if (!fs.existsSync(historyDir)) {
         await fs.promises.mkdir(historyDir, { recursive: true });
       }
@@ -783,16 +1192,25 @@ window.addEventListener("DOMContentLoaded", async () => {
     const tab = getActiveTab();
     if (!tab && !mainDocumentPath) return;
 
+    if (isLinkedProject && config.engine === "builtin") {
+      showNotification("I progetti collegati richiedono un motore TeX reale (pdfLaTeX, Tectonic, XeLaTeX)", "warning");
+      return;
+    }
+
     isCompiling = true;
     btnRecompile.classList.add("compiling");
 
     let targetPath = mainDocumentPath || (tab ? tab.filePath : null);
     let contentToPass = cm ? cm.getValue() : (tab ? tab.content : "");
 
+    const workDir = isLinkedProject && currentProject ? currentProject.storePath : currentProjectDir;
+    const outputDir = isLinkedProject && currentProject ? path.join(currentProject.storePath, '.lack', 'build') : null;
+
     const compileOpts = {
       filePath: targetPath,
       content: contentToPass,
-      projectDir: currentProjectDir,
+      projectDir: workDir,
+      outputDir: outputDir,
       engine: config.engine,
       customEnginePath: config.customEnginePath,
       cleanAux: config.cleanAux,
@@ -814,6 +1232,23 @@ window.addEventListener("DOMContentLoaded", async () => {
         pdfCanvasContainer.classList.remove("hidden");
 
         await pdfViewer.loadPdfDocument(res.pdfPath);
+
+        // If linked project, post-process atomically to target PDF
+        if (isLinkedProject && currentProject && currentProject.targetPath) {
+          try {
+            await ipcRenderer.invoke('project-post-process-compile', {
+              storePath: currentProject.storePath,
+              compiledPdfPath: res.pdfPath,
+              targetPdfPath: currentProject.targetPath,
+              embedSnapshot: config.embedSnapshotDefault
+            });
+            const folderDir = path.dirname(currentProject.targetPath);
+            renderFolderPane(folderDir);
+          } catch (postErr) {
+            console.warn('[LACK] Post-processing compile error:', postErr);
+            showNotification('Errore aggiornamento PDF collegato: ' + postErr.message, 'warning');
+          }
+        }
 
         if (!isAuto) {
           showNotification(i18n.t("notif_compiled_ok", { time: (res.durationMs / 1000).toFixed(1) }), "info");
@@ -984,15 +1419,47 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ====== FILE TREE EXPLORER ======
-  const fileTreeEl = document.getElementById("file-tree");
+  // ====== TWO-PANE EXPLORER & LINKED PROJECTS ======
+  const folderTreeEl = document.getElementById("folder-tree") || document.getElementById("file-tree");
+  const fileTreeLegacy = document.getElementById("file-tree");
+  const projectTreeEl = document.getElementById("project-tree");
+  const folderPane = document.getElementById("folder-pane");
+  const projectPane = document.getElementById("project-pane");
+  const sidebarSplitter = document.getElementById("sidebar-splitter");
   const folderPathEl = document.getElementById("folder-path");
+  const projectPaneName = document.getElementById("project-pane-name");
+  const footerProjectChip = document.getElementById("footer-project-chip");
+  const footerProjectName = document.getElementById("footer-project-name");
+  const projectInfoPopover = document.getElementById("project-info-popover");
+
+  let targetPdfWatcher = null;
+  function startTargetPdfWatcher(targetPath) {
+    if (targetPdfWatcher) {
+      try { targetPdfWatcher.close(); } catch (_) {}
+      targetPdfWatcher = null;
+    }
+    if (!targetPath) return;
+    const targetDir = path.dirname(targetPath);
+    const targetName = path.basename(targetPath);
+    try {
+      targetPdfWatcher = fs.watch(targetDir, (eventType, filename) => {
+        if (filename === targetName) {
+          if (!fs.existsSync(targetPath)) {
+            showNotification(`Attenzione: Il file PDF "${targetName}" è stato spostato o eliminato esternamente.`, "warning");
+          }
+          renderFolderPane(targetDir);
+        }
+      });
+    } catch (_) {}
+  }
 
   function openFolder(folderPath) {
     if (!fs.existsSync(folderPath)) return;
     currentProjectDir = folderPath;
-    folderPathEl.textContent = path.basename(folderPath);
-    folderPathEl.classList.remove("hidden");
+    if (folderPathEl) {
+      folderPathEl.textContent = path.basename(folderPath);
+      folderPathEl.classList.remove("hidden");
+    }
 
     // Check for main.tex in folder
     const defaultMain = path.join(folderPath, "main.tex");
@@ -1001,34 +1468,114 @@ window.addEventListener("DOMContentLoaded", async () => {
       openFileFromPath(defaultMain);
     }
 
-    renderFileTree(folderPath);
+    renderFolderPane(folderPath);
   }
 
   function renderFileTree(dir) {
-    fileTreeEl.innerHTML = "";
-    const rootUl = document.createElement("ul");
-    rootUl.className = "tree-root";
-    buildTreeRecursive(dir, rootUl);
-    fileTreeEl.appendChild(rootUl);
+    renderFolderPane(dir);
   }
 
-  function buildTreeRecursive(dir, parentElement) {
-    let entries = [];
+  async function openLinkedProject(opts) {
+    // opts: { projectId, name, storePath, targetPath, compileImmediate }
+    isLinkedProject = true;
+    currentProject = {
+      projectId: opts.projectId,
+      name: opts.name,
+      storePath: opts.storePath,
+      targetPath: opts.targetPath
+    };
+
+    // Try to acquire PID lock
     try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
+      await ipcRenderer.invoke('project-acquire-lock', {
+        storePath: opts.storePath,
+        windowId: process.pid
+      });
     } catch (e) {
+      console.warn('[LACK] Lock acquire note:', e);
+    }
+
+    projectPane?.classList.remove("hidden");
+    sidebarSplitter?.classList.remove("hidden");
+    footerProjectChip?.classList.remove("hidden");
+    if (footerProjectName) footerProjectName.textContent = opts.name;
+    if (projectPaneName) projectPaneName.textContent = opts.name;
+
+    updateTitle();
+
+    // Folder pane = folder of target PDF
+    const folderDir = path.dirname(opts.targetPath);
+    currentProjectDir = folderDir;
+    if (folderPathEl) {
+      folderPathEl.textContent = path.basename(folderDir);
+      folderPathEl.classList.remove("hidden");
+    }
+    renderFolderPane(folderDir);
+
+    // Project pane = storePath
+    renderProjectPane(opts.storePath);
+
+    // Set main document to main.tex in store
+    const mainTex = path.join(opts.storePath, "main.tex");
+    if (fs.existsSync(mainTex)) {
+      setMainDocument(mainTex);
+      openFileFromPath(mainTex);
+    }
+
+    if (opts.compileImmediate) {
+      triggerCompile(false);
+    } else if (opts.targetPath && fs.existsSync(opts.targetPath)) {
+      pdfViewer.loadPdfDocument(opts.targetPath);
+    }
+
+    startTargetPdfWatcher(opts.targetPath);
+  }
+
+  function closeLinkedProject() {
+    if (currentProject && currentProject.storePath) {
+      ipcRenderer.invoke('project-release-lock', currentProject.storePath);
+    }
+    if (targetPdfWatcher) {
+      try { targetPdfWatcher.close(); } catch (_) {}
+      targetPdfWatcher = null;
+    }
+    isLinkedProject = false;
+    currentProject = null;
+    projectPane?.classList.add("hidden");
+    sidebarSplitter?.classList.add("hidden");
+    footerProjectChip?.classList.add("hidden");
+    updateTitle();
+    if (currentProjectDir) renderFolderPane(currentProjectDir);
+  }
+
+  function renderFolderPane(dir) {
+    const targetContainer = folderTreeEl || fileTreeLegacy;
+    if (!targetContainer) return;
+    targetContainer.innerHTML = "";
+    if (!dir || !fs.existsSync(dir)) {
+      targetContainer.innerHTML = `<div style="padding: 16px; font-size: 11.5px; opacity: 0.6; text-align: center;">Nessuna cartella aperta</div>`;
       return;
     }
 
-    entries.sort((a, b) => {
-      if (a.isDirectory() && !b.isDirectory()) return -1;
-      if (!a.isDirectory() && b.isDirectory()) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    const rootUl = document.createElement("ul");
+    rootUl.className = "tree-root";
+    buildFolderTreeRecursive(dir, rootUl);
+    targetContainer.appendChild(rootUl);
+  }
+
+  function buildFolderTreeRecursive(dir, parentElement) {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (_) {
+      return;
+    }
+
+    entries = filterProjectEntries(entries);
 
     entries.forEach(entry => {
-      if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "build") return;
       const fullPath = path.join(dir, entry.name);
+      const isDir = typeof entry.isDirectory === 'function' ? entry.isDirectory() : Boolean(entry.isDirectory);
 
       const li = document.createElement("li");
       li.className = "tree-node";
@@ -1037,7 +1584,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       itemDiv.className = "tree-item";
       itemDiv.title = fullPath;
 
-      if (entry.isDirectory()) {
+      const isTargetPdf = isLinkedProject && currentProject && currentProject.targetPath && (path.resolve(fullPath) === path.resolve(currentProject.targetPath));
+
+      if (isDir) {
         itemDiv.innerHTML = `
           <svg class="tree-chevron-icon" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           <svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
@@ -1053,13 +1602,279 @@ window.addEventListener("DOMContentLoaded", async () => {
           chevron.style.transform = isCollapsed ? "rotate(0deg)" : "rotate(90deg)";
         });
 
+        itemDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          showFolderItemContextMenu(e, itemDiv, fullPath, false);
+        });
+
         li.appendChild(itemDiv);
         li.appendChild(childUl);
-        buildTreeRecursive(fullPath, childUl);
+        buildFolderTreeRecursive(fullPath, childUl);
       } else {
+        const linkBadge = isTargetPdf ? `<span class="tree-link-badge" title="PDF collegato al progetto corrente"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 3px; vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>Collegato</span>` : ``;
+
+        itemDiv.className = `tree-item ${isTargetPdf ? 'target-pdf-item' : ''}`;
         itemDiv.innerHTML = `
           <svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
           <span class="tree-label">${escapeHtml(entry.name)}</span>
+          ${linkBadge}
+        `;
+
+        itemDiv.addEventListener("click", () => {
+          document.querySelectorAll(".tree-item").forEach(x => x.classList.remove("active"));
+          itemDiv.classList.add("active");
+          if (entry.name.toLowerCase().endsWith(".pdf")) {
+            pdfViewer.loadPdfDocument(fullPath);
+          } else {
+            openFileFromPath(fullPath);
+          }
+        });
+
+        itemDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          showFolderItemContextMenu(e, itemDiv, fullPath, isTargetPdf);
+        });
+
+        li.appendChild(itemDiv);
+      }
+      parentElement.appendChild(li);
+    });
+  }
+
+  function showFolderItemContextMenu(e, itemDiv, fullPath, isTargetPdf) {
+    const existing = document.getElementById("tree-context-menu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "tree-context-menu";
+    menu.className = "tree-context-menu";
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+
+    let html = `
+      <div class="context-menu-item" id="ctx-open">Apri</div>
+      <div class="context-menu-item" id="ctx-rename">Rinomina</div>
+      <div class="context-menu-item" id="ctx-reveal">Mostra nel file manager</div>
+      <div class="context-menu-item" id="ctx-copy-path">Copia percorso</div>
+    `;
+    if (isTargetPdf) {
+      html += `
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item text-danger" id="ctx-unlink">Scollega progetto</div>
+      `;
+    }
+    html += `
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item text-danger" id="ctx-delete">Sposta nel cestino</div>
+    `;
+
+    menu.innerHTML = html;
+    document.body.appendChild(menu);
+
+    menu.querySelector("#ctx-open").onclick = () => {
+      menu.remove();
+      if (fullPath.toLowerCase().endsWith(".pdf")) pdfViewer.loadPdfDocument(fullPath);
+      else openFileFromPath(fullPath);
+    };
+    menu.querySelector("#ctx-rename").onclick = () => {
+      menu.remove();
+      showInlineRename(itemDiv, fullPath, () => {
+        if (currentProjectDir) renderFolderPane(currentProjectDir);
+      });
+    };
+    menu.querySelector("#ctx-reveal").onclick = () => {
+      menu.remove();
+      ipcRenderer.invoke('project-reveal-item', fullPath);
+    };
+    menu.querySelector("#ctx-copy-path").onclick = () => {
+      menu.remove();
+      clipboard.writeText(fullPath);
+      showNotification("Percorso copiato negli appunti", "info");
+    };
+
+    if (isTargetPdf) {
+      menu.querySelector("#ctx-unlink").onclick = async () => {
+        menu.remove();
+        const choice = await showCustomConfirmDialog({
+          title: "Scollega Progetto",
+          message: `Vuoi scollegare il file PDF "${path.basename(fullPath)}"?\n\nPuoi mantenere i file sorgente archiviati per poter ricreare o duplicare il PDF in futuro, oppure eliminare anche i file sorgente archiviati.`,
+          buttons: [
+            { text: "Annulla", value: 'cancel', isCancel: true },
+            { text: "Mantieni sorgenti", value: 'keep_sources', isPrimary: true },
+            { text: "Elimina anche sorgenti", value: 'delete_all', isDanger: true }
+          ]
+        });
+        if (choice === 'keep_sources') {
+          await ipcRenderer.invoke('project-unlink', fullPath);
+          showNotification("Progetto scollegato. I sorgenti rimangono conservati nello store.", "info");
+          closeLinkedProject();
+        } else if (choice === 'delete_all') {
+          if (currentProject && currentProject.storePath && fs.existsSync(currentProject.storePath)) {
+            await ipcRenderer.invoke('project-trash-item', currentProject.storePath);
+          }
+          await ipcRenderer.invoke('project-unlink', fullPath);
+          showNotification("Progetto scollegato e sorgenti spostati nel cestino.", "info");
+          closeLinkedProject();
+        }
+      };
+    }
+
+    menu.querySelector("#ctx-delete").onclick = async () => {
+      menu.remove();
+      const isPdf = fullPath.toLowerCase().endsWith(".pdf");
+      let linkedProj = null;
+      if (isPdf) {
+        if (isTargetPdf && currentProject) {
+          linkedProj = currentProject;
+        } else {
+          try {
+            linkedProj = await ipcRenderer.invoke('project-find-by-target', fullPath);
+          } catch (_) {}
+        }
+      }
+
+      if (linkedProj) {
+        const choice = await showCustomConfirmDialog({
+          title: "Eliminazione PDF collegato",
+          message: `Stai spostando nel cestino il file PDF "${path.basename(fullPath)}" collegato al progetto "${linkedProj.name || 'LaTeX'}".\n\nVuoi mantenere i dati sorgente del progetto archiviati (in modo da poter ricreare o duplicare il PDF in qualsiasi momento), oppure eliminare anche tutti i dati del progetto?`,
+          buttons: [
+            { text: "Annulla", value: 'cancel', isCancel: true },
+            { text: "Mantieni sorgenti", value: 'keep_sources', isPrimary: true },
+            { text: "Elimina anche dati", value: 'delete_all', isDanger: true }
+          ]
+        });
+
+        if (choice === 'keep_sources') {
+          await ipcRenderer.invoke('project-trash-item', fullPath);
+          await ipcRenderer.invoke('project-unlink', fullPath);
+          showNotification(`PDF "${path.basename(fullPath)}" spostato nel cestino. I sorgenti sono conservati nello store.`, "info");
+          if (isLinkedProject && currentProject && path.resolve(currentProject.targetPath) === path.resolve(fullPath)) {
+            closeLinkedProject();
+          }
+          if (currentProjectDir) renderFolderPane(currentProjectDir);
+        } else if (choice === 'delete_all') {
+          await ipcRenderer.invoke('project-trash-item', fullPath);
+          if (linkedProj.storePath && fs.existsSync(linkedProj.storePath)) {
+            await ipcRenderer.invoke('project-trash-item', linkedProj.storePath);
+          }
+          await ipcRenderer.invoke('project-unlink', fullPath);
+          showNotification(`PDF e dati del progetto spostati nel cestino.`, "info");
+          if (isLinkedProject && currentProject && path.resolve(currentProject.targetPath) === path.resolve(fullPath)) {
+            closeLinkedProject();
+          }
+          if (currentProjectDir) renderFolderPane(currentProjectDir);
+        }
+      } else {
+        const ok = await showCustomConfirmDialog({
+          title: "Sposta nel cestino",
+          message: `Sei sicuro di voler spostare "${path.basename(fullPath)}" nel cestino? Nessun file viene eliminato definitivamente.`
+        });
+        if (ok) {
+          const openTab = tabs.find(t => t.filePath === fullPath);
+          if (openTab) closeTab(openTab.id);
+          await ipcRenderer.invoke('project-trash-item', fullPath);
+          showNotification(`"${path.basename(fullPath)}" spostato nel cestino`, "info");
+          if (currentProjectDir) renderFolderPane(currentProjectDir);
+        }
+      }
+    };
+
+    const closeHandler = () => {
+      menu.remove();
+      window.removeEventListener("click", closeHandler);
+    };
+    setTimeout(() => window.addEventListener("click", closeHandler), 10);
+  }
+
+  function renderProjectPane(storeDir) {
+    if (!projectTreeEl) return;
+    projectTreeEl.innerHTML = "";
+    if (!storeDir || !fs.existsSync(storeDir)) {
+      projectTreeEl.innerHTML = `<div style="padding: 16px; font-size: 11.5px; opacity: 0.6; text-align: center;">Store di progetto non trovato</div>`;
+      return;
+    }
+
+    const rootUl = document.createElement("ul");
+    rootUl.className = "tree-root";
+    buildProjectTreeRecursive(storeDir, rootUl);
+    projectTreeEl.appendChild(rootUl);
+  }
+
+  function buildProjectTreeRecursive(dir, parentElement) {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (_) {
+      return;
+    }
+
+    entries = filterProjectEntries(entries);
+
+    entries.forEach(entry => {
+      const fullPath = path.join(dir, entry.name);
+      let isSymlink = false;
+      let isBroken = false;
+      let isDir = false;
+
+      try {
+        const lst = fs.lstatSync(fullPath);
+        isSymlink = lst.isSymbolicLink();
+        isDir = lst.isDirectory();
+        if (isSymlink) {
+          if (!fs.existsSync(fullPath)) isBroken = true;
+          else isDir = fs.statSync(fullPath).isDirectory();
+        }
+      } catch (_) {
+        return;
+      }
+
+      const li = document.createElement("li");
+      li.className = "tree-node";
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "tree-item project-tree-item";
+      itemDiv.title = fullPath;
+
+      const isMain = mainDocumentPath && (path.resolve(fullPath) === path.resolve(mainDocumentPath));
+
+      if (isDir) {
+        const linkBadge = isSymlink ? `<span class="tree-linked-asset-badge ${isBroken ? 'tree-broken-link' : ''}" title="Risorsa collegata (Symlink)"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>` : ``;
+
+        itemDiv.innerHTML = `
+          <svg class="tree-chevron-icon" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+          <span class="tree-label">${escapeHtml(entry.name)}</span>
+          ${linkBadge}
+        `;
+
+        const childUl = document.createElement("ul");
+        childUl.className = "tree-children hidden";
+
+        itemDiv.addEventListener("click", () => {
+          const chevron = itemDiv.querySelector(".tree-chevron-icon");
+          const isCollapsed = childUl.classList.toggle("hidden");
+          chevron.style.transform = isCollapsed ? "rotate(0deg)" : "rotate(90deg)";
+        });
+
+        itemDiv.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          showProjectItemContextMenu(e, itemDiv, fullPath, entry.name, true, false);
+        });
+
+        li.appendChild(itemDiv);
+        li.appendChild(childUl);
+        if (!isBroken) {
+          buildProjectTreeRecursive(fullPath, childUl);
+        }
+      } else {
+        const linkBadge = isSymlink ? `<span class="tree-linked-asset-badge ${isBroken ? 'tree-broken-link' : ''}" title="Risorsa collegata (Symlink)"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>` : ``;
+        const mainBadge = isMain ? `<span class="tree-link-badge" style="background:#80007f;" title="Documento principale">Principale</span>` : ``;
+
+        itemDiv.innerHTML = `
+          <svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+          <span class="tree-label">${escapeHtml(entry.name)}</span>
+          ${linkBadge}
+          ${mainBadge}
         `;
 
         itemDiv.addEventListener("click", () => {
@@ -1070,15 +1885,173 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         itemDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          if (fullPath.endsWith(".tex")) {
-            setMainDocument(fullPath);
-          }
+          showProjectItemContextMenu(e, itemDiv, fullPath, entry.name, false, isMain);
         });
 
         li.appendChild(itemDiv);
       }
       parentElement.appendChild(li);
     });
+  }
+
+  function showProjectItemContextMenu(e, itemDiv, fullPath, name, isDir, isMain) {
+    const existing = document.getElementById("tree-context-menu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "tree-context-menu";
+    menu.className = "tree-context-menu";
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+
+    let html = `
+      <div class="context-menu-item" id="ctx-proj-open">Apri</div>
+      <div class="context-menu-item" id="ctx-proj-rename">Rinomina (F2)</div>
+      <div class="context-menu-item" id="ctx-proj-duplicate">Duplica</div>
+    `;
+
+    if (!isDir && fullPath.endsWith(".tex") && !isMain) {
+      html += `<div class="context-menu-item" id="ctx-proj-set-main">Imposta come documento principale</div>`;
+    }
+
+    html += `
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" id="ctx-proj-reveal">Mostra nello store</div>
+      <div class="context-menu-item text-danger" id="ctx-proj-delete">Sposta nel cestino</div>
+    `;
+
+    menu.innerHTML = html;
+    document.body.appendChild(menu);
+
+    menu.querySelector("#ctx-proj-open").onclick = () => {
+      menu.remove();
+      if (!isDir) openFileFromPath(fullPath);
+    };
+
+    menu.querySelector("#ctx-proj-rename").onclick = () => {
+      menu.remove();
+      showInlineRename(itemDiv, fullPath, () => renderProjectPane(currentProject.storePath));
+    };
+
+    menu.querySelector("#ctx-proj-duplicate").onclick = async () => {
+      menu.remove();
+      try {
+        const ext = path.extname(fullPath);
+        const base = path.basename(fullPath, ext);
+        const copyPath = path.join(path.dirname(fullPath), `${base}-copy${ext}`);
+        if (isDir) {
+          fs.cpSync(fullPath, copyPath, { recursive: true });
+        } else {
+          fs.copyFileSync(fullPath, copyPath);
+        }
+        showNotification(`Elemento duplicato in "${path.basename(copyPath)}"`, "info");
+        renderProjectPane(currentProject.storePath);
+      } catch (err) {
+        showNotification("Errore duplicazione: " + err.message, "error");
+      }
+    };
+
+    if (menu.querySelector("#ctx-proj-set-main")) {
+      menu.querySelector("#ctx-proj-set-main").onclick = async () => {
+        menu.remove();
+        setMainDocument(fullPath);
+        try {
+          const manifest = await ipcRenderer.invoke('project-load-manifest', currentProject.storePath);
+          manifest.main = path.relative(currentProject.storePath, fullPath);
+          await ipcRenderer.invoke('project-save-manifest', currentProject.storePath, manifest);
+        } catch (_) {}
+        showNotification(`"${name}" impostato come documento principale`, "info");
+        renderProjectPane(currentProject.storePath);
+      };
+    }
+
+    menu.querySelector("#ctx-proj-reveal").onclick = () => {
+      menu.remove();
+      ipcRenderer.invoke('project-reveal-item', fullPath);
+    };
+
+    menu.querySelector("#ctx-proj-delete").onclick = async () => {
+      menu.remove();
+      const ok = await showCustomConfirmDialog({
+        title: "Sposta nel cestino",
+        message: `Sei sicuro di voler spostare "${name}" nel cestino? Nessun file viene eliminato definitivamente.`
+      });
+      if (ok) {
+        const openTab = tabs.find(t => t.filePath === fullPath);
+        if (openTab) closeTab(openTab.id);
+
+        await ipcRenderer.invoke('project-trash-item', fullPath);
+        showNotification(`"${name}" spostato nel cestino`, "info");
+        renderProjectPane(currentProject.storePath);
+      }
+    };
+
+    const closeHandler = () => {
+      menu.remove();
+      window.removeEventListener("click", closeHandler);
+    };
+    setTimeout(() => window.addEventListener("click", closeHandler), 10);
+  }
+
+  function showInlineRename(itemDiv, filePath, refreshFn) {
+    const labelSpan = itemDiv.querySelector(".tree-label");
+    if (!labelSpan) return;
+    const oldName = path.basename(filePath);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "tree-inline-input";
+    input.value = oldName;
+
+    labelSpan.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = async () => {
+      if (committed) return;
+      committed = true;
+      const newName = input.value.trim();
+      if (!newName || newName === oldName) {
+        refreshFn();
+        return;
+      }
+      const val = validateItemName(newName);
+      if (!val.valid) {
+        showNotification(val.error, "error");
+        refreshFn();
+        return;
+      }
+      const newPath = path.join(path.dirname(filePath), newName);
+      if (fs.existsSync(newPath)) {
+        showNotification(`"${newName}" esiste già.`, "warning");
+        refreshFn();
+        return;
+      }
+      try {
+        fs.renameSync(filePath, newPath);
+        const tab = tabs.find(t => t.filePath === filePath);
+        if (tab) {
+          tab.filePath = newPath;
+          tab.title = newName;
+          renderTabs();
+        }
+        if (mainDocumentPath === filePath) {
+          setMainDocument(newPath);
+        }
+        showNotification(`Rinominato in "${newName}"`, "info");
+        refreshFn();
+      } catch (err) {
+        showNotification("Errore rinomina: " + err.message, "error");
+        refreshFn();
+      }
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") commit();
+      else if (e.key === "Escape") { committed = true; refreshFn(); }
+    });
+    input.addEventListener("blur", () => setTimeout(commit, 120));
   }
 
   function openFileFromPath(filePath) {
@@ -1091,6 +2064,20 @@ window.addEventListener("DOMContentLoaded", async () => {
     const content = fs.readFileSync(filePath, "utf8");
     createTab(path.basename(filePath), content, filePath);
   }
+  window.openFileFromPath = openFileFromPath;
+  window.openFolder = openFolder;
+  window.openLinkedProject = openLinkedProject;
+  window.openProjectsManager = openProjectsManager;
+  window.openNewProjectModal = openNewProjectModal;
+  window.promptClaimPdf = promptClaimPdf;
+  window.promptRelinkOrRestore = promptRelinkOrRestore;
+  window.newFile = newFile;
+  window.closeTab = closeTab;
+  window.closeOtherTabs = closeOtherTabs;
+  window.closeTabsToRight = closeTabsToRight;
+  window.closeSavedTabs = closeSavedTabs;
+  window.closeAllTabs = closeAllTabs;
+  window.showTabContextMenu = showTabContextMenu;
 
   function openFileDialog() {
     dialog.showOpenDialog({
@@ -1109,23 +2096,25 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Inline input row for new folder and new file (Fixes window.prompt bug)
-  function showInlineTreeInput(type = "file") {
-    if (!currentProjectDir) return;
+  // Inline input row for new folder and new file
+  function showInlineTreeInput(containerEl, targetDir, type = "file") {
+    if (!targetDir || !fs.existsSync(targetDir)) return;
     const existing = document.querySelector(".tree-inline-input-row");
     if (existing) existing.remove();
 
     const row = document.createElement("div");
     row.className = "tree-inline-input-row";
-    const icon = type === "folder" ? "📁" : "📄";
+    const iconSvg = type === "folder"
+      ? '<svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>'
+      : '<svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
     const defaultVal = type === "folder" ? "nuova-cartella" : "nuovo-file.tex";
 
     row.innerHTML = `
-      <span class="tree-icon" style="font-size:12px;">${icon}</span>
+      <span class="tree-icon" style="display:flex;align-items:center;">${iconSvg}</span>
       <input type="text" class="tree-inline-input" value="${defaultVal}" />
     `;
 
-    fileTreeEl.prepend(row);
+    containerEl.prepend(row);
     const input = row.querySelector(".tree-inline-input");
     input.focus();
     input.select();
@@ -1135,18 +2124,23 @@ window.addEventListener("DOMContentLoaded", async () => {
     const commit = async () => {
       if (committed) return;
       committed = true;
-      const name = input.value.trim();
+      const rawName = input.value.trim();
       row.remove();
 
-      if (!name || name === "." || name === "..") return;
-      if (/[\/\\:*?"<>|]/.test(name)) {
-        showNotification("Il nome contiene caratteri non validi: / \\ : * ? \" < > |", "error");
+      const val = validateItemName(rawName);
+      if (!val.valid) {
+        if (rawName) showNotification(val.error, "error");
         return;
       }
 
-      const targetPath = path.join(currentProjectDir, name);
+      let name = val.name;
+      if (type === "file" && !path.extname(name)) {
+        name += ".tex";
+      }
+
+      const targetPath = path.join(targetDir, name);
       if (fs.existsSync(targetPath)) {
-        showNotification(`"${name}" esiste già nella cartella di progetto.`, "warning");
+        showNotification(`"${name}" esiste già.`, "warning");
         return;
       }
 
@@ -1155,12 +2149,16 @@ window.addEventListener("DOMContentLoaded", async () => {
           await fs.promises.mkdir(targetPath, { recursive: true });
           showNotification(`Cartella "${name}" creata!`, "info");
         } else {
-          const filePath = name.endsWith('.tex') ? targetPath : targetPath + '.tex';
-          await fs.promises.writeFile(filePath, '\\documentclass{article}\n\\begin{document}\n\n\\end{document}\n', 'utf8');
-          showNotification(`File "${path.basename(filePath)}" creato!`, "info");
-          openFileFromPath(filePath);
+          await fs.promises.writeFile(targetPath, '\\documentclass{article}\n\\begin{document}\n\n\\end{document}\n', 'utf8');
+          showNotification(`File "${name}" creato!`, "info");
+          openFileFromPath(targetPath);
         }
-        renderFileTree(currentProjectDir);
+
+        if (isLinkedProject && currentProject && targetDir.startsWith(currentProject.storePath)) {
+          renderProjectPane(currentProject.storePath);
+        } else if (currentProjectDir) {
+          renderFolderPane(currentProjectDir);
+        }
       } catch (err) {
         showNotification("Errore: " + err.message, "error");
       }
@@ -1180,31 +2178,134 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // Draggable Splitter between Folder and Project Panes
+  let isResizingSplitter = false;
+  if (sidebarSplitter) {
+    sidebarSplitter.addEventListener("mousedown", () => {
+      isResizingSplitter = true;
+      sidebarSplitter.classList.add("is-resizing");
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isResizingSplitter || !folderPane || !projectPane) return;
+      const contentEl = document.getElementById("sidebar-tab-content-files");
+      if (!contentEl) return;
+      const contentRect = contentEl.getBoundingClientRect();
+      const offset = e.clientY - contentRect.top;
+      const totalHeight = contentRect.height;
+      if (offset < 50 || offset > totalHeight - 50) return;
+      const ratio = offset / totalHeight;
+      folderPane.style.flex = `${ratio}`;
+      projectPane.style.flex = `${1 - ratio}`;
+      localStorage.setItem("lack-sidebar-split-ratio", String(ratio));
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isResizingSplitter) {
+        isResizingSplitter = false;
+        sidebarSplitter.classList.remove("is-resizing");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    });
+
+    sidebarSplitter.addEventListener("dblclick", () => {
+      folderPane.style.flex = "1";
+      projectPane.style.flex = "1";
+      localStorage.setItem("lack-sidebar-split-ratio", "0.5");
+      showNotification("Divisore reimpostato a 50/50", "info");
+    });
+
+    const savedRatio = parseFloat(localStorage.getItem("lack-sidebar-split-ratio") || "0.5");
+    if (savedRatio >= 0.1 && savedRatio <= 0.9) {
+      folderPane.style.flex = `${savedRatio}`;
+      projectPane.style.flex = `${1 - savedRatio}`;
+    }
+  }
+
+  // Drag & drop files onto Project Virtual Pane
+  if (projectPane) {
+    projectPane.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      projectPane.classList.add("drag-over");
+    });
+    projectPane.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      projectPane.classList.remove("drag-over");
+    });
+    projectPane.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      projectPane.classList.remove("drag-over");
+      if (!isLinkedProject || !currentProject) return;
+
+      const droppedFiles = e.dataTransfer.files;
+      if (!droppedFiles || droppedFiles.length === 0) return;
+
+      let count = 0;
+      for (const f of droppedFiles) {
+        const src = f.path;
+        if (!src || !fs.existsSync(src)) continue;
+        const dest = path.join(currentProject.storePath, path.basename(src));
+        try {
+          if (fs.statSync(src).isDirectory()) {
+            fs.cpSync(src, dest, { recursive: true });
+          } else {
+            fs.copyFileSync(src, dest);
+          }
+          count++;
+        } catch (err) {
+          console.warn("[LACK] Drag-drop import error:", err);
+        }
+      }
+      if (count > 0) {
+        showNotification(`${count} element${count === 1 ? 'o importato' : 'i importati'} nello store di progetto`, "info");
+        renderProjectPane(currentProject.storePath);
+      }
+    });
+  }
+
+  // Explorer & Pane Action Buttons
   document.getElementById("new-folder")?.addEventListener("click", async () => {
+    if (isLinkedProject && currentProject) {
+      showInlineTreeInput(projectTreeEl, currentProject.storePath, "folder");
+      return;
+    }
     if (!currentProjectDir) {
       const res = await dialog.showOpenDialog({
         title: "Seleziona o crea la cartella di progetto",
         properties: ["openDirectory", "createDirectory"]
       });
-      if (!res.canceled && res.filePaths.length > 0) {
-        openFolder(res.filePaths[0]);
-      }
+      if (!res.canceled && res.filePaths.length > 0) openFolder(res.filePaths[0]);
       return;
     }
-    showInlineTreeInput("folder");
+    showInlineTreeInput(folderTreeEl || fileTreeLegacy, currentProjectDir, "folder");
   });
 
-  document.getElementById("new-file")?.addEventListener("click", (e) => {
+  document.getElementById("new-file")?.addEventListener("click", () => {
+    if (isLinkedProject && currentProject) {
+      showInlineTreeInput(projectTreeEl, currentProject.storePath, "file");
+      return;
+    }
     if (!currentProjectDir) {
       newFile();
       return;
     }
-    showInlineTreeInput("file");
+    showInlineTreeInput(folderTreeEl || fileTreeLegacy, currentProjectDir, "file");
   });
 
   document.getElementById("open-folder")?.addEventListener("click", () => openFolderDialog());
   document.getElementById("refresh-explorer")?.addEventListener("click", () => {
-    if (currentProjectDir) renderFileTree(currentProjectDir);
+    if (isLinkedProject && currentProject) {
+      renderProjectPane(currentProject.storePath);
+      if (currentProjectDir) renderFolderPane(currentProjectDir);
+    } else if (currentProjectDir) {
+      renderFolderPane(currentProjectDir);
+    }
   });
   document.getElementById("collapse-all")?.addEventListener("click", () => {
     document.querySelectorAll(".tree-children").forEach(c => c.classList.add("hidden"));
@@ -1212,6 +2313,464 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("btn-toggle-explorer")?.addEventListener("click", () => {
     document.getElementById("explorer-panel")?.classList.toggle("hidden");
+  });
+
+  // Folder pane specific buttons
+  document.getElementById("folder-btn-refresh")?.addEventListener("click", () => {
+    if (currentProjectDir) renderFolderPane(currentProjectDir);
+  });
+  document.getElementById("folder-btn-collapse")?.addEventListener("click", () => {
+    folderPane?.classList.toggle("collapsed");
+    const isCollapsed = folderPane?.classList.contains("collapsed");
+    const btn = document.getElementById("folder-btn-collapse");
+    if (btn) btn.textContent = isCollapsed ? "+" : "−";
+  });
+
+  // Project pane specific buttons
+  document.getElementById("proj-btn-add-file")?.addEventListener("click", () => {
+    if (!isLinkedProject || !currentProject) return;
+    showInlineTreeInput(projectTreeEl, currentProject.storePath, "file");
+  });
+  document.getElementById("proj-btn-add-folder")?.addEventListener("click", () => {
+    if (!isLinkedProject || !currentProject) return;
+    showInlineTreeInput(projectTreeEl, currentProject.storePath, "folder");
+  });
+  document.getElementById("proj-btn-link-asset")?.addEventListener("click", async () => {
+    if (!isLinkedProject || !currentProject) return;
+    const res = await dialog.showOpenDialog({
+      title: "Collega risorsa esterna (Immagine o Cartella)",
+      properties: ["openFile", "openDirectory"]
+    });
+    if (!res.canceled && res.filePaths.length > 0) {
+      const sourcePath = res.filePaths[0];
+      const relDest = path.basename(sourcePath);
+      try {
+        await ipcRenderer.invoke('project-add-linked-asset', {
+          storePath: currentProject.storePath,
+          sourcePath,
+          relDest
+        });
+        showNotification(`Risorsa "${relDest}" collegata tramite symlink!`, "info");
+        renderProjectPane(currentProject.storePath);
+      } catch (err) {
+        showNotification("Errore collegamento risorsa: " + err.message, "error");
+      }
+    }
+  });
+  document.getElementById("proj-btn-reveal")?.addEventListener("click", () => {
+    if (!isLinkedProject || !currentProject) return;
+    ipcRenderer.invoke('project-reveal-item', currentProject.storePath);
+  });
+  document.getElementById("project-btn-collapse")?.addEventListener("click", () => {
+    projectPane?.classList.toggle("collapsed");
+    const isCollapsed = projectPane?.classList.contains("collapsed");
+    const btn = document.getElementById("project-btn-collapse");
+    if (btn) btn.textContent = isCollapsed ? "+" : "−";
+  });
+
+  // ====== PROJECTS MANAGER MODAL (Mark Gallery Style) ======
+  const projectsModal = document.getElementById("projects-modal");
+  const projectsSearchInput = document.getElementById("projects-search-input");
+  const projectsCardsGrid = document.getElementById("projects-cards-grid");
+
+  async function openProjectsManager() {
+    if (!projectsModal) return;
+    projectsModal.classList.remove("hidden");
+    await refreshProjectsGrid();
+  }
+
+  async function refreshProjectsGrid(filterQuery = "") {
+    if (!projectsCardsGrid) return;
+    projectsCardsGrid.innerHTML = `<div style="padding: 24px; text-align: center; color: #888;">Caricamento progetti...</div>`;
+    try {
+      const list = await ipcRenderer.invoke('project-list');
+      const q = filterQuery.toLowerCase().trim();
+      const filtered = list.filter(p => {
+        if (!q) return true;
+        return (p.name && p.name.toLowerCase().includes(q)) ||
+               (p.id && p.id.toLowerCase().includes(q)) ||
+               (p.targetPath && p.targetPath.toLowerCase().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        projectsCardsGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; padding: 48px 24px; text-align: center; color: #888;">
+            <p style="font-size: 15px; margin-bottom: 8px; font-weight: 500;">Nessun progetto trovato</p>
+            <p style="font-size: 12px; opacity: 0.8;">Crea un nuovo progetto o compila un documento per iniziare.</p>
+          </div>
+        `;
+        return;
+      }
+
+      projectsCardsGrid.innerHTML = "";
+      filtered.forEach(proj => {
+        const targetExists = proj.targetPath && fs.existsSync(proj.targetPath);
+        const storeExists = proj.storePath && fs.existsSync(proj.storePath);
+        const storeSize = storeExists ? formatBytes(calculateDirSize(proj.storePath)) : "0 B";
+        const dateStr = proj.lastModified ? new Date(proj.lastModified).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/D";
+
+        const card = document.createElement("div");
+        card.className = "project-card";
+        card.innerHTML = `
+          <div class="project-card-header">
+            <div class="project-card-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div class="project-card-title-group">
+              <h4 class="project-card-title" title="${escapeHtml(proj.name || 'Senza nome')}">${escapeHtml(proj.name || 'Senza nome')}</h4>
+              <span class="project-card-date">${dateStr}</span>
+            </div>
+          </div>
+          <div class="project-card-target-row">
+            <span class="project-badge-${targetExists ? 'exists' : 'missing'}">${targetExists ? 'PDF Presente' : 'PDF Mancante'}</span>
+            <span class="project-card-target-path" title="${escapeHtml(proj.targetPath || '')}">${escapeHtml(proj.targetPath ? path.basename(proj.targetPath) : 'Nessuno')}</span>
+          </div>
+          <div class="project-card-footer">
+            <span class="project-card-size">Store: ${storeSize}</span>
+            <div class="project-card-actions">
+              <button type="button" class="btn-card-open proj-btn-black">Apri</button>
+              <button type="button" class="btn-card-reveal proj-btn-secondary" title="Mostra store nel file manager">Mostra</button>
+              <button type="button" class="btn-card-export proj-btn-secondary" title="Esporta ZIP o cartella">Esporta</button>
+              <button type="button" class="btn-card-delete proj-btn-danger" title="Sposta store nel cestino">Cestina</button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector(".btn-card-open").onclick = () => {
+          projectsModal.classList.add("hidden");
+          openLinkedProject({
+            projectId: proj.id,
+            name: proj.name,
+            storePath: proj.storePath,
+            targetPath: proj.targetPath,
+            compileImmediate: targetExists
+          });
+        };
+
+        card.querySelector(".btn-card-reveal").onclick = () => {
+          ipcRenderer.invoke('project-reveal-item', proj.storePath);
+        };
+
+        card.querySelector(".btn-card-export").onclick = () => {
+          openExportModal(proj.storePath);
+        };
+
+        card.querySelector(".btn-card-delete").onclick = async () => {
+          const choice = await showCustomConfirmDialog({
+            title: "Eliminazione Progetto",
+            message: `Stai eliminando il progetto "${proj.name}".\n\nVuoi mantenere i dati sorgente archiviati nello store (in modo da poter ricreare o duplicare il PDF in futuro), oppure eliminare definitivamente tutti i dati del progetto?`,
+            buttons: [
+              { text: "Annulla", value: 'cancel', isCancel: true },
+              { text: "Mantieni dati sorgente", value: 'keep_sources', isPrimary: true },
+              { text: "Elimina tutti i dati", value: 'delete_all', isDanger: true }
+            ]
+          });
+          if (choice === 'keep_sources') {
+            await ipcRenderer.invoke('project-unlink', proj.targetPath);
+            showNotification(`Collegamento rimosso. I sorgenti di "${proj.name}" rimangono archiviati nello store.`, "info");
+            refreshProjectsGrid(projectsSearchInput?.value || "");
+          } else if (choice === 'delete_all') {
+            await ipcRenderer.invoke('project-trash-item', proj.storePath);
+            await ipcRenderer.invoke('project-unlink', proj.targetPath);
+            showNotification(`Progetto "${proj.name}" e file sorgente spostati nel cestino`, "info");
+            refreshProjectsGrid(projectsSearchInput?.value || "");
+          }
+        };
+
+        projectsCardsGrid.appendChild(card);
+      });
+    } catch (err) {
+      projectsCardsGrid.innerHTML = `<div style="padding: 24px; color: #ef4444;">Errore caricamento progetti: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  projectsSearchInput?.addEventListener("input", (e) => {
+    refreshProjectsGrid(e.target.value);
+  });
+  document.getElementById("btn-close-projects-modal")?.addEventListener("click", () => projectsModal?.classList.add("hidden"));
+  document.getElementById("projects-modal-overlay")?.addEventListener("click", () => projectsModal?.classList.add("hidden"));
+  document.getElementById("btn-projects-new-proj")?.addEventListener("click", () => {
+    projectsModal?.classList.add("hidden");
+    openNewProjectModal();
+  });
+
+  // ====== NEW PROJECT MODAL ======
+  const newProjModal = document.getElementById("new-project-modal");
+  const inputNewProjName = document.getElementById("input-new-proj-name");
+  const inputNewProjTarget = document.getElementById("input-new-proj-target");
+  const selectNewProjTemplate = document.getElementById("select-new-proj-template");
+
+  function openNewProjectModal(defaultTarget = "") {
+    if (!newProjModal) return;
+    newProjModal.classList.remove("hidden");
+    if (inputNewProjName) inputNewProjName.value = defaultTarget ? path.basename(defaultTarget, ".pdf") : "Nuovo Progetto";
+    if (inputNewProjTarget) inputNewProjTarget.value = defaultTarget || "";
+  }
+
+  document.getElementById("btn-new-proj-browse-target")?.addEventListener("click", async () => {
+    const res = await dialog.showSaveDialog({
+      title: "Seleziona destinazione file PDF",
+      defaultPath: "documento.pdf",
+      filters: [{ name: "Documento PDF", extensions: ["pdf"] }]
+    });
+    if (!res.canceled && res.filePath) {
+      if (inputNewProjTarget) inputNewProjTarget.value = res.filePath;
+      if (inputNewProjName && (!inputNewProjName.value || inputNewProjName.value === "Nuovo Progetto")) {
+        inputNewProjName.value = path.basename(res.filePath, ".pdf");
+      }
+    }
+  });
+
+  document.getElementById("btn-submit-new-proj")?.addEventListener("click", async () => {
+    const name = inputNewProjName?.value.trim() || "Nuovo Progetto";
+    const targetPath = inputNewProjTarget?.value.trim();
+    const template = selectNewProjTemplate?.value || "standard";
+
+    if (!targetPath) {
+      showNotification("Seleziona una destinazione valida per il file PDF.", "warning");
+      return;
+    }
+
+    try {
+      const created = await ipcRenderer.invoke('project-create', {
+        name,
+        targetPath,
+        template
+      });
+      newProjModal?.classList.add("hidden");
+      showNotification(`Progetto "${name}" creato con successo!`, "info");
+      openLinkedProject({
+        projectId: created.id,
+        name: created.manifest.name,
+        storePath: created.storePath,
+        targetPath: targetPath,
+        compileImmediate: true
+      });
+    } catch (err) {
+      showNotification("Errore creazione progetto: " + err.message, "error");
+    }
+  });
+
+  document.getElementById("btn-close-new-project-modal")?.addEventListener("click", () => newProjModal?.classList.add("hidden"));
+  document.getElementById("btn-cancel-new-proj")?.addEventListener("click", () => newProjModal?.classList.add("hidden"));
+  document.getElementById("new-project-modal-overlay")?.addEventListener("click", () => newProjModal?.classList.add("hidden"));
+
+  // ====== CLAIM FOREIGN PDF MODAL ======
+  const claimPdfModal = document.getElementById("claim-pdf-modal");
+  let pendingClaimTarget = null;
+  let pendingClaimName = null;
+  let pendingClaimTemplate = null;
+
+  function promptClaimPdf({ targetPath, name, template }) {
+    pendingClaimTarget = targetPath;
+    pendingClaimName = name;
+    pendingClaimTemplate = template;
+    const msgEl = document.getElementById("claim-pdf-message");
+    if (msgEl) {
+      msgEl.innerHTML = `Il file <strong>${escapeHtml(path.basename(targetPath))}</strong> non contiene alcun progetto Lack collegato.<br>Vuoi aprirlo semplicemente in sola lettura oppure creare un progetto collegato che lo governi?`;
+    }
+    claimPdfModal?.classList.remove("hidden");
+  }
+
+  document.getElementById("btn-claim-open-plain")?.addEventListener("click", () => {
+    claimPdfModal?.classList.add("hidden");
+    if (pendingClaimTarget) {
+      pdfViewer.loadPdfDocument(pendingClaimTarget);
+      showNotification(`PDF aperto in modalità visualizzazione semplice`, "info");
+    }
+  });
+
+  document.getElementById("btn-claim-create-project")?.addEventListener("click", async () => {
+    claimPdfModal?.classList.add("hidden");
+    if (pendingClaimTarget) {
+      try {
+        const created = await ipcRenderer.invoke('project-create', {
+          name: pendingClaimName || path.basename(pendingClaimTarget, ".pdf"),
+          targetPath: pendingClaimTarget,
+          template: pendingClaimTemplate || "standard"
+        });
+        openLinkedProject({
+          projectId: created.id,
+          name: created.manifest.name,
+          storePath: created.storePath,
+          targetPath: pendingClaimTarget,
+          compileImmediate: true
+        });
+      } catch (err) {
+        showNotification("Errore creazione progetto: " + err.message, "error");
+      }
+    }
+  });
+
+  document.getElementById("btn-close-claim-pdf")?.addEventListener("click", () => claimPdfModal?.classList.add("hidden"));
+  document.getElementById("claim-pdf-overlay")?.addEventListener("click", () => claimPdfModal?.classList.add("hidden"));
+
+  // ====== RELINK OR RESTORE MODAL ======
+  const relinkRestoreModal = document.getElementById("relink-restore-modal");
+  let pendingRelinkInfo = null;
+
+  function promptRelinkOrRestore(info) {
+    pendingRelinkInfo = info;
+    const msgEl = document.getElementById("relink-restore-message");
+    if (msgEl) {
+      msgEl.innerHTML = `Il PDF <strong>${escapeHtml(path.basename(info.targetPath))}</strong> è ancorato all'ID progetto <code>${escapeHtml(info.projectId)}</code>, che non è registrato in questo computer.` +
+        (info.hasSnapshot ? `<br><br><span style="color:#10b981; font-weight:600;">&#10003; Trovata istantanea compressa delle sorgenti incorporata nel PDF!</span>` : `<br><br><span style="color:#ef4444;">Nessuna istantanea incorporata disponibile.</span>`);
+    }
+    const restoreBtn = document.getElementById("btn-restore-from-snapshot");
+    if (restoreBtn) {
+      restoreBtn.style.display = info.hasSnapshot ? "" : "none";
+    }
+    relinkRestoreModal?.classList.remove("hidden");
+  }
+
+  document.getElementById("btn-restore-from-snapshot")?.addEventListener("click", async () => {
+    if (!pendingRelinkInfo) return;
+    try {
+      const storeRoot = await ipcRenderer.invoke('project-get-store-root');
+      const slug = path.basename(pendingRelinkInfo.targetPath, ".pdf").toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+      const storePath = path.join(storeRoot, `${slug}-${pendingRelinkInfo.projectId}`);
+      await ipcRenderer.invoke('project-extract-snapshot', {
+        pdfPath: pendingRelinkInfo.targetPath,
+        targetDir: storePath
+      });
+
+      let manifest = null;
+      try {
+        manifest = await ipcRenderer.invoke('project-load-manifest', storePath);
+      } catch (_) {}
+
+      relinkRestoreModal?.classList.add("hidden");
+      showNotification("Sorgenti estratte e ripristinate con successo dall'istantanea!", "info");
+      openLinkedProject({
+        projectId: pendingRelinkInfo.projectId,
+        name: manifest ? manifest.name : pendingRelinkInfo.name,
+        storePath,
+        targetPath: pendingRelinkInfo.targetPath,
+        compileImmediate: false
+      });
+    } catch (err) {
+      showNotification("Errore ripristino istantanea: " + err.message, "error");
+    }
+  });
+
+  document.getElementById("btn-relink-to-existing")?.addEventListener("click", () => {
+    relinkRestoreModal?.classList.add("hidden");
+    openProjectsManager();
+  });
+
+  document.getElementById("btn-open-plain-unlinked")?.addEventListener("click", () => {
+    relinkRestoreModal?.classList.add("hidden");
+    if (pendingRelinkInfo && pendingRelinkInfo.targetPath) {
+      pdfViewer.loadPdfDocument(pendingRelinkInfo.targetPath);
+    }
+  });
+
+  document.getElementById("btn-close-relink-restore")?.addEventListener("click", () => relinkRestoreModal?.classList.add("hidden"));
+  document.getElementById("relink-restore-overlay")?.addEventListener("click", () => relinkRestoreModal?.classList.add("hidden"));
+
+  // ====== EXPORT PROJECT MODAL ======
+  const exportModal = document.getElementById("export-project-modal");
+  let pendingExportStorePath = null;
+  let exportAsZip = true;
+
+  function openExportModal(storePath) {
+    pendingExportStorePath = storePath || (currentProject ? currentProject.storePath : null);
+    if (!pendingExportStorePath) {
+      showNotification("Nessun progetto attivo da esportare.", "warning");
+      return;
+    }
+    exportModal?.classList.remove("hidden");
+  }
+
+  document.getElementById("export-format-zip")?.addEventListener("click", () => {
+    exportAsZip = true;
+    document.getElementById("export-format-zip")?.classList.add("active");
+    document.getElementById("export-format-folder")?.classList.remove("active");
+  });
+
+  document.getElementById("export-format-folder")?.addEventListener("click", () => {
+    exportAsZip = false;
+    document.getElementById("export-format-folder")?.classList.add("active");
+    document.getElementById("export-format-zip")?.classList.remove("active");
+  });
+
+  document.getElementById("btn-confirm-export-proj")?.addEventListener("click", async () => {
+    if (!pendingExportStorePath) return;
+    exportModal?.classList.add("hidden");
+
+    let destPath = null;
+    if (exportAsZip) {
+      const res = await dialog.showSaveDialog({
+        title: "Esporta Progetto in archivio ZIP",
+        defaultPath: `${path.basename(pendingExportStorePath)}.zip`,
+        filters: [{ name: "Archivio ZIP", extensions: ["zip"] }]
+      });
+      if (!res.canceled && res.filePath) destPath = res.filePath;
+    } else {
+      const res = await dialog.showOpenDialog({
+        title: "Seleziona cartella di destinazione per esportazione",
+        properties: ["openDirectory", "createDirectory"]
+      });
+      if (!res.canceled && res.filePaths.length > 0) {
+        destPath = path.join(res.filePaths[0], path.basename(pendingExportStorePath));
+      }
+    }
+
+    if (destPath) {
+      try {
+        await ipcRenderer.invoke('project-export', {
+          storePath: pendingExportStorePath,
+          exportDest: destPath,
+          asZip: exportAsZip
+        });
+        showNotification(`Progetto esportato con successo in: ${destPath}`, "info");
+      } catch (err) {
+        showNotification("Errore esportazione progetto: " + err.message, "error");
+      }
+    }
+  });
+
+  document.getElementById("btn-close-export-project")?.addEventListener("click", () => exportModal?.classList.add("hidden"));
+  document.getElementById("btn-cancel-export-proj")?.addEventListener("click", () => exportModal?.classList.add("hidden"));
+  document.getElementById("export-project-overlay")?.addEventListener("click", () => exportModal?.classList.add("hidden"));
+
+  // ====== PROJECT INFO POPOVER ======
+  footerProjectChip?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!isLinkedProject || !currentProject) return;
+    const isHidden = projectInfoPopover?.classList.toggle("hidden");
+    if (!isHidden) {
+      const idEl = document.getElementById("popover-proj-id");
+      const storeEl = document.getElementById("popover-proj-store");
+      const targetEl = document.getElementById("popover-proj-target");
+      if (idEl) idEl.textContent = currentProject.projectId;
+      if (storeEl) storeEl.textContent = currentProject.storePath;
+      if (targetEl) targetEl.textContent = currentProject.targetPath;
+    }
+  });
+
+  document.getElementById("btn-close-project-popover")?.addEventListener("click", () => {
+    projectInfoPopover?.classList.add("hidden");
+  });
+
+  document.querySelectorAll(".btn-copy-val").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const targetId = btn.dataset.target;
+      const val = document.getElementById(targetId)?.textContent;
+      if (val && val !== '-') {
+        clipboard.writeText(val);
+        showNotification("Copiato negli appunti!", "info");
+      }
+    });
+  });
+
+  window.addEventListener("click", (e) => {
+    if (projectInfoPopover && !projectInfoPopover.contains(e.target) && e.target !== footerProjectChip) {
+      projectInfoPopover.classList.add("hidden");
+    }
   });
 
   // ====== DOCUMENT OUTLINE ======
@@ -1728,6 +3287,22 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.addEventListener('keydown', (e) => {
+    const appConfirmModal = document.getElementById('app-confirm-modal');
+    if (appConfirmModal && !appConfirmModal.classList.contains('hidden')) {
+      if (e.key === 'Enter') {
+        const primaryBtn = appConfirmModal.querySelector('.app-confirm-btn-primary, .app-confirm-btn-danger');
+        if (primaryBtn) {
+          e.preventDefault();
+          primaryBtn.click();
+          return;
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCustomConfirmDialog(currentCancelValue);
+        return;
+      }
+    }
+
     if (e.key === 'Escape') {
       closeAllTitlebarMenus();
       closeAllToolbarDropdowns();
@@ -1744,6 +3319,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       switch (action) {
         case 'new-file': newFile(); break;
+        case 'new-project': openNewProjectModal(); break;
+        case 'open-projects': openProjectsManager(); break;
+        case 'export-project': openExportModal(); break;
         case 'open-file': openFileDialog(); break;
         case 'open-folder': openFolderDialog(); break;
         case 'save-file': saveFile(); break;
@@ -1771,6 +3349,12 @@ window.addEventListener("DOMContentLoaded", async () => {
           document.getElementById('search-input')?.focus();
           break;
         case 'trigger-compile': triggerCompile(false); break;
+        case 'toggle-compile-on-save':
+          config.compileOnSave = !config.compileOnSave;
+          localStorage.setItem("lack-compileOnSave", config.compileOnSave);
+          updateCompileOnSaveMenuLabel();
+          showNotification(`Compila al salvataggio (Ctrl+S): ${config.compileOnSave ? 'Attivo' : 'Disattivato'}`, "info");
+          break;
         case 'toggle-auto-compile':
           config.autoCompile = !config.autoCompile;
           localStorage.setItem("lack-autoCompile", config.autoCompile);
@@ -1960,8 +3544,39 @@ window.addEventListener("DOMContentLoaded", async () => {
       btn.classList.add("active");
       const targetPane = document.getElementById(`pane-settings-${btn.dataset.settingsTab}`);
       if (targetPane) targetPane.classList.add("active");
+
+      if (btn.dataset.settingsTab === "projects") {
+        ipcRenderer.invoke('project-get-store-root').then(storeRoot => {
+          const storeInput = document.getElementById("input-store-root");
+          if (storeInput) storeInput.value = storeRoot;
+        }).catch(() => {});
+      }
     });
   });
+
+  document.getElementById("btn-browse-store-root")?.addEventListener("click", async () => {
+    const res = await dialog.showOpenDialog({
+      title: "Seleziona Cartella Archivio Progetti",
+      properties: ["openDirectory", "createDirectory"]
+    });
+    if (!res.canceled && res.filePaths.length > 0) {
+      const newRoot = res.filePaths[0];
+      await ipcRenderer.invoke('project-set-store-root', newRoot);
+      const storeInput = document.getElementById("input-store-root");
+      if (storeInput) storeInput.value = newRoot;
+      showNotification("Cartella archivio progetti aggiornata!", "info");
+    }
+  });
+
+  const toggleEmbedSnapshot = document.getElementById("toggle-embed-snapshot-default");
+  if (toggleEmbedSnapshot) {
+    toggleEmbedSnapshot.checked = config.embedSnapshotDefault;
+    toggleEmbedSnapshot.addEventListener("change", (e) => {
+      config.embedSnapshotDefault = e.target.checked;
+      localStorage.setItem("lack-embedSnapshotDefault", config.embedSnapshotDefault);
+      showNotification(`Istantanee sorgenti incorporate nei PDF: ${config.embedSnapshotDefault ? 'Attive' : 'Disattivate'}`, "info");
+    });
+  }
 
   function applyTheme(theme) {
     config.theme = theme;
@@ -1985,6 +3600,15 @@ window.addEventListener("DOMContentLoaded", async () => {
       b.classList.toggle("active", b.dataset.theme === theme);
     });
   }
+
+  function cycleTheme() {
+    const cycle = { light: 'dark', dark: 'github', github: 'light' };
+    const nextTheme = cycle[config.theme] || 'dark';
+    applyTheme(nextTheme);
+  }
+
+  window.cycleTheme = cycleTheme;
+  window.applyTheme = applyTheme;
 
   document.getElementById("theme-btn-light").onclick = () => applyTheme("light");
   document.getElementById("theme-btn-dark").onclick = () => applyTheme("dark");
@@ -2083,6 +3707,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       } else if (e.key === "w" || e.key === "W") {
         e.preventDefault();
         if (activeTabId) closeTab(activeTabId);
+      } else if (e.key === "m" || e.key === "M") {
+        if (!e.shiftKey && !e.altKey) {
+          e.preventDefault();
+          cycleTheme();
+        }
       } else if (e.key === "Enter") {
         e.preventDefault();
         triggerCompile(false);
@@ -2133,6 +3762,30 @@ window.addEventListener("DOMContentLoaded", async () => {
     openFileFromPath(filePath) || createTab(path.basename(filePath), content, filePath);
   });
   ipcRenderer.on("open-folder", (_e, folderPath) => openFolder(folderPath));
+  ipcRenderer.on("open-linked-project", (_e, payload) => {
+    openLinkedProject(payload);
+  });
+  ipcRenderer.on("prompt-claim-pdf", (_e, payload) => {
+    promptClaimPdf(payload);
+  });
+  ipcRenderer.on("prompt-relink-or-restore", (_e, payload) => {
+    promptRelinkOrRestore(payload);
+  });
+  ipcRenderer.on("menu-new-project", () => {
+    openNewProjectModal();
+  });
+  ipcRenderer.on("open-projects-manager", () => {
+    openProjectsManager();
+  });
+  ipcRenderer.on("menu-export-project", () => {
+    openExportModal();
+  });
+  ipcRenderer.on("toggle-compile-on-save", () => {
+    config.compileOnSave = !config.compileOnSave;
+    localStorage.setItem("lack-compileOnSave", config.compileOnSave);
+    updateCompileOnSaveMenuLabel();
+    showNotification(`Compila al salvataggio (Ctrl+S): ${config.compileOnSave ? 'Attivo' : 'Disattivato'}`, "info");
+  });
   // Contextual zoom handling (PDF viewer when hovering preview, UI otherwise)
   let isMouseOverPreview = false;
   const previewContainer = document.getElementById("preview-container");
@@ -2202,10 +3855,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     }
   }, { passive: false });
-  ipcRenderer.on("toggle-theme", () => {
-    const nextTheme = config.theme === "dark" ? "light" : config.theme === "light" ? "github" : "dark";
-    applyTheme(nextTheme);
-  });
+  ipcRenderer.on("toggle-theme", () => cycleTheme());
   ipcRenderer.on("open-install-guide", () => {
     const cmd = latexCompiler.getInstallCommand();
     clipboard.writeText(cmd);

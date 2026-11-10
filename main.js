@@ -1,10 +1,14 @@
-const { app, BrowserWindow, Menu, dialog, clipboard, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, dialog, clipboard, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const remoteMain = require("@electron/remote/main");
 const { autoUpdater } = require("electron-updater");
 const i18n = require("./i18n.js");
 const latexCompiler = require("./latex-compiler.js");
+const { ProjectRegistry } = require("./src/projects/registry.js");
+const { ProjectManager } = require("./src/projects/manager.js");
+const { readLink, extractSnapshot, unlinkPdf } = require("./src/projects/pdf-link.js");
+const { resolveOpenAction } = require("./src/main/cli.js");
 
 app.setName("Lack");
 if (process.platform === 'linux') {
@@ -16,69 +20,36 @@ if (process.platform === 'win32') {
 
 let win;
 let printWin = null;
-let openFilePath = null;
-let openFolderPath = null;
+let initialAction = null;
+const openProjectWindows = new Map(); // projectId -> BrowserWindow
 
-// Parse command line arguments (e.g. `lack document.tex` or `lack my-project/`)
-const args = process.defaultApp ? process.argv.slice(2) : process.argv.slice(1);
-const targetArg = args.find(arg => !arg.startsWith('--'));
+// Initialize Linked Project Store & Registry
+const defaultStoreRoot = path.join(app.getPath('documents'), 'Lack Projects');
+const registryFile = path.join(app.getPath('userData'), 'projects.json');
+const projectRegistry = new ProjectRegistry(registryFile, defaultStoreRoot);
+const projectManager = new ProjectManager(projectRegistry, defaultStoreRoot);
 
-if (targetArg) {
-  const absolutePath = path.resolve(process.cwd(), targetArg);
-  if (fs.existsSync(absolutePath)) {
-    const stat = fs.statSync(absolutePath);
-    if (stat.isDirectory()) {
-      openFolderPath = absolutePath;
-    } else if (stat.isFile()) {
-      openFilePath = absolutePath;
-      openFolderPath = path.dirname(absolutePath);
-    }
-  } else {
-    openFilePath = absolutePath;
-    openFolderPath = path.dirname(absolutePath);
-  }
-}
+// Determine invoking CWD (from lack.c or process.cwd)
+const invocationCwd = process.env.LACK_CWD || process.cwd();
+
+// Parse initial command line arguments
+const rawCliArgs = process.defaultApp ? process.argv.slice(2) : process.argv.slice(1);
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on('second-instance', (event, argv, workingDirectory) => {
-    let targetFile = null;
-    let targetFolder = null;
+  app.on('second-instance', async (event, argv, workingDirectory) => {
+    const cwd = workingDirectory || invocationCwd;
     const instanceArgs = argv.slice(process.defaultApp ? 2 : 1);
-    const target = instanceArgs.find(arg => !arg.startsWith('--'));
-    if (target) {
-      const absPath = path.resolve(workingDirectory, target);
-      if (fs.existsSync(absPath)) {
-        const stat = fs.statSync(absPath);
-        if (stat.isDirectory()) {
-          targetFolder = absPath;
-        } else if (stat.isFile()) {
-          targetFile = absPath;
-          targetFolder = path.dirname(absPath);
-        }
-      } else {
-        targetFile = absPath;
-        targetFolder = path.dirname(absPath);
-      }
-    }
+    const action = await resolveOpenAction({
+      rawArgv: instanceArgs,
+      cwd,
+      registry: projectRegistry,
+      readLinkFn: readLink
+    });
 
-    if (win && !win.isDestroyed()) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-      if (targetFolder) {
-        win.webContents.send('open-folder', targetFolder);
-      }
-      if (targetFile) {
-        const content = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, 'utf8') : '';
-        win.webContents.send('load-tex', targetFile, content);
-      }
-    } else {
-      if (targetFile) openFilePath = targetFile;
-      if (targetFolder) openFolderPath = targetFolder;
-      createWindow();
-    }
+    handleResolvedAction(action, null);
   });
 }
 
@@ -145,6 +116,162 @@ ipcMain.handle('get-install-command', () => {
   return latexCompiler.getInstallCommand();
 });
 
+// Project Store & Manager IPC Handlers
+ipcMain.handle('project-get-store-root', () => {
+  return projectManager.getStoreRoot();
+});
+
+ipcMain.handle('project-set-store-root', (_e, newRoot) => {
+  projectManager.setStoreRoot(newRoot);
+  return projectManager.getStoreRoot();
+});
+
+ipcMain.handle('project-create', async (_e, opts) => {
+  return projectManager.createProject(opts);
+});
+
+ipcMain.handle('project-load-manifest', (_e, storePath) => {
+  return projectManager.loadManifest(storePath);
+});
+
+ipcMain.handle('project-save-manifest', (_e, storePath, manifest) => {
+  projectManager.saveManifest(storePath, manifest);
+  return true;
+});
+
+ipcMain.handle('project-list', () => {
+  return projectRegistry.listProjects();
+});
+
+ipcMain.handle('project-relink', async (_e, { pdfPath, projectId }) => {
+  const proj = projectRegistry.getProject(projectId);
+  if (!proj) throw new Error('Progetto non trovato nel registro');
+  await projectManager.postProcessCompile({
+    storePath: proj.storePath,
+    compiledPdfPath: pdfPath,
+    targetPdfPath: pdfPath
+  });
+  return true;
+});
+
+ipcMain.handle('project-unlink', async (_e, pdfPath) => {
+  return await unlinkPdf(pdfPath);
+});
+
+ipcMain.handle('project-post-process-compile', async (_e, opts) => {
+  return await projectManager.postProcessCompile(opts);
+});
+
+ipcMain.handle('project-read-link', async (_e, pdfPath) => {
+  return await readLink(pdfPath);
+});
+
+ipcMain.handle('project-extract-snapshot', async (_e, { pdfPath, targetDir }) => {
+  return await extractSnapshot(pdfPath, targetDir);
+});
+
+ipcMain.handle('project-add-linked-asset', (_e, { storePath, sourcePath, relDest }) => {
+  return projectManager.addLinkedAsset(storePath, sourcePath, relDest);
+});
+
+ipcMain.handle('project-export', async (_e, { storePath, exportDest, asZip }) => {
+  return await projectManager.exportProject(storePath, exportDest, asZip);
+});
+
+ipcMain.handle('project-trash-item', async (_e, itemPath) => {
+  if (fs.existsSync(itemPath)) {
+    await shell.trashItem(itemPath);
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle('project-reveal-item', (_e, itemPath) => {
+  shell.showItemInFolder(itemPath);
+  return true;
+});
+
+ipcMain.handle('project-acquire-lock', (_e, { storePath, windowId }) => {
+  return projectManager.acquireLock(storePath, windowId);
+});
+
+ipcMain.handle('project-release-lock', (_e, storePath) => {
+  projectManager.releaseLock(storePath);
+  return true;
+});
+
+function handleResolvedAction(action, targetWin) {
+  const currentWin = targetWin || win;
+  if (!action) return;
+
+  if (action.action === 'open-linked') {
+    // If window already open for this project, bring to front
+    const existing = openProjectWindows.get(action.projectId);
+    if (existing && !existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore();
+      existing.focus();
+      return;
+    }
+
+    if (currentWin && !currentWin.isDestroyed()) {
+      openProjectWindows.set(action.projectId, currentWin);
+      currentWin.webContents.send('open-linked-project', {
+        projectId: action.projectId,
+        name: action.name,
+        storePath: action.storePath,
+        targetPath: action.targetPath
+      });
+    }
+  } else if (action.action === 'create-linked') {
+    const { id, storePath, manifest } = projectManager.createProject({
+      name: action.name,
+      targetPath: action.targetPath,
+      template: action.template
+    });
+    if (currentWin && !currentWin.isDestroyed()) {
+      openProjectWindows.set(id, currentWin);
+      currentWin.webContents.send('open-linked-project', {
+        projectId: id,
+        name: manifest.name,
+        storePath,
+        targetPath: action.targetPath,
+        compileImmediate: true
+      });
+    }
+  } else if (action.action === 'prompt-relink-or-restore') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      currentWin.webContents.send('prompt-relink-or-restore', {
+        projectId: action.projectId,
+        name: action.name,
+        targetPath: action.targetPath,
+        hasSnapshot: action.hasSnapshot
+      });
+    }
+  } else if (action.action === 'prompt-claim-pdf') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      currentWin.webContents.send('prompt-claim-pdf', {
+        targetPath: action.targetPath,
+        name: action.name,
+        template: action.template
+      });
+    }
+  } else if (action.action === 'error') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      dialog.showErrorBox("Errore Apertura Lack", action.message);
+    }
+  } else if (action.action === 'classic') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      if (action.openFolderPath) {
+        currentWin.webContents.send('open-folder', action.openFolderPath);
+      }
+      if (action.openFilePath) {
+        const content = fs.existsSync(action.openFilePath) ? fs.readFileSync(action.openFilePath, 'utf8') : '';
+        currentWin.webContents.send('load-tex', action.openFilePath, content);
+      }
+    }
+  }
+}
+
 function createWindow() {
   initializeRemote();
 
@@ -160,6 +287,7 @@ function createWindow() {
     minHeight: 450,
     backgroundColor: '#1f1f1f',
     icon: iconPath,
+    autoHideMenuBar: true,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 15, y: 19 } }
       : { frame: false }),
@@ -173,6 +301,12 @@ function createWindow() {
 
   win = new BrowserWindow(windowOptions);
   remoteMain.enable(win.webContents);
+
+  // Suppress native menubar completely on Linux/Windows so custom in-DOM titlebar is used exclusively
+  if (!isMac) {
+    win.setMenuBarVisibility(false);
+    win.removeMenu();
+  }
 
   // Global reliable zoom interceptor across all keyboard layouts (IT, US, EU)
   win.webContents.on('before-input-event', (event, input) => {
@@ -198,6 +332,13 @@ function createWindow() {
     // Zoom Reset: Ctrl + 0, Numpad0
     if (input.key === '0' || input.code === 'Numpad0' || input.code === 'Digit0') {
       if (!win.isDestroyed()) win.webContents.send('zoom-reset');
+      event.preventDefault();
+      return;
+    }
+
+    // Rotate Theme: Ctrl + M (without Shift or Alt)
+    if ((input.key === 'm' || input.key === 'M' || input.code === 'KeyM') && !input.shift && !input.alt) {
+      if (!win.isDestroyed()) win.webContents.send('toggle-theme');
       event.preventDefault();
       return;
     }
@@ -244,6 +385,19 @@ function buildApplicationMenu() {
           accelerator: "CmdOrCtrl+N",
           click: () => { win.webContents.send("new-file"); }
         },
+        {
+          label: "New Project...",
+          click: () => { win.webContents.send("menu-new-project"); }
+        },
+        {
+          label: "Projects...",
+          click: () => { win.webContents.send("open-projects-manager"); }
+        },
+        {
+          label: "Export Project...",
+          click: () => { win.webContents.send("menu-export-project"); }
+        },
+        { type: "separator" },
         {
           label: "Open File...",
           accelerator: "CmdOrCtrl+O",
@@ -327,6 +481,13 @@ function buildApplicationMenu() {
           label: "Recompile Document",
           accelerator: "CmdOrCtrl+Enter",
           click: () => { win.webContents.send("trigger-compile"); }
+        },
+        {
+          id: "menu-item-compile-on-save",
+          label: "Compile on Save (Ctrl+S)",
+          type: "checkbox",
+          checked: true,
+          click: (item) => { win.webContents.send("toggle-compile-on-save", item.checked); }
         },
         {
           id: "menu-item-auto-compile",
@@ -419,7 +580,7 @@ function buildApplicationMenu() {
             { type: "separator" },
             {
               label: "Rotate Theme",
-              accelerator: "CmdOrCtrl+Alt+M",
+              accelerator: "CmdOrCtrl+M",
               click: () => { if (win && !win.isDestroyed()) win.webContents.send("toggle-theme"); }
             }
           ]
@@ -440,19 +601,30 @@ function buildApplicationMenu() {
       ]
     }
   ]);
-  Menu.setApplicationMenu(menu);
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(menu);
+  } else {
+    Menu.setApplicationMenu(null);
+    if (win && !win.isDestroyed()) {
+      win.setMenu(null);
+      win.setMenuBarVisibility(false);
+    }
+  }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
 
+  initialAction = await resolveOpenAction({
+    rawArgv: rawCliArgs,
+    cwd: invocationCwd,
+    registry: projectRegistry,
+    readLinkFn: readLink
+  });
+
   win.webContents.once('did-finish-load', () => {
-    if (openFolderPath && fs.existsSync(openFolderPath)) {
-      win.webContents.send('open-folder', openFolderPath);
-    }
-    if (openFilePath) {
-      const content = fs.existsSync(openFilePath) ? fs.readFileSync(openFilePath, 'utf8') : '';
-      win.webContents.send('load-tex', openFilePath, content);
+    if (initialAction) {
+      handleResolvedAction(initialAction, win);
     }
   });
 
@@ -482,19 +654,13 @@ app.on('activate', () => {
   }
 });
 
-app.on("open-file", (event, filePath) => {
+app.on("open-file", async (event, filePath) => {
   event.preventDefault();
-  if (app.isReady() && win) {
-    if (fs.existsSync(filePath)) {
-      const stat = fs.statSync(filePath);
-      if (stat.isDirectory()) {
-        win.webContents.send('open-folder', filePath);
-      } else if (stat.isFile()) {
-        const content = fs.readFileSync(filePath, 'utf8');
-        win.webContents.send('load-tex', filePath, content);
-      }
-    }
-  } else {
-    openFilePath = filePath;
-  }
+  const action = await resolveOpenAction({
+    rawArgv: [filePath],
+    cwd: invocationCwd,
+    registry: projectRegistry,
+    readLinkFn: readLink
+  });
+  handleResolvedAction(action, win);
 });

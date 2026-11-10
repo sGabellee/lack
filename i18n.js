@@ -19,7 +19,7 @@ const translations = {
     italic: "Italic (\\textit)",
     underline: "Underline (\\underline)",
     code: "Teletype (\\texttt)",
-    math_inline: "Inline Math ($...$)",
+    math_inline: "Inline Math ($...$, Ctrl+Shift+M)",
     math_display: "Display Math (\\[...\\])",
     fraction: "Fraction (\\frac)",
     sqrt: "Square Root (\\sqrt)",
@@ -200,7 +200,22 @@ const translations = {
     empty_create_file: "New LaTeX Document",
     empty_open_file: "Open File",
     empty_open_folder: "Open Project Folder",
-    empty_templates: "Browse Templates"
+    empty_templates: "Browse Templates",
+
+    // Tabs & Dialogs
+    tab_ctx_close: "Close",
+    tab_ctx_close_others: "Close Others",
+    tab_ctx_close_right: "Close to the Right",
+    tab_ctx_close_saved: "Close Saved",
+    tab_ctx_close_all: "Close All",
+    tab_ctx_copy_path: "Copy Path",
+    tab_ctx_copy_rel_path: "Copy Relative Path",
+    tab_ctx_reveal: "Reveal in File Manager",
+    dialog_unsaved_title: "Unsaved changes",
+    dialog_unsaved_tab_message: "Do you want to save the changes you made to \"{name}\"?",
+    dialog_save: "Save",
+    dialog_dont_save: "Don't Save",
+    dialog_cancel: "Cancel"
   },
 
   it: {
@@ -222,7 +237,7 @@ const translations = {
     italic: "Corsivo (\\textit)",
     underline: "Sottolineato (\\underline)",
     code: "Monospazio (\\texttt)",
-    math_inline: "Matematica in linea ($...$)",
+    math_inline: "Matematica in linea ($...$, Ctrl+Shift+M)",
     math_display: "Matematica in blocco (\\[...\\])",
     fraction: "Frazione (\\frac)",
     sqrt: "Radice quadrata (\\sqrt)",
@@ -403,7 +418,22 @@ const translations = {
     empty_create_file: "Nuovo Documento LaTeX",
     empty_open_file: "Apri File",
     empty_open_folder: "Apri Cartella Progetto",
-    empty_templates: "Sfoglia Template"
+    empty_templates: "Sfoglia Template",
+
+    // Schede & Finestre di dialogo
+    tab_ctx_close: "Chiudi",
+    tab_ctx_close_others: "Chiudi altri",
+    tab_ctx_close_right: "Chiudi a destra",
+    tab_ctx_close_saved: "Chiudi salvati",
+    tab_ctx_close_all: "Chiudi tutti",
+    tab_ctx_copy_path: "Copia percorso",
+    tab_ctx_copy_rel_path: "Copia percorso relativo",
+    tab_ctx_reveal: "Mostra nel gestore file",
+    dialog_unsaved_title: "Modifiche non salvate",
+    dialog_unsaved_tab_message: "Vuoi salvare le modifiche apportate a \"{name}\" prima di chiudere?",
+    dialog_save: "Salva",
+    dialog_dont_save: "Non salvare",
+    dialog_cancel: "Annulla"
   }
 };
 

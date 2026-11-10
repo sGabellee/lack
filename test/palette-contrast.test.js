@@ -33,8 +33,8 @@ test('Palette: light commands (#80007f) contrast on #ededed >= 4.5:1', () => {
   assert.ok(ratio >= 4.5, `Expected >= 4.5, got ${ratio}`);
 });
 
-test('Palette: light arguments (#1a4d8f) contrast on #ededed >= 4.5:1', () => {
-  const ratio = getContrastRatio('#1a4d8f', '#ededed');
+test('Palette: light arguments (#0000CD) contrast on #ededed >= 4.5:1', () => {
+  const ratio = getContrastRatio('#0000CD', '#ededed');
   assert.ok(ratio >= 4.5, `Expected >= 4.5, got ${ratio}`);
 });
 

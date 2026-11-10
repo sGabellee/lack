@@ -203,6 +203,7 @@ class CodeMirrorManager {
     this.onDocChangeCallback = null;
     this.onCursorChangeCallback = null;
     this.onCompileCallback = options.onCompile || null;
+    this.onRotateThemeCallback = options.onRotateTheme || null;
 
     this.projectContext = {
       getBibKeys: options.getBibKeys || (() => []),
@@ -249,6 +250,23 @@ class CodeMirrorManager {
       },
       {
         key: 'Mod-m',
+        run: () => {
+          if (typeof self.onRotateThemeCallback === 'function') {
+            self.onRotateThemeCallback();
+            return true;
+          }
+          return false;
+        }
+      },
+      {
+        key: 'Mod-Shift-m',
+        run: () => {
+          self.toggleMath();
+          return true;
+        }
+      },
+      {
+        key: 'Mod-Alt-m',
         run: () => {
           self.toggleMath();
           return true;
@@ -298,7 +316,7 @@ class CodeMirrorManager {
         search({ top: true }),
         lintGutter(),
         latexLanguage,
-        this.themeCompartment.of(getThemeExtensions(this.options.theme || 'dark')),
+        this.themeCompartment.of(getThemeExtensions(this.options.theme || 'light')),
         this.wrappingCompartment.of(EditorView.lineWrapping),
         this.vimCompartment.of([]),
         this.collabCompartment.of([]),
@@ -541,6 +559,10 @@ class CodeMirrorManager {
 
   onCursorChange(fn) {
     this.onCursorChangeCallback = fn;
+  }
+
+  onRotateTheme(fn) {
+    this.onRotateThemeCallback = fn;
   }
 
   getWordCount() {

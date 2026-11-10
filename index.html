@@ -6,7 +6,7 @@
     try {
       const platform = (typeof process !== 'undefined' && process.platform) ? process.platform : 'linux';
       document.documentElement.classList.add(`platform-${platform}`);
-      const savedTheme = localStorage.getItem('lack-theme') || 'dark';
+      const savedTheme = localStorage.getItem('lack-theme') || 'light';
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
       } else if (savedTheme === 'github') {
@@ -46,6 +46,16 @@
                 <span data-i18n="new_file">New LaTeX File</span>
                 <span class="titlebar-menu-shortcut">Ctrl+N</span>
               </button>
+              <button type="button" class="titlebar-menu-item" data-action="new-project">
+                <span>New Project...</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="open-projects">
+                <span>Projects...</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="export-project">
+                <span>Export Project...</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
               <button type="button" class="titlebar-menu-item" data-action="open-file">
                 <span data-i18n="empty_open_file">Open File...</span>
                 <span class="titlebar-menu-shortcut">Ctrl+O</span>
@@ -127,6 +137,10 @@
               <button type="button" class="titlebar-menu-item" data-action="trigger-compile">
                 <span data-i18n="compile_btn">Recompile Document</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Enter</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="toggle-compile-on-save">
+                <span id="menu-label-compile-on-save">Compile on Save: On</span>
+                <span class="titlebar-menu-shortcut">Ctrl+S</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="toggle-auto-compile">
                 <span id="menu-label-auto-compile">Auto-compile: Off</span>
@@ -481,8 +495,58 @@
           </button>
         </div>
 
-        <div id="folder-path" class="folder-path hidden"></div>
-        <div id="file-tree"></div>
+        <div id="sidebar-tab-content-files" class="sidebar-tab-content">
+          <!-- FOLDER PANE (Real Files) -->
+          <div id="folder-pane" class="sidebar-pane">
+            <div class="sidebar-pane-header" id="folder-pane-header">
+              <div class="sidebar-pane-title-group">
+                <span class="sidebar-pane-badge">CARTELLA</span>
+                <span class="sidebar-pane-name" id="folder-path">Nessuna cartella aperta</span>
+              </div>
+              <div class="sidebar-pane-actions">
+                <button type="button" id="folder-btn-refresh" class="pane-action-btn" title="Aggiorna">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                </button>
+                <button type="button" id="folder-btn-collapse" class="pane-action-btn" title="Comprimi pane">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+            </div>
+            <div id="folder-tree" class="tree-container"></div>
+            <div id="file-tree" class="hidden"></div>
+          </div>
+
+          <!-- DRAGGABLE SPLITTER -->
+          <div id="sidebar-splitter" class="sidebar-splitter hidden" title="Trascina per ridimensionare (doppio clic per 50/50)"></div>
+
+          <!-- PROJECT PANE (Virtual Project Store) -->
+          <div id="project-pane" class="sidebar-pane project-virtual-pane hidden">
+            <div class="sidebar-pane-header" id="project-pane-header">
+              <div class="sidebar-pane-title-group">
+                <span class="sidebar-pane-badge virtual-badge">PROGETTO</span>
+                <span class="sidebar-pane-name" id="project-pane-name">Nessun progetto</span>
+              </div>
+              <div class="sidebar-pane-actions">
+                <button type="button" id="proj-btn-add-file" class="pane-action-btn" title="Nuovo file">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button type="button" id="proj-btn-add-folder" class="pane-action-btn" title="Nuova cartella">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                </button>
+                <button type="button" id="proj-btn-link-asset" class="pane-action-btn" title="Collega risorsa (Symlink)">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                </button>
+                <button type="button" id="proj-btn-reveal" class="pane-action-btn" title="Mostra store nel file manager">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                </button>
+                <button type="button" id="project-btn-collapse" class="pane-action-btn" title="Comprimi pane">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+            </div>
+            <div id="project-tree" class="tree-container"></div>
+          </div>
+        </div>
         <div id="outline-view" class="outline-view hidden">
           <div id="outline-tree"></div>
         </div>
@@ -679,6 +743,9 @@
         <button id="btn-options" data-i18n-title="settings" title="Impostazioni" class="icon-btn">Impostazioni</button>
         <span id="footer-main-doc" class="footer-info-pill">Principale: main.tex</span>
         <span id="footer-compiler-engine" class="footer-info-pill">Motore: pdfLaTeX</span>
+        <span id="footer-project-chip" class="footer-info-pill project-chip hidden" title="Dettagli progetto collegato">
+          <span class="project-chip-glyph"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span> Progetto: <span id="footer-project-name">-</span>
+        </span>
       </div>
       <div id="footer-right" class="footer-right">
         <div id="collab-status-container" class="collab-status-container hidden" title="Stato sessione">
@@ -739,6 +806,12 @@
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
             <span data-i18n="settings_cat_compiler">LaTeX & Compilatore</span>
+          </button>
+          <button type="button" class="settings-nav-btn" data-settings-tab="projects">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Progetti</span>
           </button>
           <button type="button" class="settings-nav-btn" data-settings-tab="shortcuts">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -890,8 +963,18 @@
               </div>
               <div class="settings-row">
                 <div class="settings-label-group">
+                  <label for="toggle-compile-on-save">Compila al Salvataggio (Ctrl+S)</label>
+                  <span class="settings-sublabel">Salva il file attivo e avvia immediatamente la compilazione del documento principale</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-compile-on-save" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
                   <label for="toggle-autocompile" data-i18n="settings_autocompile">Compilazione Automatica</label>
-                  <span class="settings-sublabel" data-i18n="settings_autocompile_desc">Compila automaticamente al salvataggio</span>
+                  <span class="settings-sublabel" data-i18n="settings_autocompile_desc">Compila automaticamente durante la digitazione</span>
                 </div>
                 <label class="switch">
                   <input type="checkbox" id="toggle-autocompile" checked />
@@ -914,6 +997,36 @@
                   <span class="settings-sublabel" data-i18n="settings_custom_engine_path_desc">Se il compilatore non è nel PATH di sistema</span>
                 </div>
                 <input type="text" id="input-custom-engine-path" class="collab-input" placeholder="/usr/bin/pdflatex" spellcheck="false" />
+              </div>
+            </div>
+          </div>
+
+          <!-- PROJECTS TAB -->
+          <div class="settings-tab-pane" id="pane-settings-projects">
+            <div class="settings-pane-header">
+              <h3>Archiviazione Progetti</h3>
+              <p class="settings-pane-sub">Configura la cartella di archiviazione dei progetti collegati e le istantanee</p>
+            </div>
+            <div class="settings-group">
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="input-store-root">Cartella Archivio Progetti (Store Root)</label>
+                  <span class="settings-sublabel" id="store-free-space">Spazio libero: calcolo in corso...</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 380px;">
+                  <input type="text" id="input-store-root" class="collab-input" style="flex: 1;" readonly />
+                  <button type="button" id="btn-browse-store-root" class="collab-tab" style="padding: 6px 12px;">Sfoglia...</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="toggle-embed-snapshot-default">Incorpora Istantanea Sorgente nei PDF (Default)</label>
+                  <span class="settings-sublabel">Include un archivio compresso delle sorgenti dentro il PDF generato (max 25 MB)</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-embed-snapshot-default" />
+                  <span class="slider"></span>
+                </label>
               </div>
             </div>
           </div>
@@ -1209,6 +1322,166 @@
         <button type="button" id="btn-app-confirm-cancel" class="pdf-export-btn-cancel">Annulla</button>
         <button type="button" id="btn-app-confirm-ok" class="collab-submit-btn">Conferma</button>
       </div>
+    </div>
+  </div>
+
+  <!-- PROJECTS MANAGER MODAL (Mark Gallery Style) -->
+  <div id="projects-modal" class="modal hidden">
+    <div class="modal-overlay" id="projects-modal-overlay"></div>
+    <div class="modal-content template-gallery-modal-content">
+      <div class="template-gallery-header">
+        <div class="template-gallery-header-left">
+          <div class="template-gallery-icon-box" style="background-color: #80007f;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div class="template-gallery-header-titles">
+            <h2>Gestione Progetti Lack</h2>
+            <p class="template-gallery-subtitle">Tutti i progetti virtuali collegati salvati nello store locale</p>
+          </div>
+        </div>
+        <div class="template-gallery-header-search">
+          <svg class="template-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="projects-search-input" placeholder="Cerca progetto per nome o percorso PDF..." />
+        </div>
+        <div class="template-gallery-header-right">
+          <button type="button" id="btn-projects-new-proj" class="collab-submit-btn" style="background: #000; color: #fff;">+ Nuovo Progetto</button>
+          <button type="button" id="btn-close-projects-modal" class="collab-close-btn">&times;</button>
+        </div>
+      </div>
+      <div class="template-gallery-body" style="padding: 24px; overflow-y: auto;">
+        <div id="projects-cards-grid" class="projects-cards-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW PROJECT MODAL -->
+  <div id="new-project-modal" class="modal hidden">
+    <div class="modal-overlay" id="new-project-modal-overlay"></div>
+    <div class="modal-content" style="max-width: 520px; border-radius: 12px; padding: 24px;">
+      <div class="modal-header" style="margin-bottom: 20px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Nuovo Progetto LaTeX Collegato</h3>
+        <button type="button" id="btn-close-new-project-modal" class="collab-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <label style="font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px;">Nome Progetto</label>
+          <input type="text" id="input-new-proj-name" class="collab-input" placeholder="Es. Relazione Laboratorio" />
+        </div>
+        <div>
+          <label style="font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px;">Destinazione PDF</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="input-new-proj-target" class="collab-input" placeholder="/percorso/mio-documento.pdf" style="flex: 1;" />
+            <button type="button" id="btn-new-proj-browse-target" class="collab-tab" style="padding: 6px 12px;">Scegli...</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px;">Template Iniziale</label>
+          <select id="select-new-proj-template" class="settings-select" style="width: 100%;">
+            <option value="standard">Documento Standard (Articolo)</option>
+            <option value="ieee-article">Articolo Scientifico IEEE (Due Colonne)</option>
+            <option value="lab-report">Relazione di Laboratorio</option>
+            <option value="beamer-slides">Presentazione Slide Beamer</option>
+            <option value="cv-modern">Curriculum Vitae Moderno</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" id="btn-cancel-new-proj" class="pdf-export-btn-cancel">Annulla</button>
+        <button type="button" id="btn-submit-new-proj" class="collab-submit-btn" style="background-color: #80007f;">Crea Progetto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLAIM FOREIGN PDF MODAL -->
+  <div id="claim-pdf-modal" class="modal hidden">
+    <div class="modal-overlay" id="claim-pdf-overlay"></div>
+    <div class="modal-content" style="max-width: 500px; border-radius: 12px; padding: 24px;">
+      <div class="modal-header" style="margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">File PDF Rilevato</h3>
+        <button type="button" id="btn-close-claim-pdf" class="collab-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 13.5px; line-height: 1.5; color: var(--fg);">
+        <p id="claim-pdf-message">Il file selezionato non contiene alcun progetto Lack collegato.</p>
+        <div style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; padding: 10px 14px; border-radius: 4px; margin: 14px 0; font-size: 12.5px;">
+          <strong>Attenzione:</strong> Se crei un progetto collegato, la compilazione sovrascriverà questo PDF con l'output generato dal sorgente LaTeX.
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" id="btn-claim-open-plain" class="collab-submit-btn" style="background: #333; color: #fff;">Apri come PDF semplice</button>
+        <button type="button" id="btn-claim-create-project" class="collab-submit-btn" style="background-color: #80007f;">Crea Progetto Collegato</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELINK OR RESTORE MODAL -->
+  <div id="relink-restore-modal" class="modal hidden">
+    <div class="modal-overlay" id="relink-restore-overlay"></div>
+    <div class="modal-content" style="max-width: 520px; border-radius: 12px; padding: 24px;">
+      <div class="modal-header" style="margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Progetto Non Trovato nel Registro</h3>
+        <button type="button" id="btn-close-relink-restore" class="collab-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 13.5px; line-height: 1.5; color: var(--fg);">
+        <p id="relink-restore-message">Questo PDF è collegato a un ID progetto che non è presente sul tuo computer.</p>
+      </div>
+      <div class="modal-footer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px;">
+        <button type="button" id="btn-restore-from-snapshot" class="collab-submit-btn" style="background-color: #80007f;">Ripristina sorgenti da istantanea incorporata</button>
+        <button type="button" id="btn-relink-to-existing" class="collab-tab" style="padding: 8px 12px;">Ricollega a un progetto esistente...</button>
+        <button type="button" id="btn-open-plain-unlinked" class="pdf-export-btn-cancel">Apri come PDF semplice</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT PROJECT MODAL -->
+  <div id="export-project-modal" class="modal hidden">
+    <div class="modal-overlay" id="export-project-overlay"></div>
+    <div class="modal-content" style="max-width: 500px; border-radius: 12px; padding: 24px;">
+      <div class="modal-header" style="margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Esporta Progetto LaTeX</h3>
+        <button type="button" id="btn-close-export-project" class="collab-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="font-size: 13px; color: var(--fg); margin: 0;">Esporta le sorgenti complete con tutte le risorse collegate materializzate (pronto per Overleaf o latexmk).</p>
+        <div>
+          <label style="font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px;">Formato di esportazione</label>
+          <div class="collab-tabs settings-tabs">
+            <button type="button" id="export-format-zip" class="collab-tab active">Archivio ZIP (.zip)</button>
+            <button type="button" id="export-format-folder" class="collab-tab">Cartella Autonoma</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" id="btn-cancel-export-proj" class="pdf-export-btn-cancel">Annulla</button>
+        <button type="button" id="btn-confirm-export-proj" class="collab-submit-btn" style="background-color: #80007f;">Esporta...</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT INFO POPOVER -->
+  <div id="project-info-popover" class="project-info-popover hidden">
+    <div class="popover-header">
+      <span class="popover-title">Dettagli Progetto Collegato</span>
+      <button type="button" id="btn-close-project-popover" class="popover-close-btn">&times;</button>
+    </div>
+    <div class="popover-row">
+      <span class="popover-label">ID:</span>
+      <span id="popover-proj-id" class="popover-val">-</span>
+      <button type="button" class="btn-copy-val" data-target="popover-proj-id" title="Copia ID">📋</button>
+    </div>
+    <div class="popover-row">
+      <span class="popover-label">Store:</span>
+      <span id="popover-proj-store" class="popover-val">-</span>
+      <button type="button" class="btn-copy-val" data-target="popover-proj-store" title="Copia percorso">📋</button>
+    </div>
+    <div class="popover-row">
+      <span class="popover-label">PDF Target:</span>
+      <span id="popover-proj-target" class="popover-val">-</span>
+      <button type="button" class="btn-copy-val" data-target="popover-proj-target" title="Copia percorso">📋</button>
     </div>
   </div>
 </body>

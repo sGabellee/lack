@@ -7,6 +7,12 @@
 #include <sys/stat.h>
 
 int main(int argc, char *argv[]) {
+    // Capture invoking working directory and export as LACK_CWD
+    char cwdBuffer[4096];
+    if (getcwd(cwdBuffer, sizeof(cwdBuffer)) != NULL) {
+        setenv("LACK_CWD", cwdBuffer, 1);
+    }
+
     const char *lackPath = "/opt/lack/lack";
 
     // Verifica se il file esiste ed è eseguibile in /opt/lack/lack o /opt/lack/Lack

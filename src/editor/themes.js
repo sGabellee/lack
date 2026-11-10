@@ -151,18 +151,18 @@ const lackDarkTheme = EditorView.theme({
 });
 
 // Light syntax highlighting (contrast against #ededed)
-// Commands: #80007f (ratio ~8.06:1), Arguments & Math: #1a4d8f (ratio ~7.3:1)
+// Commands: #80007f (ratio ~8.06:1), Arguments & Math: #0000CD (MediumBlue, ratio ~8.5:1)
 const lightHighlightStyle = HighlightStyle.define([
   { tag: latexCommandTag, color: '#80007f', fontWeight: 'bold' },
   { tag: latexDelimiterTag, color: '#80007f' },
-  { tag: latexArgumentTag, color: '#1a4d8f', fontWeight: '500' },
-  { tag: latexMathTag, color: '#1a4d8f' },
+  { tag: latexArgumentTag, color: '#0000CD', fontWeight: '500' },
+  { tag: latexMathTag, color: '#0000CD' },
   { tag: latexCommentTag, color: '#6b7280', fontStyle: 'italic' },
   { tag: tags.keyword, color: '#80007f', fontWeight: 'bold' },
-  { tag: tags.name, color: '#1a4d8f' },
+  { tag: tags.name, color: '#0000CD' },
   { tag: tags.comment, color: '#6b7280', fontStyle: 'italic' },
-  { tag: tags.string, color: '#1a4d8f' },
-  { tag: tags.number, color: '#1a4d8f' },
+  { tag: tags.string, color: '#0000CD' },
+  { tag: tags.number, color: '#0000CD' },
   { tag: tags.bracket, color: '#80007f' },
   { tag: tags.heading, color: '#80007f', fontWeight: 'bold' }
 ]);
@@ -184,7 +184,7 @@ const darkHighlightStyle = HighlightStyle.define([
   { tag: tags.heading, color: '#d98cd9', fontWeight: 'bold' }
 ]);
 
-function getThemeExtensions(themeName = 'dark') {
+function getThemeExtensions(themeName = 'light') {
   const isLight = themeName === 'light';
   return [
     lackBaseTheme,

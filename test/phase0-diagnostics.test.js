@@ -36,10 +36,10 @@ test('DIAGNOSTIC 3: spell tokenizer does NOT split alphanumeric words at digits'
   assert.ok(!words.includes('paper') && !words.includes('utf'), 'Fixed: does not split a4paper/utf8 into words');
 });
 
-test('DIAGNOSTIC 4: CmdOrCtrl+M is NOT hijacked by Rotate Theme in main.js', () => {
+test('DIAGNOSTIC 4: CmdOrCtrl+M rotates theme matching Mark and does NOT conflict with math', () => {
   const mainJs = fs.readFileSync(path.resolve(__dirname, '../main.js'), 'utf8');
   assert.ok(
-    !mainJs.includes('accelerator: "CmdOrCtrl+M"'),
-    'CmdOrCtrl+M accelerator must NOT exist in main.js menu to allow LaTeX inline math toggle'
+    mainJs.includes('accelerator: "CmdOrCtrl+M"'),
+    'CmdOrCtrl+M accelerator must exist in main.js menu to rotate theme like Mark'
   );
 });

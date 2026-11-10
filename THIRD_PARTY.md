@@ -69,3 +69,41 @@ This document records the third-party software components and data sources used 
 - **License:** MIT License
 - **Copyright:** (c) Emiliano Heyns
 - **Purpose:** Parses .bib bibliography files for autocomplete and citations.
+
+---
+
+### 8. pdf-lib
+- **Source:** https://github.com/Hopding/pdf-lib
+- **NPM Package:** `pdf-lib`
+- **License:** MIT License
+- **Copyright:** (c) 2019 Andrew Dillon
+- **Purpose:** Manipulate PDF document metadata (Info dictionary, Keywords, attachments) for linked projects.
+
+---
+
+### 9. archiver
+- **Source:** https://github.com/archiverjs/node-archiver
+- **NPM Package:** `archiver`
+- **License:** MIT License
+- **Copyright:** (c) 2012-2024 Chris Talkington
+- **Purpose:** Generate .zip project bundles and snapshot archives.
+
+---
+
+### 10. chokidar
+- **Source:** https://github.com/paulmillr/chokidar
+- **NPM Package:** `chokidar`
+- **License:** MIT License
+- **Copyright:** (c) 2012-2024 Paul Miller
+- **Purpose:** Cross-platform file system watcher for target PDFs and linked assets.
+
+---
+
+### 11. adm-zip
+- **Source:** https://github.com/cthackers/adm-zip
+- **NPM Package:** `adm-zip`
+- **License:** MIT License
+- **Copyright:** (c) 2011-2024 Iacob C.
+- **Purpose:** Zip archive extraction and inspection for snapshot project restoration.
+
+
