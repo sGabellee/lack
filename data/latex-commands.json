@@ -1,0 +1,5710 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-11-10T09:41:02.654Z",
+  "totalMacros": 495,
+  "totalEnvironments": 135,
+  "packages": [
+    "amsart",
+    "amsmath",
+    "amssymb",
+    "amsthm",
+    "beamer",
+    "biblatex",
+    "booktabs",
+    "cleveref",
+    "exam",
+    "geometry",
+    "graphicx",
+    "hyperref",
+    "latex2e",
+    "listings",
+    "longtable",
+    "makeidx",
+    "mathtools",
+    "minted",
+    "multicol",
+    "natbib",
+    "nicematrix",
+    "siunitx",
+    "subfiles",
+    "systeme",
+    "tabularx",
+    "tikz",
+    "xcolor",
+    "xparse"
+  ],
+  "macros": [
+    {
+      "name": "abstract",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\abstract",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "action",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> m",
+      "snippet": "\\action",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "addbibresource",
+      "package": "biblatex",
+      "args": "m",
+      "snippet": "\\addbibresource{${1:references.bib}}",
+      "doc_it": "Aggiunge un database bibliografico (BibLaTeX)",
+      "doc_en": "Adds bibliography database",
+      "type": "macro"
+    },
+    {
+      "name": "addcontentsline",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\addcontentsline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "address",
+      "package": "amsart",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\address",
+      "doc_it": "Comando LaTeX fornito dal pacchetto amsart",
+      "doc_en": "LaTeX command provided by package amsart"
+    },
+    {
+      "name": "addtocontents",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\addtocontents",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "addtocounter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\addtocounter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "addtolength",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\addtolength",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "againframe",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> o o m",
+      "snippet": "\\againframe",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "alert",
+      "package": "beamer",
+      "args": "m",
+      "snippet": "\\alert{${1:important text}}",
+      "doc_it": "Evidenzia testo in colore d'allerta (rosso)",
+      "doc_en": "Highlights text with alert color",
+      "type": "macro"
+    },
+    {
+      "name": "alph",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\alph",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "Alph",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\Alph",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "alpha",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\alpha",
+      "doc_it": "Lettera greca alpha (α)",
+      "doc_en": "Greek letter alpha",
+      "type": "macro"
+    },
+    {
+      "name": "alsoname",
+      "package": "makeidx",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\alsoname",
+      "doc_it": "Comando LaTeX fornito dal pacchetto makeidx",
+      "doc_en": "LaTeX command provided by package makeidx"
+    },
+    {
+      "name": "alt",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> m m d<>",
+      "snippet": "\\alt",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "animate",
+      "package": "beamer",
+      "type": "macro",
+      "args": "r<>",
+      "snippet": "\\animate",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "animatevalue",
+      "package": "beamer",
+      "type": "macro",
+      "args": "r<> m m m",
+      "snippet": "\\animatevalue",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "answerline",
+      "package": "exam",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\answerline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "appendix",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\appendix",
+      "doc_it": "Inizia la sezione delle appendici",
+      "doc_en": "Begins appendices section",
+      "type": "macro"
+    },
+    {
+      "name": "approx",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\approx",
+      "doc_it": "Circa uguale / approssimativamente (≈)",
+      "doc_en": "Approximately equal",
+      "type": "macro"
+    },
+    {
+      "name": "arabic",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\arabic",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "ArrowBetweenLines",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "s o",
+      "snippet": "\\ArrowBetweenLines",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "AtBeginLecture",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\AtBeginLecture",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "AtBeginPart",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\AtBeginPart",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "author",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\author{${1:Author Name}}",
+      "doc_it": "Autore del documento",
+      "doc_en": "Document author",
+      "type": "macro"
+    },
+    {
+      "name": "autopageref",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\autopageref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "autoref",
+      "package": "hyperref",
+      "args": "m",
+      "snippet": "\\autoref{${1:key}}",
+      "doc_it": "Riferimento con prefisso automatico (Sezione, Figura, ecc.)",
+      "doc_en": "Reference with automatic name prefix",
+      "type": "macro"
+    },
+    {
+      "name": "backmatter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\backmatter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "Bdd",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\Bdd",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "beamerdefaultoverlayspecification",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\beamerdefaultoverlayspecification",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "belowpdfbookmark",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\belowpdfbookmark",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "beta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\beta",
+      "doc_it": "Lettera greca beta (β)",
+      "doc_en": "Greek letter beta",
+      "type": "macro"
+    },
+    {
+      "name": "bibitem",
+      "package": "beamer",
+      "type": "macro",
+      "args": "s d<> o m",
+      "snippet": "\\bibitem",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "bibliography",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\bibliography{${1:references}}",
+      "doc_it": "Specifica il file .bib (BibTeX classico)",
+      "doc_en": "Specifies .bib file",
+      "type": "macro"
+    },
+    {
+      "name": "bibliographystyle",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\bibliographystyle{${1:plain}}",
+      "doc_it": "Stile di formattazione della bibliografia (plain, abbrv, ieeetr)",
+      "doc_en": "Bibliography style",
+      "type": "macro"
+    },
+    {
+      "name": "bigbreak",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\bigbreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "bigskip",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\bigskip",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "blendcolors",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\blendcolors",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "bold",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\bold",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "bonuspointformat",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\bonuspointformat",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "bonuspointpoints",
+      "package": "exam",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\bonuspointpoints",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "bottomrule",
+      "package": "booktabs",
+      "args": "",
+      "snippet": "\\bottomrule",
+      "doc_it": "Linea orizzontale di chiusura inferiore",
+      "doc_en": "Bottom horizontal rule",
+      "type": "macro"
+    },
+    {
+      "name": "boxframe",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\boxframe",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "cap",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\cap",
+      "doc_it": "Intersezione insiemistica (∩)",
+      "doc_en": "Set intersection",
+      "type": "macro"
+    },
+    {
+      "name": "caption",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\caption",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "cdot",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\cdot",
+      "doc_it": "Punto di moltiplicazione (·)",
+      "doc_en": "Centered dot multiplication",
+      "type": "macro"
+    },
+    {
+      "name": "centering",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\centering",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "chapter",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\chapter{${1:Chapter Title}}",
+      "doc_it": "Capitolo (per classi report e book)",
+      "doc_en": "Chapter (report/book classes)",
+      "type": "macro"
+    },
+    {
+      "name": "checkboxchar",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\checkboxchar",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "checkedchar",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\checkedchar",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "chi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\chi",
+      "doc_it": "Lettera greca chi (χ)",
+      "doc_en": "Greek letter chi",
+      "type": "macro"
+    },
+    {
+      "name": "cite",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\cite{${1:bibkey}}",
+      "doc_it": "Citazione bibliografica",
+      "doc_en": "Bibliographic citation",
+      "type": "macro"
+    },
+    {
+      "name": "citep",
+      "package": "natbib",
+      "args": "m",
+      "snippet": "\\citep{${1:bibkey}}",
+      "doc_it": "Citazione tra parentesi (Autore, Anno)",
+      "doc_en": "Parenthetical citation (Author, Year)",
+      "type": "macro"
+    },
+    {
+      "name": "citet",
+      "package": "natbib",
+      "args": "m",
+      "snippet": "\\citet{${1:bibkey}}",
+      "doc_it": "Citazione testuale Autore (Anno)",
+      "doc_en": "Textual citation Author (Year)",
+      "type": "macro"
+    },
+    {
+      "name": "clap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\clap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "cleardoublepage",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\cleardoublepage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "clearpage",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\clearpage",
+      "doc_it": "Scarica tutti gli elementi flottanti e crea nuova pagina",
+      "doc_en": "Clears floats and starts new page",
+      "type": "macro"
+    },
+    {
+      "name": "cmidrule",
+      "package": "booktabs",
+      "args": "m",
+      "snippet": "\\cmidrule(lr){${1:2-3}}",
+      "doc_it": "Linea orizzontale parziale su colonne specifiche",
+      "doc_en": "Partial horizontal rule",
+      "type": "macro"
+    },
+    {
+      "name": "color",
+      "package": "xcolor",
+      "args": "m",
+      "snippet": "\\color{${1:blue}}",
+      "doc_it": "Imposta il colore corrente",
+      "doc_en": "Sets current text color",
+      "type": "macro"
+    },
+    {
+      "name": "colorbox",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\colorbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "colorlet",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m o m",
+      "snippet": "\\colorlet",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "column",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> o m",
+      "snippet": "\\column",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "columnbreak",
+      "package": "multicol",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\columnbreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto multicol",
+      "doc_en": "LaTeX command provided by package multicol"
+    },
+    {
+      "name": "contentsline",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\contentsline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "convertcolorspec",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\convertcolorspec",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "CorrectChoiceEmphasis",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\CorrectChoiceEmphasis",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "cos",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\cos",
+      "doc_it": "Coseno",
+      "doc_en": "Cosine function",
+      "type": "macro"
+    },
+    {
+      "name": "cpageref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\cpageref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "Cpageref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\Cpageref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "cramped",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\cramped",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "crampedclap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\crampedclap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "crampedllap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\crampedllap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "crampedrlap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\crampedrlap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "crampedsubstack",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\crampedsubstack",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "cref",
+      "package": "cleveref",
+      "args": "m",
+      "snippet": "\\cref{${1:key}}",
+      "doc_it": "Riferimento intelligente cleveref in minuscolo",
+      "doc_en": "Clever reference (lowercase)",
+      "type": "macro"
+    },
+    {
+      "name": "Cref",
+      "package": "cleveref",
+      "args": "m",
+      "snippet": "\\Cref{${1:key}}",
+      "doc_it": "Riferimento intelligente cleveref con iniziale maiuscola",
+      "doc_en": "Clever reference (capitalized)",
+      "type": "macro"
+    },
+    {
+      "name": "crefalias",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\crefalias",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "crefdefaultlabelformat",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\crefdefaultlabelformat",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "crefname",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\crefname",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "crefrange",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "s m m",
+      "snippet": "\\crefrange",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "Crefrange",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "s m m",
+      "snippet": "\\Crefrange",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "crefrangeconjunction",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\crefrangeconjunction",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "cup",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\cup",
+      "doc_it": "Unione insiemistica (∪)",
+      "doc_en": "Set union",
+      "type": "macro"
+    },
+    {
+      "name": "curraddr",
+      "package": "amsart",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\curraddr",
+      "doc_it": "Comando LaTeX fornito dal pacchetto amsart",
+      "doc_en": "LaTeX command provided by package amsart"
+    },
+    {
+      "name": "currentpdfbookmark",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\currentpdfbookmark",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "date",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\date{${1:\\today}}",
+      "doc_it": "Data del documento",
+      "doc_en": "Document date",
+      "type": "macro"
+    },
+    {
+      "name": "DeclareDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\DeclareDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "DeclareDocumentEnvironment",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\DeclareDocumentEnvironment",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "DeclareExpandableDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\DeclareExpandableDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "DeclareMathOperator",
+      "package": "amsmath",
+      "args": "m m",
+      "snippet": "\\DeclareMathOperator{\\${1:op}}{${2:operator}}",
+      "doc_it": "Dichiara permanentemente un operatore matematico nel preambolo",
+      "doc_en": "Declares custom math operator in preamble",
+      "type": "macro"
+    },
+    {
+      "name": "DeclareMathSizes",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\DeclareMathSizes",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "DeclareOption",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\DeclareOption",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "DeclarePairedDelimiter",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\DeclarePairedDelimiter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "DeclarePairedDelimiterX",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m o m m m",
+      "snippet": "\\DeclarePairedDelimiterX",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "DeclarePairedDelimiterXPP",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m o m m m m m",
+      "snippet": "\\DeclarePairedDelimiterXPP",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "def",
+      "package": "latex2e",
+      "args": "m m",
+      "snippet": "\\def\\${1:name}{${2:definition}}",
+      "doc_it": "Macro TeX primitiva a basso livello",
+      "doc_en": "Low-level TeX macro definition",
+      "type": "macro"
+    },
+    {
+      "name": "definecolor",
+      "package": "xcolor",
+      "args": "m m m",
+      "snippet": "\\definecolor{${1:mycolor}}{${2:HTML}}{${3:80007F}}",
+      "doc_it": "Definisce un nuovo colore personalizzato",
+      "doc_en": "Defines custom color",
+      "type": "macro"
+    },
+    {
+      "name": "definecolors",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\definecolors",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "definecolorseries",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m m m o m o m",
+      "snippet": "\\definecolorseries",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "definecolorset",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m m m",
+      "snippet": "\\definecolorset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "DefineNamedColor",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\DefineNamedColor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "delta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\delta",
+      "doc_it": "Lettera greca delta (δ)",
+      "doc_en": "Greek letter delta",
+      "type": "macro"
+    },
+    {
+      "name": "Delta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Delta",
+      "doc_it": "Delta maiuscola / Laplaciano (Δ)",
+      "doc_en": "Capital Delta",
+      "type": "macro"
+    },
+    {
+      "name": "det",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\det",
+      "doc_it": "Determinante di una matrice",
+      "doc_en": "Determinant",
+      "type": "macro"
+    },
+    {
+      "name": "dim",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\dim",
+      "doc_it": "Dimensione di uno spazio vettoriale",
+      "doc_en": "Dimension",
+      "type": "macro"
+    },
+    {
+      "name": "discretionary",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\discretionary",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "documentclass",
+      "package": "latex2e",
+      "args": "o m",
+      "snippet": "\\documentclass[${1:11pt,a4paper}]{${2:article}}",
+      "doc_it": "Dichiara la classe del documento (article, report, book, beamer)",
+      "doc_en": "Declares document class (article, report, book, beamer)",
+      "type": "macro"
+    },
+    {
+      "name": "doublespacing",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\doublespacing",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "email",
+      "package": "amsart",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\email",
+      "doc_it": "Comando LaTeX fornito dal pacchetto amsart",
+      "doc_en": "LaTeX command provided by package amsart"
+    },
+    {
+      "name": "emph",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\emph{${1:text}}",
+      "doc_it": "Testo enfatizzato",
+      "doc_en": "Emphasized text",
+      "type": "macro"
+    },
+    {
+      "name": "enlargethispage",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "s",
+      "snippet": "\\enlargethispage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "ensuremath",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\ensuremath",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "epsilon",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\epsilon",
+      "doc_it": "Lettera greca epsilon (ε)",
+      "doc_en": "Greek letter epsilon",
+      "type": "macro"
+    },
+    {
+      "name": "eqref",
+      "package": "amsmath",
+      "args": "m",
+      "snippet": "\\eqref{${1:eq:key}}",
+      "doc_it": "Riferimento numerato tra parentesi per equazioni",
+      "doc_en": "Equation reference enclosed in parentheses",
+      "type": "macro"
+    },
+    {
+      "name": "equiv",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\equiv",
+      "doc_it": "Identico o congruo (≡)",
+      "doc_en": "Equivalent/congruent",
+      "type": "macro"
+    },
+    {
+      "name": "eta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\eta",
+      "doc_it": "Lettera greca eta (η)",
+      "doc_en": "Greek letter eta",
+      "type": "macro"
+    },
+    {
+      "name": "exists",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\exists",
+      "doc_it": "Esiste (∃)",
+      "doc_en": "Exists quantifier",
+      "type": "macro"
+    },
+    {
+      "name": "exp",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\exp",
+      "doc_it": "Esponenziale",
+      "doc_en": "Exponential",
+      "type": "macro"
+    },
+    {
+      "name": "extractcolorspec",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\extractcolorspec",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "extractcolorspecs",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\extractcolorspecs",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "extrawidth",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\extrawidth",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "fbox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\fbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "fcolorbox",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m o m m",
+      "snippet": "\\fcolorbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "fillin",
+      "package": "exam",
+      "type": "macro",
+      "args": "o o",
+      "snippet": "\\fillin",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "fillwidthdottedlines",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\fillwidthdottedlines",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "fillwidthgrid",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\fillwidthgrid",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "fillwidthlines",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\fillwidthlines",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "fnsymbol",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\fnsymbol",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "footnote",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\footnote{${1:Note text}}",
+      "doc_it": "Nota a piè di pagina",
+      "doc_en": "Footnote",
+      "type": "macro"
+    },
+    {
+      "name": "footnotemark",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\footnotemark",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "footnotetext",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\footnotetext",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "forall",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\forall",
+      "doc_it": "Per ogni (∀)",
+      "doc_en": "For all quantifier",
+      "type": "macro"
+    },
+    {
+      "name": "frac",
+      "package": "latex2e",
+      "args": "m m",
+      "snippet": "\\frac{${1:numerator}}{${2:denominator}}",
+      "doc_it": "Frazione matematica",
+      "doc_en": "Mathematical fraction",
+      "type": "macro"
+    },
+    {
+      "name": "frak",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\frak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "frame",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\frame",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "framebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o o m",
+      "snippet": "\\framebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "framesubtitle",
+      "package": "beamer",
+      "args": "m",
+      "snippet": "\\framesubtitle{${1:Subtitle}}",
+      "doc_it": "Sottotitolo della slide",
+      "doc_en": "Slide subtitle",
+      "type": "macro"
+    },
+    {
+      "name": "frametitle",
+      "package": "beamer",
+      "args": "m",
+      "snippet": "\\frametitle{${1:Slide Title}}",
+      "doc_it": "Titolo della slide corrente",
+      "doc_en": "Slide title",
+      "type": "macro"
+    },
+    {
+      "name": "framezoom",
+      "package": "beamer",
+      "type": "macro",
+      "args": "r<> r<> o r() r()",
+      "snippet": "\\framezoom",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "frontmatter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\frontmatter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "fullwidth",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\fullwidth",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "gamma",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\gamma",
+      "doc_it": "Lettera greca gamma (γ)",
+      "doc_en": "Greek letter gamma",
+      "type": "macro"
+    },
+    {
+      "name": "Gamma",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Gamma",
+      "doc_it": "Gamma maiuscola (Γ)",
+      "doc_en": "Capital Gamma",
+      "type": "macro"
+    },
+    {
+      "name": "ge",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\ge",
+      "doc_it": "Maggiore o uguale (≥)",
+      "doc_en": "Greater than or equal",
+      "type": "macro"
+    },
+    {
+      "name": "geometry",
+      "package": "geometry",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\geometry",
+      "doc_it": "Comando LaTeX fornito dal pacchetto geometry",
+      "doc_en": "LaTeX command provided by package geometry"
+    },
+    {
+      "name": "geq",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\geq",
+      "doc_it": "Maggiore o uguale (≥)",
+      "doc_en": "Greater than or equal",
+      "type": "macro"
+    },
+    {
+      "name": "hline",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\hline",
+      "doc_it": "Linea orizzontale standard in tabular",
+      "doc_en": "Standard horizontal line",
+      "type": "macro"
+    },
+    {
+      "name": "hphantom",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\hphantom",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "href",
+      "package": "hyperref",
+      "args": "m m",
+      "snippet": "\\href{${1:https://example.com}}{${2:text}}",
+      "doc_it": "Collegamento ipertestuale cliccabile su testo",
+      "doc_en": "Hyperlink on text",
+      "type": "macro"
+    },
+    {
+      "name": "hspace",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\hspace",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "hyperbaseurl",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\hyperbaseurl",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hypercalcbp",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\hypercalcbp",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hyperdef",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\hyperdef",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hyperimage",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\hyperimage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hyperlink",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\hyperlink",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hyperlinkmute",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\hyperlinkmute",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "hyperlinksound",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\hyperlinksound",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "hyperref",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\hyperref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hypersetup",
+      "package": "hyperref",
+      "args": "m",
+      "snippet": "\\hypersetup{colorlinks=true, linkcolor=${1:blue}, urlcolor=${2:magenta}}",
+      "doc_it": "Configura opzioni e colori dei collegamenti",
+      "doc_en": "Configures hyperref settings",
+      "type": "macro"
+    },
+    {
+      "name": "hypertarget",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\hypertarget",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "hyphenation",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\hyphenation",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "iff",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\iff",
+      "doc_it": "Se e solo se (⟺)",
+      "doc_en": "If and only if",
+      "type": "macro"
+    },
+    {
+      "name": "iiint",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\iiint_{${1:V}}",
+      "doc_it": "Integrale triplo",
+      "doc_en": "Triple integral",
+      "type": "macro"
+    },
+    {
+      "name": "iint",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\iint_{${1:D}}",
+      "doc_it": "Integrale doppio",
+      "doc_en": "Double integral",
+      "type": "macro"
+    },
+    {
+      "name": "implies",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\implies",
+      "doc_it": "Implica logico (⟹)",
+      "doc_en": "Logical implication",
+      "type": "macro"
+    },
+    {
+      "name": "in",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\in",
+      "doc_it": "Appartiene all'insieme (∈)",
+      "doc_en": "Element of",
+      "type": "macro"
+    },
+    {
+      "name": "include",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\include{${1:filename}}",
+      "doc_it": "Include un capitolo o file con salto pagina automatico",
+      "doc_en": "Includes file with page break",
+      "type": "macro"
+    },
+    {
+      "name": "includegraphics",
+      "package": "graphicx",
+      "args": "o m",
+      "snippet": "\\includegraphics[width=${1:0.8\\linewidth}]{${2:filename}}",
+      "doc_it": "Include un file immagine esterno (PNG, JPG, PDF)",
+      "doc_en": "Includes image file",
+      "type": "macro"
+    },
+    {
+      "name": "includeonly",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\includeonly",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "indent",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\indent",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "index",
+      "package": "makeidx",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\index",
+      "doc_it": "Comando LaTeX fornito dal pacchetto makeidx",
+      "doc_en": "LaTeX command provided by package makeidx"
+    },
+    {
+      "name": "infty",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\infty",
+      "doc_it": "Simbolo di infinito (∞)",
+      "doc_en": "Infinity",
+      "type": "macro"
+    },
+    {
+      "name": "input",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\input{${1:filename}}",
+      "doc_it": "Include il sorgente di un altro file .tex direttamente",
+      "doc_en": "Includes .tex file directly",
+      "type": "macro"
+    },
+    {
+      "name": "inputminted",
+      "package": "minted",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\inputminted",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "insertauthor",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\insertauthor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertnavigation",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\insertnavigation",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertsectionnavigation",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\insertsectionnavigation",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertsectionnavigationhorizontal",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\insertsectionnavigationhorizontal",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertshortauthor",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\insertshortauthor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertshortdate",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\insertshortdate",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertshortinstitute",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\insertshortinstitute",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertshortpart",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\insertshortpart",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertshorttitle",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\insertshorttitle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertsubsectionnavigation",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\insertsubsectionnavigation",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertsubsectionnavigationhorizontal",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\insertsubsectionnavigationhorizontal",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "insertverticalnavigation",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\insertverticalnavigation",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "int",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\int_{${1:a}}^{${2:b}} ${3:f(x)} \\, d${4:x}",
+      "doc_it": "Integrale",
+      "doc_en": "Integral",
+      "type": "macro"
+    },
+    {
+      "name": "invisible",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> m",
+      "snippet": "\\invisible",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "iota",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\iota",
+      "doc_it": "Lettera greca iota (ι)",
+      "doc_en": "Greek letter iota",
+      "type": "macro"
+    },
+    {
+      "name": "item",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> o d<>",
+      "snippet": "\\item",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "kappa",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\kappa",
+      "doc_it": "Lettera greca kappa (κ)",
+      "doc_en": "Greek letter kappa",
+      "type": "macro"
+    },
+    {
+      "name": "ker",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\ker",
+      "doc_it": "Nucleo (kernel) di una trasformazione lineare",
+      "doc_en": "Kernel",
+      "type": "macro"
+    },
+    {
+      "name": "keywords",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\keywords",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "label",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\label{${1:key}}",
+      "doc_it": "Assegna un'etichetta per riferimenti incrociati",
+      "doc_en": "Assigns label for cross-referencing",
+      "type": "macro"
+    },
+    {
+      "name": "labelcpageref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\labelcpageref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "labelcref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\labelcref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "lambda",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\lambda",
+      "doc_it": "Lettera greca lambda (λ)",
+      "doc_en": "Greek letter lambda",
+      "type": "macro"
+    },
+    {
+      "name": "Lambda",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Lambda",
+      "doc_it": "Lambda maiuscola (Λ)",
+      "doc_en": "Capital Lambda",
+      "type": "macro"
+    },
+    {
+      "name": "lcnamecref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\lcnamecref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "lcnamecrefs",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\lcnamecrefs",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "le",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\le",
+      "doc_it": "Minore o uguale (≤)",
+      "doc_en": "Less than or equal",
+      "type": "macro"
+    },
+    {
+      "name": "lecture",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\lecture",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "leq",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\leq",
+      "doc_it": "Minore o uguale (≤)",
+      "doc_en": "Less than or equal",
+      "type": "macro"
+    },
+    {
+      "name": "let",
+      "package": "latex2e",
+      "args": "m m",
+      "snippet": "\\let\\${1:new}\\${2:old}",
+      "doc_it": "Assegna un token ad un altro comando",
+      "doc_en": "Assigns token to command",
+      "type": "macro"
+    },
+    {
+      "name": "lim",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\lim_{${1:x \\to ${2:x_0}}}",
+      "doc_it": "Limite matematico",
+      "doc_en": "Mathematical limit",
+      "type": "macro"
+    },
+    {
+      "name": "linebreak",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\linebreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "ln",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\ln",
+      "doc_it": "Logaritmo naturale",
+      "doc_en": "Natural logarithm",
+      "type": "macro"
+    },
+    {
+      "name": "log",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\log",
+      "doc_it": "Logaritmo",
+      "doc_en": "Logarithm",
+      "type": "macro"
+    },
+    {
+      "name": "logo",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\logo",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "lstalias",
+      "package": "listings",
+      "type": "macro",
+      "args": "o m o m",
+      "snippet": "\\lstalias",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstdefineformat",
+      "package": "listings",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\lstdefineformat",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstdefinelanguage",
+      "package": "listings",
+      "type": "macro",
+      "args": "o m o m o",
+      "snippet": "\\lstdefinelanguage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstdefinestyle",
+      "package": "listings",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\lstdefinestyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstDeleteShortInline",
+      "package": "listings",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\lstDeleteShortInline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstinline",
+      "package": "listings",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\lstinline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstinputlisting",
+      "package": "listings",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\lstinputlisting",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstloadlanguages",
+      "package": "listings",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\lstloadlanguages",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstMakeShortInline",
+      "package": "listings",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\lstMakeShortInline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstnewenvironment",
+      "package": "listings",
+      "type": "macro",
+      "args": "m o o m m",
+      "snippet": "\\lstnewenvironment",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "lstset",
+      "package": "listings",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\lstset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto listings",
+      "doc_en": "LaTeX command provided by package listings"
+    },
+    {
+      "name": "mainmatter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\mainmatter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "makebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "d() o o m",
+      "snippet": "\\makebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "makeemptybox",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\makeemptybox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "maketitle",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\maketitle",
+      "doc_it": "Genera il titolo e intestazione",
+      "doc_en": "Generates title banner",
+      "type": "macro"
+    },
+    {
+      "name": "marginpar",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\marginpar",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "marginpointname",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\marginpointname",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "maskcolors",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\maskcolors",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "mathbb",
+      "package": "amssymb",
+      "args": "m",
+      "snippet": "\\mathbb{${1:R}}",
+      "doc_it": "Font blackboard bold (es. R, N, Z, C)",
+      "doc_en": "Blackboard bold font (R, N, Z, C)",
+      "type": "macro"
+    },
+    {
+      "name": "mathbf",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\mathbf{${1:v}}",
+      "doc_it": "Grassetto matematico (vettori/matrici)",
+      "doc_en": "Bold math font",
+      "type": "macro"
+    },
+    {
+      "name": "mathcal",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\mathcal{${1:F}}",
+      "doc_it": "Font matematico calligrafico",
+      "doc_en": "Calligraphic math font",
+      "type": "macro"
+    },
+    {
+      "name": "mathclap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\mathclap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathfrak",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathfrak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathit",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathit",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "mathllap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\mathllap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathmakebox",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o o m",
+      "snippet": "\\mathmakebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathmbox",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathmbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathnormal",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathnormal",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "mathrlap",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\mathrlap",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathrm",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\mathrm{${1:text}}",
+      "doc_it": "Testo romano dritto in formula",
+      "doc_en": "Roman font inside math",
+      "type": "macro"
+    },
+    {
+      "name": "mathscr",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathscr",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathsf",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathsf",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "mathtoolsset",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathtoolsset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "mathtt",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mathtt",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "mbox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\mbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "medbreak",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\medbreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "medskip",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\medskip",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "midrule",
+      "package": "booktabs",
+      "args": "",
+      "snippet": "\\midrule",
+      "doc_it": "Linea divisoria intermedia tra intestazione e dati",
+      "doc_en": "Middle horizontal rule",
+      "type": "macro"
+    },
+    {
+      "name": "mint",
+      "package": "minted",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\mint",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "mintinline",
+      "package": "minted",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\mintinline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "mode",
+      "package": "beamer",
+      "type": "macro",
+      "args": "s d<> d{}",
+      "snippet": "\\mode",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "mu",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\mu",
+      "doc_it": "Lettera greca mu (μ)",
+      "doc_en": "Greek letter mu",
+      "type": "macro"
+    },
+    {
+      "name": "multicolumn",
+      "package": "latex2e",
+      "args": "m m m",
+      "snippet": "\\multicolumn{${1:2}}{${2:c}}{${3:text}}",
+      "doc_it": "Unisce più colonne in una singola cella",
+      "doc_en": "Merges multiple columns",
+      "type": "macro"
+    },
+    {
+      "name": "nabla",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\nabla",
+      "doc_it": "Operatore nabla/gradiente",
+      "doc_en": "Nabla/gradient operator",
+      "type": "macro"
+    },
+    {
+      "name": "namecref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\namecref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "nameCref",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\nameCref",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "namecrefs",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\namecrefs",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "nameCrefs",
+      "package": "cleveref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\nameCrefs",
+      "doc_it": "Comando LaTeX fornito dal pacchetto cleveref",
+      "doc_en": "LaTeX command provided by package cleveref"
+    },
+    {
+      "name": "neq",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\neq",
+      "doc_it": "Diverso da (≠)",
+      "doc_en": "Not equal",
+      "type": "macro"
+    },
+    {
+      "name": "newcommand",
+      "package": "latex2e",
+      "args": "m o m",
+      "snippet": "\\newcommand{\\${1:name}}[${2:1}]{${3:definition}}",
+      "doc_it": "Definisce un nuovo comando LaTeX",
+      "doc_en": "Defines a new command",
+      "type": "macro"
+    },
+    {
+      "name": "newcounter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m o",
+      "snippet": "\\newcounter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "NewDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\NewDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "NewDocumentEnvironment",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\NewDocumentEnvironment",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "newenvironment",
+      "package": "latex2e",
+      "args": "m o m m",
+      "snippet": "\\newenvironment{${1:name}}\n  {${2:start_code}}\n  {${3:end_code}}",
+      "doc_it": "Crea un nuovo ambiente LaTeX",
+      "doc_en": "Defines new environment",
+      "type": "macro"
+    },
+    {
+      "name": "NewExpandableDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\NewExpandableDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "newfont",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\newfont",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "newgathered",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\newgathered",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "newlength",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\newlength",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "newline",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\newline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "newmint",
+      "package": "minted",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\newmint",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "newminted",
+      "package": "minted",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\newminted",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "newmintedfile",
+      "package": "minted",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\newmintedfile",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "newmintinline",
+      "package": "minted",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\newmintinline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "newpage",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\newpage",
+      "doc_it": "Interrompe la pagina corrente e ne inizia una nuova",
+      "doc_en": "Page break",
+      "type": "macro"
+    },
+    {
+      "name": "newsavebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\newsavebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "newtagform",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m o m m",
+      "snippet": "\\newtagform",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "newtheorem",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "s m o m o",
+      "snippet": "\\newtheorem",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "newtheoremstyle",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m m m m m m m m",
+      "snippet": "\\newtheoremstyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "NiceMatrixOptions",
+      "package": "nicematrix",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\NiceMatrixOptions",
+      "doc_it": "Comando LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX command provided by package nicematrix"
+    },
+    {
+      "name": "noindent",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\noindent",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "nolinebreak",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\nolinebreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "nolinkurl",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\nolinkurl",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "nopagebreak",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o",
+      "snippet": "\\nopagebreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "nopagecolor",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\nopagecolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "notin",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\notin",
+      "doc_it": "Non appartiene all'insieme (∉)",
+      "doc_en": "Not element of",
+      "type": "macro"
+    },
+    {
+      "name": "nu",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\nu",
+      "doc_it": "Lettera greca nu (ν)",
+      "doc_en": "Greek letter nu",
+      "type": "macro"
+    },
+    {
+      "name": "num",
+      "package": "siunitx",
+      "args": "m",
+      "snippet": "\\num{${1:12345.67}}",
+      "doc_it": "Formatta un numero secondo le convenzioni tipografiche",
+      "doc_en": "Formats number",
+      "type": "macro"
+    },
+    {
+      "name": "oint",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\oint_{${1:C}}",
+      "doc_it": "Integrale di linea su curva chiusa",
+      "doc_en": "Contour integral",
+      "type": "macro"
+    },
+    {
+      "name": "omega",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\omega",
+      "doc_it": "Lettera greca omega (ω)",
+      "doc_en": "Greek letter omega",
+      "type": "macro"
+    },
+    {
+      "name": "Omega",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Omega",
+      "doc_it": "Omega maiuscola (Ω)",
+      "doc_en": "Capital Omega",
+      "type": "macro"
+    },
+    {
+      "name": "only",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> m d<>",
+      "snippet": "\\only",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "onslide",
+      "package": "beamer",
+      "type": "macro",
+      "args": "t+ t* d<> d{}",
+      "snippet": "\\onslide",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "operatorname",
+      "package": "amsmath",
+      "args": "m",
+      "snippet": "\\operatorname{${1:name}}",
+      "doc_it": "Dichiara un nome di operatore matematico personalizzato",
+      "doc_en": "Custom math operator name",
+      "type": "macro"
+    },
+    {
+      "name": "overbrace",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\overbrace",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "overbracket",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o o m",
+      "snippet": "\\overbracket",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "pagebreak",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\pagebreak",
+      "doc_it": "Suggerisce o forza interruzione pagina",
+      "doc_en": "Page break hint/force",
+      "type": "macro"
+    },
+    {
+      "name": "pagecolor",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\pagecolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "pagenumbering",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\pagenumbering",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "pageref",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\pageref{${1:key}}",
+      "doc_it": "Riferimento al numero di pagina",
+      "doc_en": "Reference to page number",
+      "type": "macro"
+    },
+    {
+      "name": "pagestyle",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\pagestyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "paragraph",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\paragraph{${1:Heading}}",
+      "doc_it": "Paragrafo titolato",
+      "doc_en": "Titled paragraph",
+      "type": "macro"
+    },
+    {
+      "name": "parbox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o o o m m",
+      "snippet": "\\parbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "part",
+      "package": "beamer",
+      "type": "macro",
+      "args": "s d<> o m",
+      "snippet": "\\part",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "partial",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\partial",
+      "doc_it": "Simbolo di derivata parziale",
+      "doc_en": "Partial derivative symbol",
+      "type": "macro"
+    },
+    {
+      "name": "partpage",
+      "package": "beamer",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\partpage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "pause",
+      "package": "beamer",
+      "args": "",
+      "snippet": "\\pause",
+      "doc_it": "Interrompe l'animazione fino al clic successivo",
+      "doc_en": "Pauses slide presentation",
+      "type": "macro"
+    },
+    {
+      "name": "pdfbookmark",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\pdfbookmark",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "pdfstringdef",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\pdfstringdef",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "pgfkeys",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\pgfkeys",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "pgfplotsset",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\pgfplotsset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "pgfplotstabletypeset",
+      "package": "tikz",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\pgfplotstabletypeset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "phantom",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\phantom",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "phi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\phi",
+      "doc_it": "Lettera greca phi (ϕ)",
+      "doc_en": "Greek letter phi",
+      "type": "macro"
+    },
+    {
+      "name": "Phi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Phi",
+      "doc_it": "Phi maiuscola (Φ)",
+      "doc_en": "Capital Phi",
+      "type": "macro"
+    },
+    {
+      "name": "pi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\pi",
+      "doc_it": "Costante o lettera pi greco (π)",
+      "doc_en": "Greek letter pi",
+      "type": "macro"
+    },
+    {
+      "name": "Pi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Pi",
+      "doc_it": "Pi greco maiuscolo (Π)",
+      "doc_en": "Capital Pi",
+      "type": "macro"
+    },
+    {
+      "name": "pointformat",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\pointformat",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "pointname",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\pointname",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "pointpoints",
+      "package": "exam",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\pointpoints",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "preparecolor",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m m m",
+      "snippet": "\\preparecolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "preparecolorset",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m m m m",
+      "snippet": "\\preparecolorset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "prescript",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\prescript",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "printbibliography",
+      "package": "biblatex",
+      "args": "",
+      "snippet": "\\printbibliography",
+      "doc_it": "Stampa la bibliografia completa (BibLaTeX)",
+      "doc_en": "Prints bibliography",
+      "type": "macro"
+    },
+    {
+      "name": "prod",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\prod_{${1:i=1}}^{${2:n}}",
+      "doc_it": "Produttoria matematica",
+      "doc_en": "Product symbol",
+      "type": "macro"
+    },
+    {
+      "name": "providecolor",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m m m",
+      "snippet": "\\providecolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "providecolors",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\providecolors",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "providecolorset",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m m m m",
+      "snippet": "\\providecolorset",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "providecommand",
+      "package": "latex2e",
+      "args": "m o m",
+      "snippet": "\\providecommand{\\${1:name}}[${2:1}]{${3:definition}}",
+      "doc_it": "Definisce un comando solo se non esiste già",
+      "doc_en": "Defines command if not already defined",
+      "type": "macro"
+    },
+    {
+      "name": "ProvideDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\ProvideDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "ProvideDocumentEnvironment",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\ProvideDocumentEnvironment",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "ProvideExpandableDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\ProvideExpandableDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "psi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\psi",
+      "doc_it": "Lettera greca psi (ψ)",
+      "doc_en": "Greek letter psi",
+      "type": "macro"
+    },
+    {
+      "name": "Psi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Psi",
+      "doc_it": "Psi maiuscola (Ψ)",
+      "doc_en": "Capital Psi",
+      "type": "macro"
+    },
+    {
+      "name": "qformat",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\qformat",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "raisebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m o o m",
+      "snippet": "\\raisebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "ref",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\ref{${1:key}}",
+      "doc_it": "Riferimento al numero di sezione o figura",
+      "doc_en": "Reference to section or figure number",
+      "type": "macro"
+    },
+    {
+      "name": "reflectbox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\reflectbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "refstepcounter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\refstepcounter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "renewcommand",
+      "package": "latex2e",
+      "args": "m o m",
+      "snippet": "\\renewcommand{\\${1:name}}[${2:1}]{${3:definition}}",
+      "doc_it": "Ridefinisce un comando esistente",
+      "doc_en": "Redefines existing command",
+      "type": "macro"
+    },
+    {
+      "name": "RenewDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\RenewDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "RenewDocumentEnvironment",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\RenewDocumentEnvironment",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "renewenvironment",
+      "package": "beamer",
+      "type": "macro",
+      "args": "s d<> m o o m m",
+      "snippet": "\\renewenvironment",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "RenewExpandableDocumentCommand",
+      "package": "xparse",
+      "type": "macro",
+      "args": "m m m",
+      "snippet": "\\RenewExpandableDocumentCommand",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "renewgathered",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m m m",
+      "snippet": "\\renewgathered",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "renewtagform",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m o m m",
+      "snippet": "\\renewtagform",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "RequirePackage",
+      "package": "xparse",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\RequirePackage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xparse",
+      "doc_en": "LaTeX command provided by package xparse"
+    },
+    {
+      "name": "resetcolorseries",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\resetcolorseries",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "resetcounteronoverlays",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\resetcounteronoverlays",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "resetcountonoverlays",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\resetcountonoverlays",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "resizebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "s m m m",
+      "snippet": "\\resizebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "rho",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\rho",
+      "doc_it": "Lettera greca rho (ρ)",
+      "doc_en": "Greek letter rho",
+      "type": "macro"
+    },
+    {
+      "name": "roman",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\roman",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "Roman",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\Roman",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "rotatebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\rotatebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "rowcolors",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "s o m m m",
+      "snippet": "\\rowcolors",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "rule",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\rule",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "savebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m o o m",
+      "snippet": "\\savebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "sbox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\sbox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "scalebox",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m o m",
+      "snippet": "\\scalebox",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "section",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\section{${1:Title}}",
+      "doc_it": "Nuova sezione numerata",
+      "doc_en": "New numbered section",
+      "type": "macro"
+    },
+    {
+      "name": "sectionpage",
+      "package": "beamer",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\sectionpage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "see",
+      "package": "makeidx",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\see",
+      "doc_it": "Comando LaTeX fornito dal pacchetto makeidx",
+      "doc_en": "LaTeX command provided by package makeidx"
+    },
+    {
+      "name": "seealso",
+      "package": "makeidx",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\seealso",
+      "doc_it": "Comando LaTeX fornito dal pacchetto makeidx",
+      "doc_en": "LaTeX command provided by package makeidx"
+    },
+    {
+      "name": "seename",
+      "package": "makeidx",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\seename",
+      "doc_it": "Comando LaTeX fornito dal pacchetto makeidx",
+      "doc_en": "LaTeX command provided by package makeidx"
+    },
+    {
+      "name": "selectcolormodel",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\selectcolormodel",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "setbeamercolor",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\setbeamercolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "setbeamersize",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m o o",
+      "snippet": "\\setbeamersize",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "setbeamertemplate",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m o o d{}",
+      "snippet": "\\setbeamertemplate",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "setcounter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\setcounter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "setlength",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\setlength",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "setminted",
+      "package": "minted",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\setminted",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "setmintedinline",
+      "package": "minted",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\setmintedinline",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "settodepth",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\settodepth",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "settoheight",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\settoheight",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "settowidth",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\settowidth",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "shortdotswithin",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\shortdotswithin",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "shoveleft",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\shoveleft",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "shoveright",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\shoveright",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "SI",
+      "package": "siunitx",
+      "args": "m m",
+      "snippet": "\\SI{${1:10}}{${2:\\meter\\per\\second}}",
+      "doc_it": "Formatta un valore numerico con unità di misura SI",
+      "doc_en": "Formats number with SI unit",
+      "type": "macro"
+    },
+    {
+      "name": "sigma",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\sigma",
+      "doc_it": "Lettera greca sigma (σ)",
+      "doc_en": "Greek letter sigma",
+      "type": "macro"
+    },
+    {
+      "name": "Sigma",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Sigma",
+      "doc_it": "Sigma maiuscola (Σ)",
+      "doc_en": "Capital Sigma",
+      "type": "macro"
+    },
+    {
+      "name": "sin",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\sin",
+      "doc_it": "Seno",
+      "doc_en": "Sine function",
+      "type": "macro"
+    },
+    {
+      "name": "singlespacing",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\singlespacing",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "smallbreak",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\smallbreak",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "smallskip",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\smallskip",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "smashoperator",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\smashoperator",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "SolutionEmphasis",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\SolutionEmphasis",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "sound",
+      "package": "beamer",
+      "type": "macro",
+      "args": "o m m",
+      "snippet": "\\sound",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "splitdfrac",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\splitdfrac",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "splitfrac",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\splitfrac",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "sqrt",
+      "package": "latex2e",
+      "args": "o m",
+      "snippet": "\\sqrt[${1:n}]{${2:x}}",
+      "doc_it": "Radice quadrata o n-esima",
+      "doc_en": "Square or nth root",
+      "type": "macro"
+    },
+    {
+      "name": "stackrel",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\stackrel",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "stepcounter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\stepcounter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "stretch",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\stretch",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "subfile",
+      "package": "subfiles",
+      "args": "m",
+      "snippet": "\\subfile{${1:filename}}",
+      "doc_it": "Include un sotto-file compilabile autonomamente",
+      "doc_en": "Includes standalone subfile",
+      "type": "macro"
+    },
+    {
+      "name": "subject",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\subject",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "subparagraph",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\subparagraph{${1:Heading}}",
+      "doc_it": "Sottoparagrafo titolato",
+      "doc_en": "Subparagraph heading",
+      "type": "macro"
+    },
+    {
+      "name": "subpdfbookmark",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\subpdfbookmark",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "subsection",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\subsection{${1:Title}}",
+      "doc_it": "Nuova sottosezione numerata",
+      "doc_en": "New numbered subsection",
+      "type": "macro"
+    },
+    {
+      "name": "subsectionpage",
+      "package": "beamer",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\subsectionpage",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "subset",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\subset",
+      "doc_it": "Sottoinsieme proprio (⊂)",
+      "doc_en": "Subset",
+      "type": "macro"
+    },
+    {
+      "name": "subseteq",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\subseteq",
+      "doc_it": "Sottoinsieme o uguale (⊆)",
+      "doc_en": "Subset or equal",
+      "type": "macro"
+    },
+    {
+      "name": "substitutecolormodel",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\substitutecolormodel",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "subsubsection",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\subsubsection{${1:Title}}",
+      "doc_it": "Nuova sotto-sottosezione",
+      "doc_en": "New sub-subsection",
+      "type": "macro"
+    },
+    {
+      "name": "sum",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\sum_{${1:i=1}}^{${2:n}}",
+      "doc_it": "Sommatoria matematica",
+      "doc_en": "Summation symbol",
+      "type": "macro"
+    },
+    {
+      "name": "sysaddeqsign",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\sysaddeqsign",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "sysalign",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\sysalign",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "sysautonum",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\sysautonum",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syscodeextracol",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syscodeextracol",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "sysdelim",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\sysdelim",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syseqivsign",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syseqivsign",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syseqsep",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syseqsep",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syseqspace",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syseqspace",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "sysextracolonsign",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\sysextracolonsign",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syslineskipcoeff",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syslineskipcoeff",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "sysremoveeqsign",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\sysremoveeqsign",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syssignspace",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syssignspace",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "syssubstitute",
+      "package": "systeme",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\syssubstitute",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "systeme",
+      "package": "systeme",
+      "type": "macro",
+      "args": "s o o m",
+      "snippet": "\\systeme",
+      "doc_it": "Comando LaTeX fornito dal pacchetto systeme",
+      "doc_en": "LaTeX command provided by package systeme"
+    },
+    {
+      "name": "tableofcontents",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\tableofcontents",
+      "doc_it": "Genera l'indice generale",
+      "doc_en": "Generates table of contents",
+      "type": "macro"
+    },
+    {
+      "name": "tan",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\tan",
+      "doc_it": "Tangente",
+      "doc_en": "Tangent function",
+      "type": "macro"
+    },
+    {
+      "name": "tau",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\tau",
+      "doc_it": "Lettera greca tau (τ)",
+      "doc_en": "Greek letter tau",
+      "type": "macro"
+    },
+    {
+      "name": "temporal",
+      "package": "beamer",
+      "type": "macro",
+      "args": "r<> m m m",
+      "snippet": "\\temporal",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "testcolor",
+      "package": "xcolor",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\testcolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX command provided by package xcolor"
+    },
+    {
+      "name": "texorpdfstring",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m m",
+      "snippet": "\\texorpdfstring",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "text",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\text",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "textbf",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\textbf{${1:text}}",
+      "doc_it": "Testo in grassetto",
+      "doc_en": "Bold text",
+      "type": "macro"
+    },
+    {
+      "name": "textcolor",
+      "package": "xcolor",
+      "args": "m m",
+      "snippet": "\\textcolor{${1:red}}{${2:text}}",
+      "doc_it": "Colora il testo specificato",
+      "doc_en": "Colors specified text",
+      "type": "macro"
+    },
+    {
+      "name": "textit",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\textit{${1:text}}",
+      "doc_it": "Testo in corsivo",
+      "doc_en": "Italic text",
+      "type": "macro"
+    },
+    {
+      "name": "textmd",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\textmd",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "textnormal",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\textnormal",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "textrm",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\textrm",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "textsc",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\textsc{${1:text}}",
+      "doc_it": "Testo in maiuscoletto (Small Caps)",
+      "doc_en": "Small caps text",
+      "type": "macro"
+    },
+    {
+      "name": "textsf",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\textsf",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "textsl",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\textsl",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "texttt",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\texttt{${1:code}}",
+      "doc_it": "Testo a spaziatura fissa (monospace/codice)",
+      "doc_en": "Monospace font text",
+      "type": "macro"
+    },
+    {
+      "name": "textup",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\textup",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "thanks",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\thanks",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "theoremstyle",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\theoremstyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "theta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\theta",
+      "doc_it": "Lettera greca theta (θ)",
+      "doc_en": "Greek letter theta",
+      "type": "macro"
+    },
+    {
+      "name": "Theta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Theta",
+      "doc_it": "Theta maiuscola (Θ)",
+      "doc_en": "Capital Theta",
+      "type": "macro"
+    },
+    {
+      "name": "thispagestyle",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\thispagestyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "thispdfpagelabel",
+      "package": "hyperref",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\thispdfpagelabel",
+      "doc_it": "Comando LaTeX fornito dal pacchetto hyperref",
+      "doc_en": "LaTeX command provided by package hyperref"
+    },
+    {
+      "name": "tikz",
+      "package": "tikz",
+      "type": "macro",
+      "args": "o o m",
+      "snippet": "\\tikz",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "tikzoption",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\tikzoption",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "tikzstyle",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\tikzstyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "times",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\times",
+      "doc_it": "Croce di moltiplicazione o prodotto cartesiano (×)",
+      "doc_en": "Multiplication cross",
+      "type": "macro"
+    },
+    {
+      "name": "title",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\title{${1:Title}}",
+      "doc_it": "Titolo del documento",
+      "doc_en": "Document title",
+      "type": "macro"
+    },
+    {
+      "name": "titledquestion",
+      "package": "exam",
+      "type": "macro",
+      "args": "m o",
+      "snippet": "\\titledquestion",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "titlegraphic",
+      "package": "beamer",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\titlegraphic",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "to",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\to",
+      "doc_it": "Freccia verso destra (→)",
+      "doc_en": "Right arrow",
+      "type": "macro"
+    },
+    {
+      "name": "toprule",
+      "package": "booktabs",
+      "args": "",
+      "snippet": "\\toprule",
+      "doc_it": "Linea orizzontale superiore della tabella",
+      "doc_en": "Top horizontal rule",
+      "type": "macro"
+    },
+    {
+      "name": "totalformat",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\totalformat",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "uncover",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> m",
+      "snippet": "\\uncover",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "underbrace",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\underbrace",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "underbracket",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o o m",
+      "snippet": "\\underbracket",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "underline",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\underline{${1:text}}",
+      "doc_it": "Testo sottolineato",
+      "doc_en": "Underlined text",
+      "type": "macro"
+    },
+    {
+      "name": "unit",
+      "package": "siunitx",
+      "args": "m",
+      "snippet": "\\unit{${1:\\kilo\\gram}}",
+      "doc_it": "Unità di misura senza numero",
+      "doc_en": "Stand-alone unit",
+      "type": "macro"
+    },
+    {
+      "name": "uplevel",
+      "package": "exam",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\uplevel",
+      "doc_it": "Comando LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX command provided by package exam"
+    },
+    {
+      "name": "uppercase",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\uppercase",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "upsilon",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\upsilon",
+      "doc_it": "Lettera greca upsilon (υ)",
+      "doc_en": "Greek letter upsilon",
+      "type": "macro"
+    },
+    {
+      "name": "Upsilon",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Upsilon",
+      "doc_it": "Upsilon maiuscola (Υ)",
+      "doc_en": "Capital Upsilon",
+      "type": "macro"
+    },
+    {
+      "name": "url",
+      "package": "hyperref",
+      "args": "m",
+      "snippet": "\\url{${1:https://example.com}}",
+      "doc_it": "Stampa e rende cliccabile un URL",
+      "doc_en": "Clickable URL",
+      "type": "macro"
+    },
+    {
+      "name": "urladdr",
+      "package": "amsart",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\urladdr",
+      "doc_it": "Comando LaTeX fornito dal pacchetto amsart",
+      "doc_en": "LaTeX command provided by package amsart"
+    },
+    {
+      "name": "usebeamercolor",
+      "package": "beamer",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\usebeamercolor",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "usebeamertemplate",
+      "package": "beamer",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\usebeamertemplate",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "usecounter",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\usecounter",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "usemintedstyle",
+      "package": "minted",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\usemintedstyle",
+      "doc_it": "Comando LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX command provided by package minted"
+    },
+    {
+      "name": "usepackage",
+      "package": "latex2e",
+      "args": "o m",
+      "snippet": "\\usepackage[${1:options}]{${2:package}}",
+      "doc_it": "Carica un pacchetto LaTeX",
+      "doc_en": "Loads a LaTeX package",
+      "type": "macro"
+    },
+    {
+      "name": "usepgflibrary",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\usepgflibrary",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "usepgfmodule",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\usepgfmodule",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "usetagform",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\usetagform",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "usetikzlibrary",
+      "package": "tikz",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\usetikzlibrary",
+      "doc_it": "Comando LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX command provided by package tikz"
+    },
+    {
+      "name": "value",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\value",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "varepsilon",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\varepsilon",
+      "doc_it": "Variante grafica epsilon (ε)",
+      "doc_en": "Variant epsilon",
+      "type": "macro"
+    },
+    {
+      "name": "varphi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\varphi",
+      "doc_it": "Variante grafica phi (φ)",
+      "doc_en": "Variant phi",
+      "type": "macro"
+    },
+    {
+      "name": "varpi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\varpi",
+      "doc_it": "Variante pi greco (ϖ)",
+      "doc_en": "Variant pi",
+      "type": "macro"
+    },
+    {
+      "name": "varrho",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\varrho",
+      "doc_it": "Variante grafica rho (ϱ)",
+      "doc_en": "Variant rho",
+      "type": "macro"
+    },
+    {
+      "name": "varsigma",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\varsigma",
+      "doc_it": "Sigma finale (ς)",
+      "doc_en": "Final sigma",
+      "type": "macro"
+    },
+    {
+      "name": "vartheta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\vartheta",
+      "doc_it": "Variante grafica theta (ϑ)",
+      "doc_en": "Variant theta",
+      "type": "macro"
+    },
+    {
+      "name": "vdotswithin",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\vdotswithin",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "vfill",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "",
+      "snippet": "\\vfill",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "visible",
+      "package": "beamer",
+      "type": "macro",
+      "args": "d<> m",
+      "snippet": "\\visible",
+      "doc_it": "Comando LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX command provided by package beamer"
+    },
+    {
+      "name": "vphantom",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "m",
+      "snippet": "\\vphantom",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "vspace",
+      "package": "latex2e",
+      "type": "macro",
+      "args": "s m",
+      "snippet": "\\vspace",
+      "doc_it": "Comando LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX command provided by package latex2e"
+    },
+    {
+      "name": "xhookleftarrow",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xhookleftarrow",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xhookrightarrow",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xhookrightarrow",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\xi",
+      "doc_it": "Lettera greca xi (ξ)",
+      "doc_en": "Greek letter xi",
+      "type": "macro"
+    },
+    {
+      "name": "Xi",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\Xi",
+      "doc_it": "Xi maiuscola (Ξ)",
+      "doc_en": "Capital Xi",
+      "type": "macro"
+    },
+    {
+      "name": "xLeftarrow",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xLeftarrow",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xleftrightarrow",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xleftrightarrow",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xLeftrightarrow",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xLeftrightarrow",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xmapsto",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xmapsto",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xmathstrut",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xmathstrut",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "xRightarrow",
+      "package": "mathtools",
+      "type": "macro",
+      "args": "o m",
+      "snippet": "\\xRightarrow",
+      "doc_it": "Comando LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX command provided by package mathtools"
+    },
+    {
+      "name": "zeta",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\zeta",
+      "doc_it": "Lettera greca zeta (ζ)",
+      "doc_en": "Greek letter zeta",
+      "type": "macro"
+    }
+  ],
+  "environments": [
+    {
+      "name": "abstract",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{abstract}\n\t${1:Abstract summary text}\n\\end{abstract}",
+      "doc_it": "Sommario/abstract del documento o articolo",
+      "doc_en": "Document abstract",
+      "type": "environment"
+    },
+    {
+      "name": "actionenv",
+      "package": "beamer",
+      "type": "environment",
+      "args": "!d<>",
+      "snippet": "\\begin{actionenv}\n\t${1}\n\\end{actionenv}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "alertblock",
+      "package": "beamer",
+      "type": "environment",
+      "args": "!d<> !d{} !d<>",
+      "snippet": "\\begin{alertblock}\n\t${1}\n\\end{alertblock}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "align",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{align}\n\t${1:f(x)} &= ${2:ax + b} \\\\\n\t&= ${3:c}\n\\end{align}",
+      "doc_it": "Equazioni multiple allineate al simbolo & con numerazione",
+      "doc_en": "Multi-line aligned equations with numbers",
+      "type": "environment"
+    },
+    {
+      "name": "align*",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{align*}\n\t${1:f(x)} &= ${2:ax + b} \\\\\n\t&= ${3:c}\n\\end{align*}",
+      "doc_it": "Equazioni multiple allineate senza numerazione",
+      "doc_en": "Multi-line aligned equations without numbers",
+      "type": "environment"
+    },
+    {
+      "name": "alignat",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{alignat}\n\t${1}\n\\end{alignat}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "alignat*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{alignat*}\n\t${1}\n\\end{alignat*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "aligned",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{aligned}\n\t${1}\n\\end{aligned}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "altenv",
+      "package": "beamer",
+      "type": "environment",
+      "args": "!d<> m m m m !d<>",
+      "snippet": "\\begin{altenv}\n\t${1}\n\\end{altenv}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "array",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "o m",
+      "snippet": "\\begin{array}\n\t${1}\n\\end{array}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "axis",
+      "package": "tikz",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{axis}\n\t${1}\n\\end{axis}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "behindforegroundpath",
+      "package": "tikz",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{behindforegroundpath}\n\t${1}\n\\end{behindforegroundpath}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "block",
+      "package": "beamer",
+      "args": "m",
+      "snippet": "\\begin{block}{${1:Block Title}}\n\t${2:content}\n\\end{block}",
+      "doc_it": "Riquadro tematico colorato in Beamer",
+      "doc_en": "Themed box in Beamer",
+      "type": "environment"
+    },
+    {
+      "name": "bmatrix",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{bmatrix}\n\t${1:a} & ${2:b} \\\\\n\t${3:c} & ${4:d}\n\\end{bmatrix}",
+      "doc_it": "Matrice racchiusa tra parentesi quadre [...]",
+      "doc_en": "Matrix with square brackets",
+      "type": "environment"
+    },
+    {
+      "name": "Bmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{Bmatrix}\n\t${1}\n\\end{Bmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "bmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{bmatrix*}\n\t${1}\n\\end{bmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "Bmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{Bmatrix*}\n\t${1}\n\\end{Bmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "bNiceArray",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{bNiceArray}\n\t${1}\n\\end{bNiceArray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "BNiceArray",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{BNiceArray}\n\t${1}\n\\end{BNiceArray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "bNiceMatrix",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{bNiceMatrix}\n\t${1}\n\\end{bNiceMatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "BNiceMatrix",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{BNiceMatrix}\n\t${1}\n\\end{BNiceMatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "bsmallmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{bsmallmatrix}\n\t${1}\n\\end{bsmallmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "Bsmallmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{Bsmallmatrix}\n\t${1}\n\\end{Bsmallmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "bsmallmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{bsmallmatrix*}\n\t${1}\n\\end{bsmallmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "Bsmallmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{Bsmallmatrix*}\n\t${1}\n\\end{Bsmallmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "cases",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{cases}\n\t${1:val_1} & \\text{se } ${2:cond_1} \\\\\n\t${3:val_2} & \\text{altrimenti}\n\\end{cases}",
+      "doc_it": "Definizione a casi con parentesi graffa sinistra",
+      "doc_en": "Case-by-case definition with left brace",
+      "type": "environment"
+    },
+    {
+      "name": "cases*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{cases*}\n\t${1}\n\\end{cases*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "center",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{center}\n\t${1:Centered content}\n\\end{center}",
+      "doc_it": "Contenuto allineato al centro",
+      "doc_en": "Centered content",
+      "type": "environment"
+    },
+    {
+      "name": "checkboxes",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{checkboxes}\n\t${1}\n\\end{checkboxes}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "choices",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{choices}\n\t${1}\n\\end{choices}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "colormixin",
+      "package": "tikz",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{colormixin}\n\t${1}\n\\end{colormixin}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "column",
+      "package": "beamer",
+      "type": "environment",
+      "args": "d<> o m",
+      "snippet": "\\begin{column}\n\t${1}\n\\end{column}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "columns",
+      "package": "beamer",
+      "type": "environment",
+      "args": "d<> o",
+      "snippet": "\\begin{columns}\n\t${1}\n\\end{columns}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "corollary",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{corollary}\n\t${1}\n\\end{corollary}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "crampedsubarray",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{crampedsubarray}\n\t${1}\n\\end{crampedsubarray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "dcases",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{dcases}\n\t${1}\n\\end{dcases}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "dcases*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{dcases*}\n\t${1}\n\\end{dcases*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "definition",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{definition}\n\t${1}\n\\end{definition}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "description",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{description}\n\t\\item[${1:Term}] ${2:Definition}\n\\end{description}",
+      "doc_it": "Elenco descrittivo con etichette in grassetto",
+      "doc_en": "Description list",
+      "type": "environment"
+    },
+    {
+      "name": "displaymath",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{displaymath}\n\t${1}\n\\end{displaymath}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "document",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{document}\n\t${1:content}\n\\end{document}",
+      "doc_it": "Corpo principale del documento LaTeX",
+      "doc_en": "Main document body",
+      "type": "environment"
+    },
+    {
+      "name": "drcases",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{drcases}\n\t${1}\n\\end{drcases}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "drcases*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{drcases*}\n\t${1}\n\\end{drcases*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "enumerate",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{enumerate}\n\t\\item ${1:First item}\n\\end{enumerate}",
+      "doc_it": "Elenco numerato",
+      "doc_en": "Numbered list",
+      "type": "environment"
+    },
+    {
+      "name": "equation",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{equation}\n\t\\label{eq:${1:key}}\n\t${2:formula}\n\\end{equation}",
+      "doc_it": "Equazione matematica numerata",
+      "doc_en": "Numbered mathematical equation",
+      "type": "environment"
+    },
+    {
+      "name": "equation*",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{equation*}\n\t${1:formula}\n\\end{equation*}",
+      "doc_it": "Equazione matematica senza numero",
+      "doc_en": "Unnumbered mathematical equation",
+      "type": "environment"
+    },
+    {
+      "name": "example",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{example}\n\t${1}\n\\end{example}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "exampleblock",
+      "package": "beamer",
+      "type": "environment",
+      "args": "!d<> !d{} !d<>",
+      "snippet": "\\begin{exampleblock}\n\t${1}\n\\end{exampleblock}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "figure",
+      "package": "latex2e",
+      "args": "o",
+      "snippet": "\\begin{figure}[${1:htbp}]\n\t\\centering\n\t\\includegraphics[width=${2:0.8\\linewidth}]{${3:filename}}\n\t\\caption{${4:Caption}}\n\t\\label{fig:${5:key}}\n\\end{figure}",
+      "doc_it": "Elemento flottante per immagini e figure",
+      "doc_en": "Floating figure environment",
+      "type": "environment"
+    },
+    {
+      "name": "figure*",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{figure*}\n\t${1}\n\\end{figure*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "filecontents",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "o m",
+      "snippet": "\\begin{filecontents}\n\t${1}\n\\end{filecontents}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "filecontents*",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "o m",
+      "snippet": "\\begin{filecontents*}\n\t${1}\n\\end{filecontents*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "flalign",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{flalign}\n\t${1}\n\\end{flalign}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "flalign*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{flalign*}\n\t${1}\n\\end{flalign*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "frame",
+      "package": "beamer",
+      "args": "o",
+      "snippet": "\\begin{frame}{${1:Slide Title}}\n\t${2:content}\n\\end{frame}",
+      "doc_it": "Slide di presentazione Beamer",
+      "doc_en": "Beamer presentation slide",
+      "type": "environment"
+    },
+    {
+      "name": "gather",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{gather}\n\t${1:formula_1} \\\\\n\t${2:formula_2}\n\\end{gather}",
+      "doc_it": "Gruppo di formule centrate ciascuna con proprio numero",
+      "doc_en": "Centered multi-line formulas",
+      "type": "environment"
+    },
+    {
+      "name": "gather*",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{gather*}\n\t${1:formula_1} \\\\\n\t${2:formula_2}\n\\end{gather*}",
+      "doc_it": "Gruppo di formule centrate non numerate",
+      "doc_en": "Centered multi-line formulas unnumbered",
+      "type": "environment"
+    },
+    {
+      "name": "itemize",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{itemize}\n\t\\item ${1:First item}\n\\end{itemize}",
+      "doc_it": "Elenco puntato",
+      "doc_en": "Bullet list",
+      "type": "environment"
+    },
+    {
+      "name": "lemma",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{lemma}\n\t${1}\n\\end{lemma}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "lgathered",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{lgathered}\n\t${1}\n\\end{lgathered}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "list",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "m m",
+      "snippet": "\\begin{list}\n\t${1}\n\\end{list}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "longtable",
+      "package": "longtable",
+      "args": "m",
+      "snippet": "\\begin{longtable}{${1:lcr}}\n\t${2:Header} \\\\\n\t\\endfirsthead\n\t${3:Data} \\\\\n\\end{longtable}",
+      "doc_it": "Tabella multi-pagina che supera i salti pagina",
+      "doc_en": "Multi-page table spanning page breaks",
+      "type": "environment"
+    },
+    {
+      "name": "lstlisting",
+      "package": "listings",
+      "args": "o",
+      "snippet": "\\begin{lstlisting}[language=${1:Python}]\n${2:# code here}\n\\end{lstlisting}",
+      "doc_it": "Blocco di codice sorgente formattato con syntax highlighting",
+      "doc_en": "Source code block with syntax highlighting",
+      "type": "environment"
+    },
+    {
+      "name": "math",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{math}\n\t${1}\n\\end{math}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "matrix",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{matrix}\n\t${1:a} & ${2:b} \\\\\n\t${3:c} & ${4:d}\n\\end{matrix}",
+      "doc_it": "Matrice senza delimitatori",
+      "doc_en": "Matrix without delimiters",
+      "type": "environment"
+    },
+    {
+      "name": "matrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{matrix*}\n\t${1}\n\\end{matrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "minipage",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\begin{minipage}{${1:0.48\\linewidth}}\n\t${2:content}\n\\end{minipage}",
+      "doc_it": "Scatola indipendente per affiancare figure o testi",
+      "doc_en": "Minipage box container",
+      "type": "environment"
+    },
+    {
+      "name": "minted",
+      "package": "minted",
+      "type": "environment",
+      "args": "o m",
+      "snippet": "\\begin{minted}\n\t${1}\n\\end{minted}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto minted",
+      "doc_en": "LaTeX environment provided by package minted"
+    },
+    {
+      "name": "multicols",
+      "package": "multicol",
+      "type": "environment",
+      "args": "m o o",
+      "snippet": "\\begin{multicols}\n\t${1}\n\\end{multicols}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto multicol",
+      "doc_en": "LaTeX environment provided by package multicol"
+    },
+    {
+      "name": "multicols*",
+      "package": "multicol",
+      "type": "environment",
+      "args": "m o o",
+      "snippet": "\\begin{multicols*}\n\t${1}\n\\end{multicols*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto multicol",
+      "doc_en": "LaTeX environment provided by package multicol"
+    },
+    {
+      "name": "multilined",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o o",
+      "snippet": "\\begin{multilined}\n\t${1}\n\\end{multilined}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "multline",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{multline}\n\t${1}\n\\end{multline}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "multline*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{multline*}\n\t${1}\n\\end{multline*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "NiceArray",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{NiceArray}\n\t${1}\n\\end{NiceArray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "NiceArrayWithDelims",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "m m o m !o",
+      "snippet": "\\begin{NiceArrayWithDelims}\n\t${1}\n\\end{NiceArrayWithDelims}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "NiceMatrix",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{NiceMatrix}\n\t${1}\n\\end{NiceMatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "NiceMatrixBlock",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{NiceMatrixBlock}\n\t${1}\n\\end{NiceMatrixBlock}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "NiceTabular",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{NiceTabular}\n\t${1}\n\\end{NiceTabular}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "oneparcheckboxes",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{oneparcheckboxes}\n\t${1}\n\\end{oneparcheckboxes}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "oneparchoices",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{oneparchoices}\n\t${1}\n\\end{oneparchoices}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "onlyenv",
+      "package": "beamer",
+      "type": "environment",
+      "args": "!d<>",
+      "snippet": "\\begin{onlyenv}\n\t${1}\n\\end{onlyenv}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "overlayarea",
+      "package": "beamer",
+      "type": "environment",
+      "args": "m m",
+      "snippet": "\\begin{overlayarea}\n\t${1}\n\\end{overlayarea}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "overprint",
+      "package": "beamer",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{overprint}\n\t${1}\n\\end{overprint}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto beamer",
+      "doc_en": "LaTeX environment provided by package beamer"
+    },
+    {
+      "name": "parts",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{parts}\n\t${1}\n\\end{parts}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "pgflowlevelscope",
+      "package": "tikz",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{pgflowlevelscope}\n\t${1}\n\\end{pgflowlevelscope}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "pgfmetadecoration",
+      "package": "tikz",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{pgfmetadecoration}\n\t${1}\n\\end{pgfmetadecoration}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "pgfonlayer",
+      "package": "tikz",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{pgfonlayer}\n\t${1}\n\\end{pgfonlayer}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "pgftransparencygroup",
+      "package": "tikz",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{pgftransparencygroup}\n\t${1}\n\\end{pgftransparencygroup}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "pgfviewboxscope",
+      "package": "tikz",
+      "type": "environment",
+      "args": "m m m m m",
+      "snippet": "\\begin{pgfviewboxscope}\n\t${1}\n\\end{pgfviewboxscope}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "picture",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "r() d()",
+      "snippet": "\\begin{picture}\n\t${1}\n\\end{picture}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "pmatrix",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{pmatrix}\n\t${1:a} & ${2:b} \\\\\n\t${3:c} & ${4:d}\n\\end{pmatrix}",
+      "doc_it": "Matrice racchiusa tra parentesi tonde (...)",
+      "doc_en": "Matrix with parentheses",
+      "type": "environment"
+    },
+    {
+      "name": "pmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{pmatrix*}\n\t${1}\n\\end{pmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "pNiceArray",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{pNiceArray}\n\t${1}\n\\end{pNiceArray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "pNiceMatrix",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{pNiceMatrix}\n\t${1}\n\\end{pNiceMatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "proof",
+      "package": "amsthm",
+      "args": "o",
+      "snippet": "\\begin{proof}\n\t${1:Proof steps}\n\\end{proof}",
+      "doc_it": "Dimostrazione matematica con simbolo Q.E.D. finale",
+      "doc_en": "Mathematical proof with QED symbol",
+      "type": "environment"
+    },
+    {
+      "name": "proposition",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{proposition}\n\t${1}\n\\end{proposition}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "psmallmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{psmallmatrix}\n\t${1}\n\\end{psmallmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "psmallmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{psmallmatrix*}\n\t${1}\n\\end{psmallmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "questions",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{questions}\n\t${1}\n\\end{questions}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "quotation",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{quotation}\n\t${1:Long quotation text}\n\\end{quotation}",
+      "doc_it": "Citazione testuale estesa con rientro paragrafi",
+      "doc_en": "Long quotation",
+      "type": "environment"
+    },
+    {
+      "name": "quote",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{quote}\n\t${1:Quotation text}\n\\end{quote}",
+      "doc_it": "Citazione testuale breve indentata",
+      "doc_en": "Short quotation",
+      "type": "environment"
+    },
+    {
+      "name": "rcases",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{rcases}\n\t${1}\n\\end{rcases}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "rcases*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{rcases*}\n\t${1}\n\\end{rcases*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "remark",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{remark}\n\t${1}\n\\end{remark}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "rgathered",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{rgathered}\n\t${1}\n\\end{rgathered}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "scope",
+      "package": "tikz",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{scope}\n\t${1}\n\\end{scope}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto tikz",
+      "doc_en": "LaTeX environment provided by package tikz"
+    },
+    {
+      "name": "smallmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{smallmatrix}\n\t${1}\n\\end{smallmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "smallmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{smallmatrix*}\n\t${1}\n\\end{smallmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "split",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{split}\n\t${1}\n\\end{split}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "spreadlines",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{spreadlines}\n\t${1}\n\\end{spreadlines}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "subparts",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{subparts}\n\t${1}\n\\end{subparts}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "subsubparts",
+      "package": "exam",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{subsubparts}\n\t${1}\n\\end{subsubparts}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto exam",
+      "doc_en": "LaTeX environment provided by package exam"
+    },
+    {
+      "name": "tabbing",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{tabbing}\n\t${1}\n\\end{tabbing}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "table",
+      "package": "latex2e",
+      "args": "o",
+      "snippet": "\\begin{table}[${1:htbp}]\n\t\\centering\n\t\\caption{${2:Caption}}\n\t\\label{tab:${3:key}}\n\t\\begin{tabular}{${4:|c|c|}}\n\t\t\\hline\n\t\t${5:Col 1} & ${6:Col 2} \\\\\n\t\t\\hline\n\t\\end{tabular}\n\\end{table}",
+      "doc_it": "Elemento flottante per tabelle",
+      "doc_en": "Floating table environment",
+      "type": "environment"
+    },
+    {
+      "name": "tabular",
+      "package": "latex2e",
+      "args": "m",
+      "snippet": "\\begin{tabular}{${1:lcr}}\n\t${2:A} & ${3:B} & ${4:C} \\\\\n\t\\hline\n\\end{tabular}",
+      "doc_it": "Griglia tabellare standard",
+      "doc_en": "Tabular array grid",
+      "type": "environment"
+    },
+    {
+      "name": "tabular*",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "m o m",
+      "snippet": "\\begin{tabular*}\n\t${1}\n\\end{tabular*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "tabularx",
+      "package": "tabularx",
+      "args": "m m",
+      "snippet": "\\begin{tabularx}{${1:\\linewidth}}{${2:X r}}\n\t${3:Content} & ${4:Value} \\\\\n\\end{tabularx}",
+      "doc_it": "Tabella a larghezza fissa con colonne auto-ridimensionabili X",
+      "doc_en": "Fixed-width table with auto-expanding X columns",
+      "type": "environment"
+    },
+    {
+      "name": "testcolors",
+      "package": "xcolor",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{testcolors}\n\t${1}\n\\end{testcolors}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto xcolor",
+      "doc_en": "LaTeX environment provided by package xcolor"
+    },
+    {
+      "name": "thebibliography",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "m",
+      "snippet": "\\begin{thebibliography}\n\t${1}\n\\end{thebibliography}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "theorem",
+      "package": "amsthm",
+      "args": "o",
+      "snippet": "\\begin{theorem}[${1:Name}]\n\t${2:Statement}\n\\end{theorem}",
+      "doc_it": "Teorema matematico formattato",
+      "doc_en": "Mathematical theorem",
+      "type": "environment"
+    },
+    {
+      "name": "tikzpicture",
+      "package": "tikz",
+      "args": "o",
+      "snippet": "\\begin{tikzpicture}\n\t${1:\\draw (0,0) -- (1,1);}\n\\end{tikzpicture}",
+      "doc_it": "Disegno vettoriale grafico TikZ",
+      "doc_en": "TikZ vector graphics drawing",
+      "type": "environment"
+    },
+    {
+      "name": "trivlist",
+      "package": "latex2e",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{trivlist}\n\t${1}\n\\end{trivlist}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto latex2e",
+      "doc_en": "LaTeX environment provided by package latex2e"
+    },
+    {
+      "name": "verbatim",
+      "package": "latex2e",
+      "args": "",
+      "snippet": "\\begin{verbatim}\n${1:raw_code}\n\\end{verbatim}",
+      "doc_it": "Testo non formattato stampato esattamente come digitato",
+      "doc_en": "Verbatim raw text",
+      "type": "environment"
+    },
+    {
+      "name": "vmatrix",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{vmatrix}\n\t${1:a} & ${2:b} \\\\\n\t${3:c} & ${4:d}\n\\end{vmatrix}",
+      "doc_it": "Determinante tra barre verticali |...|",
+      "doc_en": "Determinant matrix with vertical bars",
+      "type": "environment"
+    },
+    {
+      "name": "Vmatrix",
+      "package": "amsmath",
+      "args": "",
+      "snippet": "\\begin{Vmatrix}\n\t${1:a} & ${2:b} \\\\\n\t${3:c} & ${4:d}\n\\end{Vmatrix}",
+      "doc_it": "Norma o matrice tra doppie barre verticali ||...||",
+      "doc_en": "Norm matrix with double vertical bars",
+      "type": "environment"
+    },
+    {
+      "name": "vmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{vmatrix*}\n\t${1}\n\\end{vmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "Vmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{Vmatrix*}\n\t${1}\n\\end{Vmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "vNiceArray",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{vNiceArray}\n\t${1}\n\\end{vNiceArray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "VNiceArray",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "o m !o",
+      "snippet": "\\begin{VNiceArray}\n\t${1}\n\\end{VNiceArray}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "vNiceMatrix",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{vNiceMatrix}\n\t${1}\n\\end{vNiceMatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "VNiceMatrix",
+      "package": "nicematrix",
+      "type": "environment",
+      "args": "!o",
+      "snippet": "\\begin{VNiceMatrix}\n\t${1}\n\\end{VNiceMatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto nicematrix",
+      "doc_en": "LaTeX environment provided by package nicematrix"
+    },
+    {
+      "name": "vsmallmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{vsmallmatrix}\n\t${1}\n\\end{vsmallmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "Vsmallmatrix",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "",
+      "snippet": "\\begin{Vsmallmatrix}\n\t${1}\n\\end{Vsmallmatrix}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "vsmallmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{vsmallmatrix*}\n\t${1}\n\\end{vsmallmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    },
+    {
+      "name": "Vsmallmatrix*",
+      "package": "mathtools",
+      "type": "environment",
+      "args": "o",
+      "snippet": "\\begin{Vsmallmatrix*}\n\t${1}\n\\end{Vsmallmatrix*}",
+      "doc_it": "Ambiente LaTeX fornito dal pacchetto mathtools",
+      "doc_en": "LaTeX environment provided by package mathtools"
+    }
+  ]
+}

@@ -43,46 +43,37 @@
             <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-file" data-i18n="menu_file">File</button>
             <div class="titlebar-menu-content">
               <button type="button" class="titlebar-menu-item" data-action="new-file">
-                <span data-i18n="new_file">Nuovo file LaTeX</span>
+                <span data-i18n="new_file">New LaTeX File</span>
                 <span class="titlebar-menu-shortcut">Ctrl+N</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="open-file">
-                <span data-i18n="empty_open_file">Apri file...</span>
+                <span data-i18n="empty_open_file">Open File...</span>
                 <span class="titlebar-menu-shortcut">Ctrl+O</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="open-folder">
-                <span data-i18n="open_folder">Apri cartella progetto...</span>
+                <span data-i18n="open_folder">Open Project Folder...</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Shift+O</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="save-file">
-                <span data-i18n="save">Salva</span>
+                <span data-i18n="save">Save</span>
                 <span class="titlebar-menu-shortcut">Ctrl+S</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="save-as-template">
-                <span data-i18n="template_save_modal_title">Salva come Template...</span>
+                <span data-i18n="template_save_modal_title">Save as Template...</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Shift+T</span>
               </button>
-              <div class="titlebar-menu-separator"></div>
-              <button type="button" class="titlebar-menu-item" data-action="choose-template">
-                <span data-i18n="template_gallery_title">Galleria Template...</span>
-                <span class="titlebar-menu-shortcut">Ctrl+T</span>
-              </button>
-              <button type="button" class="titlebar-menu-item" data-action="export-pdf">
-                <span data-i18n="pdf_download">Scarica/Esporta PDF</span>
-                <span class="titlebar-menu-shortcut">Ctrl+Shift+E</span>
-              </button>
-              <div class="titlebar-menu-separator"></div>
-              <button type="button" class="titlebar-menu-item" data-action="open-settings">
-                <span data-i18n="settings_title">Impostazioni</span>
-                <span class="titlebar-menu-shortcut">Ctrl+,</span>
-              </button>
               <button type="button" class="titlebar-menu-item" data-action="close-tab">
-                <span data-i18n="win_close">Chiudi Scheda</span>
+                <span data-i18n="win_close">Close Tab</span>
                 <span class="titlebar-menu-shortcut">Ctrl+W</span>
               </button>
               <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="open-settings">
+                <span data-i18n="settings_title">Settings...</span>
+                <span class="titlebar-menu-shortcut">Ctrl+,</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
               <button type="button" class="titlebar-menu-item" data-action="quit-app">
-                <span>Esci</span>
+                <span>Quit</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Q</span>
               </button>
             </div>
@@ -90,36 +81,40 @@
 
           <!-- EDIT MENU -->
           <div class="titlebar-menu-dropdown" id="menu-dropdown-edit">
-            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-edit">Modifica</button>
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-edit">Edit</button>
             <div class="titlebar-menu-content">
               <button type="button" class="titlebar-menu-item" data-action="undo">
-                <span>Annulla</span>
+                <span>Undo</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Z</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="redo">
-                <span>Ripeti</span>
+                <span>Redo</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Y</span>
               </button>
               <div class="titlebar-menu-separator"></div>
               <button type="button" class="titlebar-menu-item" data-action="cut">
-                <span>Taglia</span>
+                <span>Cut</span>
                 <span class="titlebar-menu-shortcut">Ctrl+X</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="copy">
-                <span>Copia</span>
+                <span>Copy</span>
                 <span class="titlebar-menu-shortcut">Ctrl+C</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="paste">
-                <span>Incolla</span>
+                <span>Paste</span>
                 <span class="titlebar-menu-shortcut">Ctrl+V</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="select-all">
-                <span>Seleziona tutto</span>
+                <span>Select All</span>
                 <span class="titlebar-menu-shortcut">Ctrl+A</span>
               </button>
               <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="choose-template">
+                <span data-i18n="template_gallery_title">Choose Template...</span>
+                <span class="titlebar-menu-shortcut">Ctrl+T</span>
+              </button>
               <button type="button" class="titlebar-menu-item" data-action="find">
-                <span data-i18n="search_button">Cerca</span>
+                <span data-i18n="search_button">Find</span>
                 <span class="titlebar-menu-shortcut">Ctrl+F</span>
               </button>
             </div>
@@ -127,60 +122,74 @@
 
           <!-- COMPILE MENU -->
           <div class="titlebar-menu-dropdown" id="menu-dropdown-compile">
-            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-compile" data-i18n="compile_btn">Compila</button>
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-compile" data-i18n="compile_btn">Compile</button>
             <div class="titlebar-menu-content">
               <button type="button" class="titlebar-menu-item" data-action="trigger-compile">
-                <span data-i18n="compile_btn">Ricompila Documento</span>
+                <span data-i18n="compile_btn">Recompile Document</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Enter</span>
               </button>
+              <button type="button" class="titlebar-menu-item" data-action="toggle-auto-compile">
+                <span id="menu-label-auto-compile">Auto-compile: Off</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="recompile-from-scratch">
+                <span>Recompile from Scratch</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+R</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="stop-compile">
+                <span>Stop Compilation</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
               <button type="button" class="titlebar-menu-item" data-action="toggle-logs">
-                <span data-i18n="logs_title">Pannello Errori e Log</span>
+                <span data-i18n="logs_title">Toggle Logs and Issues Drawer</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Shift+U</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="clean-aux">
-                <span data-i18n="settings_clean_aux">Pulisci File Ausiliari</span>
+                <span data-i18n="settings_clean_aux">Clean Auxiliary Files</span>
               </button>
             </div>
           </div>
 
           <!-- VIEW MENU -->
           <div class="titlebar-menu-dropdown" id="menu-dropdown-view">
-            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-view">Visualizza</button>
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-view">View</button>
             <div class="titlebar-menu-content">
               <button type="button" class="titlebar-menu-item" data-action="toggle-explorer">
                 <span data-i18n="toggle_explorer">Explorer</span>
                 <span class="titlebar-menu-shortcut">Ctrl+R</span>
               </button>
+              <button type="button" class="titlebar-menu-item" data-action="toggle-outline">
+                <span>Outline</span>
+              </button>
               <div class="titlebar-menu-separator"></div>
-              <button type="button" class="titlebar-menu-item" data-action="view-editor">
-                <span data-i18n="view_editor">Solo Editor</span>
-                <span class="titlebar-menu-shortcut">Ctrl+Shift+L</span>
+              <button type="button" class="titlebar-menu-item" data-action="view-preview">
+                <span data-i18n="view_preview">Solo Preview (&lt;)</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+P</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="view-split">
-                <span data-i18n="view_split">Vista Divisa</span>
+                <span data-i18n="view_split">Split View (&gt;|&lt;)</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Shift+K</span>
               </button>
-              <button type="button" class="titlebar-menu-item" data-action="view-preview">
-                <span data-i18n="view_preview">Solo Anteprima PDF</span>
-                <span class="titlebar-menu-shortcut">Ctrl+Shift+P</span>
+              <button type="button" class="titlebar-menu-item" data-action="view-editor">
+                <span data-i18n="view_editor">Solo Editor (&gt;)</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+L</span>
               </button>
               <div class="titlebar-menu-separator"></div>
               <button type="button" class="titlebar-menu-item" data-action="zoom-in">
-                <span>Ingrandisci</span>
+                <span>Zoom In</span>
                 <span class="titlebar-menu-shortcut">Ctrl++</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="zoom-out">
-                <span>Riduci</span>
+                <span>Zoom Out</span>
                 <span class="titlebar-menu-shortcut">Ctrl+-</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="zoom-reset">
-                <span>Ripristina Zoom</span>
+                <span>Reset Zoom</span>
                 <span class="titlebar-menu-shortcut">Ctrl+0</span>
               </button>
               <div class="titlebar-menu-separator"></div>
               <div class="titlebar-menu-submenu-wrapper">
                 <div class="titlebar-menu-item titlebar-submenu-trigger" tabindex="0">
-                  <span data-i18n="settings_theme">Tema</span>
+                  <span data-i18n="settings_theme">Theme</span>
                   <div class="titlebar-submenu-right">
                     <span class="titlebar-menu-shortcut">Ctrl+M</span>
                     <span class="titlebar-submenu-arrow">▸</span>
@@ -188,13 +197,13 @@
                 </div>
                 <div class="titlebar-submenu-content">
                   <button type="button" class="titlebar-menu-item" data-action="set-theme-light">
-                    <span>Tema Chiaro</span>
+                    <span>Light Mode</span>
                   </button>
                   <button type="button" class="titlebar-menu-item" data-action="set-theme-dark">
-                    <span>Tema Scuro</span>
+                    <span>Dark Mode</span>
                   </button>
                   <button type="button" class="titlebar-menu-item" data-action="set-theme-github">
-                    <span>Tema GitHub</span>
+                    <span>GitHub Mode</span>
                   </button>
                 </div>
               </div>
@@ -312,9 +321,9 @@
             <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
           </svg>
         </button>
-        <button id="btn-view-editor" data-i18n-title="view_editor" title="Solo Editor">&lt;</button>
-        <button id="btn-view-split" data-i18n-title="view_split" title="Vista Divisa">&gt;|&lt;</button>
-        <button id="btn-view-preview" data-i18n-title="view_preview" title="Solo Anteprima PDF">&gt;</button>
+        <button id="btn-view-preview" class="view-mode-btn" data-i18n-title="view_preview" title="Solo Anteprima PDF">&lt;</button>
+        <button id="btn-view-split" class="view-mode-btn active" data-i18n-title="view_split" title="Vista Divisa">&gt;|&lt;</button>
+        <button id="btn-view-editor" class="view-mode-btn" data-i18n-title="view_editor" title="Solo Editor">&gt;</button>
       </div>
     </div>
 
@@ -454,8 +463,29 @@
           </div>
         </div>
 
+        <!-- SIDEBAR TABS: FILES & OUTLINE -->
+        <div class="sidebar-tab-bar">
+          <button type="button" id="sidebar-tab-files" class="sidebar-tab-btn active" title="File Explorer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+            <span>File</span>
+          </button>
+          <button type="button" id="sidebar-tab-outline" class="sidebar-tab-btn" title="Struttura documento">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="15" y2="12"></line>
+              <line x1="3" y1="18" x2="18" y2="18"></line>
+            </svg>
+            <span>Outline</span>
+          </button>
+        </div>
+
         <div id="folder-path" class="folder-path hidden"></div>
         <div id="file-tree"></div>
+        <div id="outline-view" class="outline-view hidden">
+          <div id="outline-tree"></div>
+        </div>
       </div>
 
       <div id="explorer-resizer"></div>
@@ -524,11 +554,7 @@
         <div id="container" class="split-view">
           <!-- CODE EDITOR PANE ("IL NON COMPILATO") -->
           <div id="editor-container">
-            <div id="editor-line-numbers" class="editor-gutter"></div>
-            <div class="editor-textarea-wrapper">
-              <textarea id="editor" placeholder="" spellcheck="false"></textarea>
-              <div id="editor-overlay" aria-hidden="true"></div>
-            </div>
+            <div id="editor-mount"></div>
           </div>
 
           <!-- PDF VIEWER & PREVIEW PANE ("IL COMPILATO") -->
@@ -536,15 +562,21 @@
             <!-- PDF VIEWER TOOLBAR: OVERLEAF COMPILA BUTTON POSITIONED EXACTLY BETWEEN EDITOR & PREVIEW -->
             <div class="pdf-viewer-toolbar">
               <div class="pdf-toolbar-left">
-                <!-- OVERLEAF-STYLE RECOMPILE BUTTON WITH SIGNATURE PURPLE #80007f -->
+                <!-- OVERLEAF-STYLE RECOMPILE BUTTON -->
                 <button id="btn-recompile" class="compile-btn" data-i18n-title="compile_btn" title="Compila documento LaTeX (Ctrl + Enter)">
                   <svg class="compile-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg>
                   <span class="compile-text" data-i18n="compile_btn">Compila</span>
-                  <span class="compile-status-dot"></span>
                 </button>
+
+                <!-- AUTO-COMPILE TOGGLE SWITCH -->
+                <label class="auto-compile-toggle" title="Auto-compilazione (1.5s debounce)">
+                  <input type="checkbox" id="check-auto-compile" />
+                  <span class="auto-compile-slider"></span>
+                  <span class="auto-compile-label">Auto</span>
+                </label>
 
                 <button id="btn-toggle-logs" class="logs-indicator-btn" data-i18n-title="logs_title" title="Log ed Errori (Ctrl + Shift + U)">
                   <svg class="logs-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -598,7 +630,7 @@
 
             <!-- PDF DISPLAY / EMBED -->
             <div id="pdf-viewport" class="pdf-viewport">
-              <iframe id="pdf-frame" class="pdf-frame hidden" src="about:blank"></iframe>
+              <div id="pdf-canvas-container" class="pdf-canvas-container"></div>
               <div id="preview" class="markdown-body latex-body hidden"></div>
               <div id="pdf-empty-placeholder" class="pdf-empty-placeholder">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -1009,7 +1041,7 @@
     <div class="modal-content template-gallery-modal-content">
       <div class="template-gallery-header">
         <div class="template-gallery-header-left">
-          <div class="template-gallery-badge-icon" style="background:#80007f;">
+          <div class="template-gallery-badge-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <path d="M3 9h18M9 21V9"/>

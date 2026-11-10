@@ -30,6 +30,21 @@ const EXTRA_SEARCH_PATHS = [
   "C:\\Program Files (x86)\\MiKTeX\\miktex\\bin"
 ];
 
+let activeChildProcess = null;
+
+function stopCompilation() {
+  if (activeChildProcess && !activeChildProcess.killed) {
+    try {
+      activeChildProcess.kill("SIGTERM");
+      activeChildProcess = null;
+      return true;
+    } catch (e) {
+      console.warn("Failed to kill child process:", e);
+    }
+  }
+  return false;
+}
+
 function findBinaryPath(binaryName) {
   // 1. Try which/where
   try {
@@ -99,73 +114,76 @@ function parseLatexLog(logContent) {
       currentFile = fileStack[fileStack.length - 1] || "";
     }
 
-    // 1. File-line-error format: "filename.tex:12: Error message"
-    const fileLineMatch = line.match(/^([^:]+):(\d+):\s+(.+)$/);
-    if (fileLineMatch) {
-      const file = path.basename(fileLineMatch[1]);
-      const lineNum = parseInt(fileLineMatch[2], 10);
-      const msg = fileLineMatch[3];
+    // 1. Standard file-line-error format: "filename.tex:14: Error message"
+    const fileLineErrorMatch = line.match(/^(.+?\.tex):(\d+):\s*(.*)$/);
+    if (fileLineErrorMatch) {
       issues.push({
         type: "error",
-        file: file,
-        line: lineNum,
-        message: msg,
+        file: path.basename(fileLineErrorMatch[1]),
+        line: parseInt(fileLineErrorMatch[2], 10),
+        message: fileLineErrorMatch[3].trim(),
         raw: line
       });
       continue;
     }
 
-    // 2. Standard TeX errors starting with "! "
-    if (line.startsWith("! ")) {
-      const msg = line.substring(2).trim();
-      let lineNum = null;
+    // 2. Traditional TeX error starting with '!'
+    if (line.startsWith("!")) {
+      const errorMsg = line.slice(1).trim();
+      let errorLine = null;
 
-      // Look ahead for "l.<number>" line context
-      for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
-        const lMatch = lines[j].match(/^l\.(\d+)\s*(.*)$/);
-        if (lMatch) {
-          lineNum = parseInt(lMatch[1], 10);
+      // Check next lines for "l.NN" context indicator
+      for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+        const lineMatch = lines[j].match(/^l\.(\d+)/);
+        if (lineMatch) {
+          errorLine = parseInt(lineMatch[1], 10);
           break;
         }
       }
 
+      // Check for missing package error: "! LaTeX Error: File `xxx.sty' not found."
+      const pkgMatch = errorMsg.match(/File ['`"]([a-zA-Z0-9_-]+)\.sty['`"] not found/i);
+      let missingPackage = null;
+      if (pkgMatch) {
+        missingPackage = pkgMatch[1];
+      }
+
       issues.push({
         type: "error",
-        file: path.basename(currentFile) || "main.tex",
-        line: lineNum,
-        message: msg,
+        file: currentFile ? path.basename(currentFile) : "",
+        line: errorLine || 1,
+        message: errorMsg,
+        missingPackage,
         raw: line
       });
       continue;
     }
 
     // 3. LaTeX Warnings
-    if (line.includes("LaTeX Warning:") || line.includes("Package") && line.includes("Warning:")) {
-      let msg = line.trim();
-      let lineNum = null;
-      const lineMatch = line.match(/line\s+(\d+)/i);
-      if (lineMatch) {
-        lineNum = parseInt(lineMatch[1], 10);
-      }
+    const warnMatch = line.match(/LaTeX (?:Font )?Warning:\s*(.*)/);
+    if (warnMatch) {
+      let warnLine = null;
+      const lineMatch = line.match(/line (\d+)/i);
+      if (lineMatch) warnLine = parseInt(lineMatch[1], 10);
+
       issues.push({
         type: "warning",
-        file: path.basename(currentFile) || "main.tex",
-        line: lineNum,
-        message: msg,
+        file: currentFile ? path.basename(currentFile) : "",
+        line: warnLine || 1,
+        message: warnMatch[1].trim(),
         raw: line
       });
       continue;
     }
 
-    // 4. Badbox (Overfull / Underfull)
-    if (line.startsWith("Overfull \\hbox") || line.startsWith("Underfull \\hbox") || line.startsWith("Overfull \\vbox")) {
-      const lineMatch = line.match(/at lines\s+(\d+)--?(\d+)?/) || line.match(/at line\s+(\d+)/);
-      const lineNum = lineMatch ? parseInt(lineMatch[1], 10) : null;
+    // 4. Overfull / Underfull hbox warnings
+    const boxMatch = line.match(/(Overfull|Underfull) \\[hv]box \([^)]+\) in paragraph at lines (\d+)--(\d+)/);
+    if (boxMatch) {
       issues.push({
-        type: "badbox",
-        file: path.basename(currentFile) || "main.tex",
-        line: lineNum,
-        message: line.trim(),
+        type: "box",
+        file: currentFile ? path.basename(currentFile) : "",
+        line: parseInt(boxMatch[2], 10),
+        message: `${boxMatch[1]} hbox: lines ${boxMatch[2]}--${boxMatch[3]}`,
         raw: line
       });
     }
@@ -174,29 +192,57 @@ function parseLatexLog(logContent) {
   return issues;
 }
 
-/**
- * Execute compilation of a LaTeX file
- */
+function cleanAuxiliaryFiles(projectDir, outputDir) {
+  const dirsToClean = [outputDir, projectDir].filter(Boolean);
+  const auxExtensions = [".aux", ".log", ".out", ".toc", ".nav", ".snm", ".vrb", ".bbl", ".blg", ".synctex.gz", ".fls", ".fdb_latexmk"];
+  let removedCount = 0;
+
+  for (const dir of dirsToClean) {
+    if (!fs.existsSync(dir)) continue;
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase();
+        if (auxExtensions.includes(ext)) {
+          try {
+            fs.unlinkSync(path.join(dir, file));
+            removedCount++;
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
+  return removedCount;
+}
+
 async function compileLatex(options = {}) {
   const {
     filePath,
     content,
     projectDir = null,
     engine = "pdflatex",
-    customEnginePath = null,
     outputDir = null,
-    cleanAux = false
+    cleanAux = false,
+    isMemoryBuffer = true // In-memory compilation: never overwrite user's disk file
   } = options;
 
   const startTime = Date.now();
 
-  // If built-in engine selected or engine is builtin
-  if (engine === "builtin") {
-    return compileWithBuiltin({ filePath, content, projectDir, outputDir, startTime });
+  // If a child process is already running, kill it before starting a new compile
+  stopCompilation();
+
+  if (cleanAux) {
+    cleanAuxiliaryFiles(projectDir, outputDir);
   }
 
-  // Resolve binary
-  let binPath = customEnginePath;
+  // Built-in compiler route
+  if (engine === "builtin") {
+    return compileWithBuiltin({ filePath, content, projectDir, outputDir, startTime, fallbackNotice: false });
+  }
+
+  // Native compiler execution
+  let binPath = findBinaryPath(engine);
   if (!binPath || !fs.existsSync(binPath)) {
     const detected = detectEngines().find(e => e.id === engine);
     binPath = detected ? detected.path : null;
@@ -217,21 +263,8 @@ async function compileLatex(options = {}) {
     fs.mkdirSync(cacheDir, { recursive: true });
   }
 
-  if (!targetFile) {
-    targetFile = path.join(cacheDir, "document.tex");
-    fs.writeFileSync(targetFile, content || "", "utf8");
-    workDir = cacheDir;
-  } else if (content !== undefined && content !== null) {
-    // Write latest memory buffer to file before compilation
-    try {
-      fs.writeFileSync(targetFile, content, "utf8");
-    } catch (e) {
-      console.warn("Could not write file before compile:", e);
-    }
-  }
-
   if (!workDir) {
-    workDir = path.dirname(targetFile);
+    workDir = targetFile ? path.dirname(targetFile) : cacheDir;
   }
 
   const outDir = outputDir || path.join(workDir, "build");
@@ -239,19 +272,38 @@ async function compileLatex(options = {}) {
     try { fs.mkdirSync(outDir, { recursive: true }); } catch (e) {}
   }
 
-  const baseName = path.basename(targetFile, path.extname(targetFile));
+  // If memory buffer: write to a dedicated build file in outDir or workDir so user's file is not overwritten
+  let compileSourceFile = targetFile;
+  const baseName = targetFile ? path.basename(targetFile, path.extname(targetFile)) : "document";
+
+  if (isMemoryBuffer && content !== undefined && content !== null) {
+    // Write in-memory content to build dir file
+    const buildTempFile = path.join(outDir, `${baseName}.tex`);
+    try {
+      fs.writeFileSync(buildTempFile, content, "utf8");
+      compileSourceFile = buildTempFile;
+    } catch (e) {
+      console.warn("Could not write build buffer file, using target:", e);
+    }
+  }
+
+  if (!compileSourceFile) {
+    compileSourceFile = path.join(cacheDir, "document.tex");
+    fs.writeFileSync(compileSourceFile, content || "", "utf8");
+  }
+
   const expectedPdfPath = path.join(outDir, `${baseName}.pdf`);
   const rootExpectedPdfPath = path.join(workDir, `${baseName}.pdf`);
 
   // Build command arguments
   let args = [];
   if (engine === "tectonic") {
-    args = ["--synctex", "--outdir", outDir, targetFile];
+    args = ["--synctex", "--outdir", outDir, compileSourceFile];
   } else if (engine === "latexmk") {
-    args = ["-pdf", "-interaction=nonstopmode", "-synctex=1", "-file-line-error", `-outdir=${outDir}`, targetFile];
+    args = ["-pdf", "-interaction=nonstopmode", "-synctex=1", "-file-line-error", `-outdir=${outDir}`, compileSourceFile];
   } else {
     // pdflatex, xelatex, lualatex
-    args = ["-interaction=nonstopmode", "-synctex=1", "-file-line-error", `-output-directory=${outDir}`, targetFile];
+    args = ["-interaction=nonstopmode", "-synctex=1", "-file-line-error", `-output-directory=${outDir}`, compileSourceFile];
   }
 
   return new Promise((resolve) => {
@@ -263,33 +315,37 @@ async function compileLatex(options = {}) {
       env.PATH = `${EXTRA_SEARCH_PATHS.join(path.delimiter)}${path.delimiter}${env.PATH || ""}`;
     }
 
-    let proc;
     try {
-      proc = spawn(binPath, args, { cwd: workDir, env });
+      activeChildProcess = spawn(binPath, args, { cwd: workDir, env });
     } catch (spawnErr) {
+      activeChildProcess = null;
       return resolve({
         success: false,
         pdfPath: null,
-        issues: [{ type: "error", file: path.basename(targetFile), line: 1, message: spawnErr.message }],
+        issues: [{ type: "error", file: path.basename(compileSourceFile), line: 1, message: spawnErr.message }],
         log: spawnErr.toString(),
         durationMs: Date.now() - startTime
       });
     }
 
-    proc.stdout.on("data", (chunk) => { stdoutData += chunk.toString(); });
-    proc.stderr.on("data", (chunk) => { stderrData += chunk.toString(); });
+    const currentProc = activeChildProcess;
 
-    proc.on("error", (err) => {
+    currentProc.stdout.on("data", (chunk) => { stdoutData += chunk.toString(); });
+    currentProc.stderr.on("data", (chunk) => { stderrData += chunk.toString(); });
+
+    currentProc.on("error", (err) => {
+      activeChildProcess = null;
       resolve({
         success: false,
         pdfPath: null,
-        issues: [{ type: "error", file: path.basename(targetFile), line: 1, message: err.message }],
+        issues: [{ type: "error", file: path.basename(compileSourceFile), line: 1, message: err.message }],
         log: err.toString(),
         durationMs: Date.now() - startTime
       });
     });
 
-    proc.on("close", (code) => {
+    currentProc.on("close", (code) => {
+      activeChildProcess = null;
       const durationMs = Date.now() - startTime;
       const combinedLog = stdoutData + (stderrData ? "\n--- STDERR ---\n" + stderrData : "");
 
@@ -303,50 +359,33 @@ async function compileLatex(options = {}) {
       }
 
       const issues = parseLatexLog(fullLog);
-
-      // Check if PDF was produced
-      let generatedPdf = null;
+      let resultingPdf = null;
       if (fs.existsSync(expectedPdfPath)) {
-        generatedPdf = expectedPdfPath;
+        resultingPdf = expectedPdfPath;
       } else if (fs.existsSync(rootExpectedPdfPath)) {
-        generatedPdf = rootExpectedPdfPath;
+        resultingPdf = rootExpectedPdfPath;
       }
 
-      const hasFatalErrors = issues.some(i => i.type === "error") && (!generatedPdf || code !== 0);
-
-      // Clean intermediate files if requested
-      if (cleanAux && generatedPdf) {
-        const auxExts = [".aux", ".out", ".toc", ".fls", ".fdb_latexmk", ".nav", ".snm", ".vrb"];
-        for (const ext of auxExts) {
-          const auxFile = path.join(outDir, `${baseName}${ext}`);
-          if (fs.existsSync(auxFile)) {
-            try { fs.unlinkSync(auxFile); } catch (e) {}
-          }
-        }
-      }
+      const hasFatalErrors = issues.some(i => i.type === "error");
+      const success = code === 0 && !!resultingPdf && !hasFatalErrors;
 
       resolve({
-        success: !hasFatalErrors && !!generatedPdf,
-        pdfPath: generatedPdf,
-        issues: issues,
+        success,
+        exitCode: code,
+        pdfPath: resultingPdf,
+        issues,
         log: fullLog,
-        durationMs: durationMs,
-        engine: engine,
-        exitCode: code
+        durationMs,
+        engine
       });
     });
   });
 }
 
-/**
- * Built-in fallback renderer: creates high-resolution PDF directly
- */
-async function compileWithBuiltin(options) {
-  const { filePath, content = "", projectDir, outputDir, startTime, fallbackNotice } = options;
-  const baseDir = projectDir || (filePath ? path.dirname(filePath) : path.join(os.homedir(), ".cache", "lack", "build"));
-  const outDir = outputDir || path.join(baseDir, "build");
-
-  if (!fs.existsSync(outDir)) {
+function compileWithBuiltin({ filePath, content, projectDir, outputDir, startTime, fallbackNotice = false }) {
+  let outDir = outputDir;
+  if (!outDir) {
+    outDir = projectDir ? path.join(projectDir, "build") : path.join(os.homedir(), ".cache", "lack", "build");
     try { fs.mkdirSync(outDir, { recursive: true }); } catch (e) {}
   }
 
@@ -359,9 +398,8 @@ async function compileWithBuiltin(options) {
     log += `[Tip] Install TeX Live on Ubuntu via: sudo apt install texlive-latex-base texlive-latex-extra\n`;
   }
 
-  // Basic LaTeX parser to HTML
   const parsed = convertLatexToHtml(content);
-  log += `Parsed ${parsed.sectionsCount} sections, ${parsed.mathCount} math formulas, ${parsed.figuresCount} figures.\n`;
+  log += `Parsed ${parsed.sectionsCount} sections, ${parsed.mathCount} math formulas, ${parsed.figuresCount} figures across ${parsed.pagesCount} pages.\n`;
   log += `Output destination: ${pdfPath}\nCompilation finished.`;
 
   return {
@@ -372,12 +410,13 @@ async function compileWithBuiltin(options) {
     issues: parsed.issues,
     log: log,
     durationMs: Date.now() - startTime,
-    engine: "builtin"
+    engine: "builtin",
+    fallbackNotice
   };
 }
 
 /**
- * Fast LaTeX to HTML translator for instant visual feedback and built-in export
+ * Fast LaTeX to HTML translator rendering realistic A4 pages (.page-sheet-a4)
  */
 function convertLatexToHtml(latexText) {
   const issues = [];
@@ -386,7 +425,7 @@ function convertLatexToHtml(latexText) {
   let figuresCount = 0;
 
   if (!latexText) {
-    return { html: "<p></p>", issues, sectionsCount, mathCount, figuresCount };
+    return { html: "<p></p>", issues, sectionsCount, mathCount, figuresCount, pagesCount: 1 };
   }
 
   let bodyText = latexText;
@@ -410,131 +449,133 @@ function convertLatexToHtml(latexText) {
   const todayStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   date = date.replace(/\\today\b/g, todayStr);
 
-  let html = "";
-  if (title || author || date) {
-    html += `<div class="latex-title-banner">`;
-    if (title) html += `<h1 class="latex-doc-title">${escapeHtml(title)}</h1>`;
-    if (author) html += `<div class="latex-doc-author">${escapeHtml(author)}</div>`;
-    if (date) html += `<div class="latex-doc-date">${escapeHtml(date)}</div>`;
-    html += `</div><hr class="latex-title-divider" />`;
-  }
-
-  // Clean comments (lines starting with %)
+  // Clean comments
   const lines = bodyText.split("\n");
   const processedLines = lines.map(line => {
     const trimmed = line.trim();
     if (trimmed.startsWith("%")) return "";
-    return line.replace(/([^\\])%.*$/, "$1"); // remove inline comments not escaped with \%
+    return line.replace(/([^\\])%.*$/, "$1");
   });
   let cleanBody = processedLines.join("\n");
 
-  cleanBody = cleanBody.replace(/\\maketitle\b/g, "");
-  cleanBody = cleanBody.replace(/\\today\b/g, todayStr);
-  cleanBody = cleanBody.replace(/\\tableofcontents\b/g, "<div class='latex-toc'><strong>Table of Contents</strong></div>");
-  cleanBody = cleanBody.replace(/\\newpage\b/g, "<hr class='latex-page-break' />");
+  // Split into pages by \newpage or \clearpage
+  const rawPages = cleanBody.split(/\\(?:newpage|clearpage)\b/);
+  const pagesCount = Math.max(1, rawPages.length);
 
-  // Sections
-  cleanBody = cleanBody.replace(/\\section\*?\{([^}]+)\}/g, (_m, s) => {
-    sectionsCount++;
-    return `<h2 class="latex-section">${escapeHtml(s)}</h2>`;
-  });
-  cleanBody = cleanBody.replace(/\\subsection\*?\{([^}]+)\}/g, (_m, s) => {
-    sectionsCount++;
-    return `<h3 class="latex-subsection">${escapeHtml(s)}</h3>`;
-  });
-  cleanBody = cleanBody.replace(/\\subsubsection\*?\{([^}]+)\}/g, (_m, s) => {
-    sectionsCount++;
-    return `<h4 class="latex-subsubsection">${escapeHtml(s)}</h4>`;
-  });
-  cleanBody = cleanBody.replace(/\\paragraph\*?\{([^}]+)\}/g, (_m, s) => {
-    return `<h5 class="latex-paragraph">${escapeHtml(s)}</h5>`;
-  });
+  let fullHtml = '<div class="latex-pages-stack">';
 
-  // Text formatting
-  cleanBody = cleanBody.replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>");
-  cleanBody = cleanBody.replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>");
-  cleanBody = cleanBody.replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>");
-  cleanBody = cleanBody.replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>");
-  cleanBody = cleanBody.replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>");
+  for (let pIdx = 0; pIdx < pagesCount; pIdx++) {
+    let pageContent = rawPages[pIdx];
 
-  // Display math
-  cleanBody = cleanBody.replace(/\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\}/g, (_m, eq) => {
-    mathCount++;
-    return `<div class="latex-display-math">$$${eq.trim()}$$</div>`;
-  });
-  cleanBody = cleanBody.replace(/\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\}/g, (_m, eq) => {
-    mathCount++;
-    return `<div class="latex-display-math">$$\\begin{aligned}${eq.trim()}\\end{aligned}$$</div>`;
-  });
-  cleanBody = cleanBody.replace(/\\\[([\s\S]*?)\\\]/g, (_m, eq) => {
-    mathCount++;
-    return `<div class="latex-display-math">$$${eq.trim()}$$</div>`;
-  });
+    let pageHtml = "";
 
-  // Inline math: $...$
-  cleanBody = cleanBody.replace(/\$([^$]+)\$/g, (_m, eq) => {
-    mathCount++;
-    return `<span class="latex-inline-math">$${eq}$</span>`;
-  });
-
-  // Figures
-  cleanBody = cleanBody.replace(/\\begin\{figure\}[\s\S]*?\\includegraphics(?:\[.*?\])?\{([^}]+)\}[\s\S]*?(?:\\caption\{([^}]+)\})?[\s\S]*?\\end\{figure\}/g, (_m, img, cap) => {
-    figuresCount++;
-    return `<div class="latex-figure"><img src="${escapeHtml(img)}" alt="${escapeHtml(cap || '')}" />${cap ? `<div class="latex-caption"><strong>Figure:</strong> ${escapeHtml(cap)}</div>` : ''}</div>`;
-  });
-
-  // Itemize / Enumerate
-  cleanBody = cleanBody.replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_m, content) => {
-    const items = content.split(/\\item\b/).filter(x => x.trim().length > 0);
-    return `<ul class="latex-list">${items.map(it => `<li>${it.trim()}</li>`).join("")}</ul>`;
-  });
-  cleanBody = cleanBody.replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_m, content) => {
-    const items = content.split(/\\item\b/).filter(x => x.trim().length > 0);
-    return `<ol class="latex-list">${items.map(it => `<li>${it.trim()}</li>`).join("")}</ol>`;
-  });
-
-  // Abstract
-  cleanBody = cleanBody.replace(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/g, (_m, abs) => {
-    return `<div class="latex-abstract"><div class="latex-abstract-title">Abstract</div><p>${abs.trim()}</p></div>`;
-  });
-
-  // Paragraph breaks
-  const paragraphs = cleanBody.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-  const formattedHtml = paragraphs.map(p => {
-    if (p.startsWith("<h") || p.startsWith("<div") || p.startsWith("<ul") || p.startsWith("<ol") || p.startsWith("<table")) {
-      return p;
+    // On first page, render title banner if declared
+    if (pIdx === 0 && (title || author || date)) {
+      pageHtml += `<div class="latex-title-banner">`;
+      if (title) pageHtml += `<h1 class="latex-doc-title">${escapeHtml(title)}</h1>`;
+      if (author) pageHtml += `<div class="latex-doc-author">${escapeHtml(author)}</div>`;
+      if (date) pageHtml += `<div class="latex-doc-date">${escapeHtml(date)}</div>`;
+      pageHtml += `</div><hr class="latex-title-divider" />`;
     }
-    return `<p class="latex-p">${p.replace(/\n/g, " ")}</p>`;
-  }).join("\n");
 
-  html += formattedHtml;
+    pageContent = pageContent.replace(/\\maketitle\b/g, "");
+    pageContent = pageContent.replace(/\\today\b/g, todayStr);
+    pageContent = pageContent.replace(/\\tableofcontents\b/g, "<div class='latex-toc'><strong>Indice</strong></div>");
 
-  return { html, issues, sectionsCount, mathCount, figuresCount };
+    // Sections
+    pageContent = pageContent.replace(/\\section\*?\{([^}]+)\}/g, (_m, s) => {
+      sectionsCount++;
+      return `<h2 class="latex-section">${escapeHtml(s)}</h2>`;
+    });
+    pageContent = pageContent.replace(/\\subsection\*?\{([^}]+)\}/g, (_m, s) => {
+      sectionsCount++;
+      return `<h3 class="latex-subsection">${escapeHtml(s)}</h3>`;
+    });
+    pageContent = pageContent.replace(/\\subsubsection\*?\{([^}]+)\}/g, (_m, s) => {
+      sectionsCount++;
+      return `<h4 class="latex-subsubsection">${escapeHtml(s)}</h4>`;
+    });
+    pageContent = pageContent.replace(/\\paragraph\*?\{([^}]+)\}/g, (_m, s) => {
+      return `<h5 class="latex-paragraph">${escapeHtml(s)}</h5>`;
+    });
+
+    // Formatting
+    pageContent = pageContent.replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>");
+    pageContent = pageContent.replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>");
+    pageContent = pageContent.replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>");
+    pageContent = pageContent.replace(/\\texttt\{([^}]+)\}/g, "<code>$1</code>");
+
+    // Mathematics counters
+    const displayMath = pageContent.match(/\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$/g);
+    if (displayMath) mathCount += displayMath.length;
+    const inlineMath = pageContent.match(/\$[^$]+\$|\\\([\s\S]*?\\\)/g);
+    if (inlineMath) mathCount += inlineMath.length;
+
+    // Itemize & enumerate
+    pageContent = pageContent.replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_m, body) => {
+      const items = body.split(/\\item\b/).slice(1).map(it => `<li>${it.trim()}</li>`).join("");
+      return `<ul class="latex-list">${items}</ul>`;
+    });
+    pageContent = pageContent.replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_m, body) => {
+      const items = body.split(/\\item\b/).slice(1).map(it => `<li>${it.trim()}</li>`).join("");
+      return `<ol class="latex-list">${items}</ol>`;
+    });
+
+    // Paragraphs
+    const paras = pageContent.split(/\n\s*\n/).filter(p => p.trim());
+    for (const p of paras) {
+      if (p.trim().startsWith("<h") || p.trim().startsWith("<ul") || p.trim().startsWith("<ol") || p.trim().startsWith("<div")) {
+        pageHtml += p;
+      } else {
+        pageHtml += `<p class="latex-p">${p.trim().replace(/\n/g, " ")}</p>`;
+      }
+    }
+
+    fullHtml += `
+      <div class="page-sheet-container">
+        <div class="page-sheet-a4">
+          <div class="page-sheet-content">
+            ${pageHtml}
+          </div>
+          <div class="page-sheet-footer">
+            <span></span>
+            <span class="page-sheet-num">Pagina ${pIdx + 1} di ${pagesCount}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  fullHtml += '</div>';
+
+  return { html: fullHtml, issues, sectionsCount, mathCount, figuresCount, pagesCount };
 }
 
-function escapeHtml(s) {
-  if (typeof s !== "string") return String(s);
-  return s.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function getInstallCommand() {
   if (process.platform === "linux") {
-    return "sudo apt update && sudo apt install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended tectonic";
+    return "sudo apt update && sudo apt install texlive-latex-base texlive-latex-extra texlive-fonts-recommended";
   } else if (process.platform === "darwin") {
-    return "brew install tectonic || brew install --cask mactex-no-gui";
+    return "brew install --cask mactex-no-gui";
   } else {
-    return "winget install Tectonic.Tectonic || winget install MiKTeX.MiKTeX";
+    return "winget install -e --id ChristianSchenk.MiKTeX";
   }
 }
 
-if (typeof module !== "undefined") {
-  module.exports = {
-    SUPPORTED_ENGINES,
-    detectEngines,
-    getBestAvailableEngine,
-    compileLatex,
-    convertLatexToHtml,
-    parseLatexLog,
-    getInstallCommand
-  };
-}
+module.exports = {
+  SUPPORTED_ENGINES,
+  EXTRA_SEARCH_PATHS,
+  findBinaryPath,
+  detectEngines,
+  getBestAvailableEngine,
+  parseLatexLog,
+  cleanAuxiliaryFiles,
+  compileLatex,
+  stopCompilation,
+  convertLatexToHtml,
+  getInstallCommand
+};

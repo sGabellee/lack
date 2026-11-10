@@ -137,6 +137,10 @@ ipcMain.handle('compile-latex', async (_event, compileOptions) => {
   return await latexCompiler.compileLatex(compileOptions);
 });
 
+ipcMain.handle('stop-compilation', () => {
+  return latexCompiler.stopCompilation();
+});
+
 ipcMain.handle('get-install-command', () => {
   return latexCompiler.getInstallCommand();
 });
@@ -204,15 +208,15 @@ function buildApplicationMenu() {
   if (!win) return;
   const menu = Menu.buildFromTemplate([
     {
-      label: i18n.t("menu_file") || "File",
+      label: "File",
       submenu: [
         {
-          label: i18n.t("new_file") || "New LaTeX File",
+          label: "New LaTeX File",
           accelerator: "CmdOrCtrl+N",
           click: () => { win.webContents.send("new-file"); }
         },
         {
-          label: i18n.t("empty_open_file") || "Open File...",
+          label: "Open File...",
           accelerator: "CmdOrCtrl+O",
           click: async () => {
             const result = await dialog.showOpenDialog(win, {
@@ -228,7 +232,7 @@ function buildApplicationMenu() {
           }
         },
         {
-          label: i18n.t("open_folder") || "Open Project Folder...",
+          label: "Open Project Folder...",
           accelerator: "CmdOrCtrl+Shift+O",
           click: async () => {
             const result = await dialog.showOpenDialog(win, {
@@ -240,28 +244,28 @@ function buildApplicationMenu() {
           }
         },
         {
-          label: i18n.t("save") || "Save",
+          label: "Save",
           accelerator: "CmdOrCtrl+S",
           click: () => { win.webContents.send("trigger-save"); }
         },
         {
-          label: i18n.t("template_save_modal_title") || "Save as Template...",
+          label: "Save as Template...",
           accelerator: "CmdOrCtrl+Shift+T",
           click: () => { win.webContents.send("save-as-template"); }
         },
-        { type: "separator" },
         {
-          label: i18n.t("template_gallery_title") || "Template Gallery...",
-          accelerator: "CmdOrCtrl+T",
-          click: () => { win.webContents.send("choose-template"); }
-        },
-        {
-          label: i18n.t("win_close") || "Close Tab",
+          label: "Close Tab",
           accelerator: "CmdOrCtrl+W",
           click: () => { win.webContents.send("close-active-tab"); }
         },
         { type: "separator" },
-        { role: "quit", label: "Quit" }
+        {
+          label: "Settings...",
+          accelerator: "CmdOrCtrl+,",
+          click: () => { win.webContents.send("open-settings"); }
+        },
+        { type: "separator" },
+        { role: "quit", label: "Quit", accelerator: "CmdOrCtrl+Q" }
       ]
     },
     {
@@ -276,6 +280,11 @@ function buildApplicationMenu() {
         { label: "Select All", accelerator: "CmdOrCtrl+A", role: "selectAll" },
         { type: "separator" },
         {
+          label: "Choose Template...",
+          accelerator: "CmdOrCtrl+T",
+          click: () => { win.webContents.send("choose-template"); }
+        },
+        {
           label: "Find",
           accelerator: "CmdOrCtrl+F",
           click: () => { win.webContents.send("open-search"); }
@@ -286,17 +295,34 @@ function buildApplicationMenu() {
       label: "Compile",
       submenu: [
         {
-          label: i18n.t("compile_btn") || "Recompile Document",
+          label: "Recompile Document",
           accelerator: "CmdOrCtrl+Enter",
           click: () => { win.webContents.send("trigger-compile"); }
         },
         {
-          label: i18n.t("logs_title") || "Toggle Logs and Issues Drawer",
+          id: "menu-item-auto-compile",
+          label: "Auto-compile",
+          type: "checkbox",
+          checked: false,
+          click: (item) => { win.webContents.send("toggle-auto-compile", item.checked); }
+        },
+        {
+          label: "Recompile from Scratch",
+          accelerator: "CmdOrCtrl+Shift+R",
+          click: () => { win.webContents.send("recompile-from-scratch"); }
+        },
+        {
+          label: "Stop Compilation",
+          click: () => { win.webContents.send("stop-compile"); }
+        },
+        { type: "separator" },
+        {
+          label: "Toggle Logs and Issues Drawer",
           accelerator: "CmdOrCtrl+Shift+U",
           click: () => { win.webContents.send("toggle-logs"); }
         },
         {
-          label: i18n.t("clean_aux") || "Clean Auxiliary Files",
+          label: "Clean Auxiliary Files",
           click: () => { win.webContents.send("clean-aux-files"); }
         }
       ]
@@ -305,24 +331,29 @@ function buildApplicationMenu() {
       label: "View",
       submenu: [
         {
-          label: i18n.t("toggle_explorer") || "Explorer",
+          label: "Explorer",
           accelerator: "CmdOrCtrl+R",
           click: () => { win.webContents.send("toggle-explorer"); }
         },
         {
-          label: i18n.t("view_editor") || "Editor Only",
+          label: "Outline",
+          click: () => { win.webContents.send("toggle-outline"); }
+        },
+        { type: "separator" },
+        {
+          label: "Solo Editor",
           accelerator: "CmdOrCtrl+Shift+L",
-          click: () => { win.webContents.send("toggle-editor-view"); }
+          click: () => { win.webContents.send("set-view-editor"); }
         },
         {
-          label: i18n.t("view_split") || "Split View",
+          label: "Split View",
           accelerator: "CmdOrCtrl+Shift+K",
-          click: () => { win.webContents.send("set-split-view"); }
+          click: () => { win.webContents.send("set-view-split"); }
         },
         {
-          label: i18n.t("view_preview") || "Preview Only",
+          label: "Solo Preview",
           accelerator: "CmdOrCtrl+Shift+P",
-          click: () => { win.webContents.send("toggle-preview-view"); }
+          click: () => { win.webContents.send("set-view-preview"); }
         },
         { type: "separator" },
         {
@@ -342,9 +373,40 @@ function buildApplicationMenu() {
         },
         { type: "separator" },
         {
-          label: "Toggle Theme",
-          accelerator: "CmdOrCtrl+M",
-          click: () => { if (win && !win.isDestroyed()) win.webContents.send("toggle-theme"); }
+          label: "Theme",
+          submenu: [
+            {
+              label: "Light Mode",
+              click: () => { if (win && !win.isDestroyed()) win.webContents.send("set-theme-light"); }
+            },
+            {
+              label: "Dark Mode",
+              click: () => { if (win && !win.isDestroyed()) win.webContents.send("set-theme-dark"); }
+            },
+            {
+              label: "GitHub Mode",
+              click: () => { if (win && !win.isDestroyed()) win.webContents.send("set-theme-github"); }
+            },
+            { type: "separator" },
+            {
+              label: "Rotate Theme",
+              accelerator: "CmdOrCtrl+M",
+              click: () => { if (win && !win.isDestroyed()) win.webContents.send("toggle-theme"); }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "Install TeX Engine Guide",
+          click: () => { win.webContents.send("open-install-guide"); }
+        },
+        {
+          label: "About Lack",
+          click: () => { win.webContents.send("open-about"); }
         }
       ]
     }

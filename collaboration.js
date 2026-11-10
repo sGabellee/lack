@@ -1,4 +1,4 @@
-// ====== LACK COLLABORATION MODULE (Yjs + WebRTC) ======
+// ====== LACK COLLABORATION MODULE (Yjs + WebRTC + CodeMirror 6) ======
 const Y = require('yjs');
 const { WebrtcProvider } = require('y-webrtc');
 const i18n = require('./i18n.js');
@@ -6,12 +6,14 @@ const i18n = require('./i18n.js');
 let ydoc = null;
 let provider = null;
 let yText = null;
-let isApplyingRemote = false;
+let undoManager = null;
 let currentRoomId = null;
+let localCmRef = null;
 let localEditorRef = null;
 let inputHandlerRef = null;
+let isApplyingRemote = false;
 
-// Calculates minimal diff between old and new text and applies to Y.Text
+// Calculates minimal diff between old and new text (fallback for textarea)
 function applyDiffToYText(yTextTarget, oldVal, newVal) {
   let commonStart = 0;
   while (
@@ -48,7 +50,8 @@ function applyDiffToYText(yTextTarget, oldVal, newVal) {
 function startCollaboration({
   roomId,
   password = null,
-  editor,
+  cm = null,
+  editor = null,
   isJoining = false,
   onRemoteUpdate,
   onUsersChange,
@@ -60,16 +63,19 @@ function startCollaboration({
   }
 
   currentRoomId = roomId.trim();
+  localCmRef = cm;
   localEditorRef = editor;
 
   ydoc = new Y.Doc();
   yText = ydoc.getText('latex-content');
+  undoManager = new Y.UndoManager(yText);
 
   // If creator, initialize shared document with local editor text
-  if (!isJoining && editor.value && editor.value.trim().length > 0) {
+  const initialContent = cm ? cm.getValue() : (editor ? editor.value : '');
+  if (!isJoining && initialContent && initialContent.trim().length > 0) {
     ydoc.transact(() => {
       if (yText.length === 0) {
-        yText.insert(0, editor.value);
+        yText.insert(0, initialContent);
       }
     }, 'local');
   }
@@ -106,47 +112,50 @@ function startCollaboration({
     return false;
   }
 
-  // Observe remote updates
-  yText.observe((event, transaction) => {
-    if (transaction.origin === 'local') return;
+  // Bind to CodeMirror 6
+  if (cm && typeof cm.bindYjs === 'function') {
+    cm.bindYjs(yText, undoManager, provider.awareness);
+  } else if (editor) {
+    // Fallback textarea binding
+    yText.observe((event, transaction) => {
+      if (transaction.origin === 'local') return;
 
-    isApplyingRemote = true;
-    const remoteStr = yText.toString();
+      isApplyingRemote = true;
+      const remoteStr = yText.toString();
 
-    const selStart = editor.selectionStart;
-    const selEnd = editor.selectionEnd;
-    const oldLen = editor.value.length;
+      const selStart = editor.selectionStart;
+      const selEnd = editor.selectionEnd;
+      const oldLen = editor.value.length;
 
-    editor.value = remoteStr;
+      editor.value = remoteStr;
 
-    // Preserve cursor position relative to length
-    const diff = remoteStr.length - oldLen;
-    const newSel = Math.max(0, Math.min(remoteStr.length, selStart + (selStart > 0 ? diff : 0)));
-    editor.selectionStart = newSel;
-    editor.selectionEnd = newSel;
+      const diff = remoteStr.length - oldLen;
+      const newSel = Math.max(0, Math.min(remoteStr.length, selStart + (selStart > 0 ? diff : 0)));
+      editor.selectionStart = newSel;
+      editor.selectionEnd = newSel;
 
-    isApplyingRemote = false;
+      isApplyingRemote = false;
 
-    if (onRemoteUpdate) {
-      onRemoteUpdate(remoteStr);
-    }
-  });
-
-  // Editor typing handler
-  inputHandlerRef = () => {
-    if (isApplyingRemote) return;
-    if (!yText || !ydoc) return;
-
-    ydoc.transact(() => {
-      const currentDoc = yText.toString();
-      const currentVal = editor.value;
-      if (currentDoc !== currentVal) {
-        applyDiffToYText(yText, currentDoc, currentVal);
+      if (onRemoteUpdate) {
+        onRemoteUpdate(remoteStr);
       }
-    }, 'local');
-  };
+    });
 
-  editor.addEventListener('input', inputHandlerRef);
+    inputHandlerRef = () => {
+      if (isApplyingRemote) return;
+      if (!yText || !ydoc) return;
+
+      ydoc.transact(() => {
+        const currentDoc = yText.toString();
+        const currentVal = editor.value;
+        if (currentDoc !== currentVal) {
+          applyDiffToYText(yText, currentDoc, currentVal);
+        }
+      }, 'local');
+    };
+
+    editor.addEventListener('input', inputHandlerRef);
+  }
 
   // Awareness (User count)
   provider.awareness.on('change', () => {
@@ -168,9 +177,13 @@ function startCollaboration({
     if (event.synced && isJoining) {
       const syncedText = yText.toString();
       if (syncedText.length > 0) {
-        isApplyingRemote = true;
-        editor.value = syncedText;
-        isApplyingRemote = false;
+        if (cm) {
+          cm.setValue(syncedText);
+        } else if (editor) {
+          isApplyingRemote = true;
+          editor.value = syncedText;
+          isApplyingRemote = false;
+        }
         if (onRemoteUpdate) onRemoteUpdate(syncedText);
       }
     }
@@ -189,6 +202,11 @@ function startCollaboration({
  * Leaves active collaboration session
  */
 function leaveCollaboration() {
+  if (localCmRef && typeof localCmRef.unbindYjs === 'function') {
+    localCmRef.unbindYjs();
+    localCmRef = null;
+  }
+
   if (localEditorRef && inputHandlerRef) {
     localEditorRef.removeEventListener('input', inputHandlerRef);
     inputHandlerRef = null;
@@ -212,6 +230,7 @@ function leaveCollaboration() {
   }
 
   yText = null;
+  undoManager = null;
   currentRoomId = null;
   localEditorRef = null;
   isApplyingRemote = false;
