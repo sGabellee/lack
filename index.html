@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <script>
+    try {
+      const platform = (typeof process !== 'undefined' && process.platform) ? process.platform : 'linux';
+      document.documentElement.classList.add(`platform-${platform}`);
+      const savedTheme = localStorage.getItem('lack-theme') || 'dark';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else if (savedTheme === 'github') {
+        document.documentElement.classList.add('dark', 'theme-github');
+      }
+      window.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.add(`platform-${platform}`);
+        const savedControls = localStorage.getItem('lack.windowControlsStyle') || (platform === 'linux' ? 'ubuntu' : 'win');
+        document.body.classList.add(`win-ctrl-${savedControls}`);
+      });
+    } catch (e) {}
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lack</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="./api/katex.min.css">
+  <link rel="stylesheet" href="./api/katex-fonts.css">
+</head>
+<script defer src="./api/katex.min.js"></script>
+<script defer src="./api/auto-render.min.js"></script>
+
+<body>
+  <div id="main">
+    <!-- TOP TITLEBAR (Linux & Windows) -->
+    <div id="titlebar">
+      <div class="titlebar-left">
+        <div class="titlebar-app-icon" id="titlebar-app-icon" title="Lack">
+          <img src="./images/lack.png" alt="Lack" onerror="this.style.display='none'" />
+        </div>
+        <div class="titlebar-menus">
+          <!-- FILE MENU -->
+          <div class="titlebar-menu-dropdown" id="menu-dropdown-file">
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-file" data-i18n="menu_file">File</button>
+            <div class="titlebar-menu-content">
+              <button type="button" class="titlebar-menu-item" data-action="new-file">
+                <span data-i18n="new_file">Nuovo file LaTeX</span>
+                <span class="titlebar-menu-shortcut">Ctrl+N</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="open-file">
+                <span data-i18n="empty_open_file">Apri file...</span>
+                <span class="titlebar-menu-shortcut">Ctrl+O</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="open-folder">
+                <span data-i18n="open_folder">Apri cartella progetto...</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+O</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="save-file">
+                <span data-i18n="save">Salva</span>
+                <span class="titlebar-menu-shortcut">Ctrl+S</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="save-as-template">
+                <span data-i18n="template_save_modal_title">Salva come Template...</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+T</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="choose-template">
+                <span data-i18n="template_gallery_title">Galleria Template...</span>
+                <span class="titlebar-menu-shortcut">Ctrl+T</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="export-pdf">
+                <span data-i18n="pdf_download">Scarica/Esporta PDF</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+E</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="open-settings">
+                <span data-i18n="settings_title">Impostazioni</span>
+                <span class="titlebar-menu-shortcut">Ctrl+,</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="close-tab">
+                <span data-i18n="win_close">Chiudi Scheda</span>
+                <span class="titlebar-menu-shortcut">Ctrl+W</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="quit-app">
+                <span>Esci</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Q</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- EDIT MENU -->
+          <div class="titlebar-menu-dropdown" id="menu-dropdown-edit">
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-edit">Modifica</button>
+            <div class="titlebar-menu-content">
+              <button type="button" class="titlebar-menu-item" data-action="undo">
+                <span>Annulla</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Z</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="redo">
+                <span>Ripeti</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Y</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="cut">
+                <span>Taglia</span>
+                <span class="titlebar-menu-shortcut">Ctrl+X</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="copy">
+                <span>Copia</span>
+                <span class="titlebar-menu-shortcut">Ctrl+C</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="paste">
+                <span>Incolla</span>
+                <span class="titlebar-menu-shortcut">Ctrl+V</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="select-all">
+                <span>Seleziona tutto</span>
+                <span class="titlebar-menu-shortcut">Ctrl+A</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="find">
+                <span data-i18n="search_button">Cerca</span>
+                <span class="titlebar-menu-shortcut">Ctrl+F</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- COMPILE MENU -->
+          <div class="titlebar-menu-dropdown" id="menu-dropdown-compile">
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-compile" data-i18n="compile_btn">Compila</button>
+            <div class="titlebar-menu-content">
+              <button type="button" class="titlebar-menu-item" data-action="trigger-compile">
+                <span data-i18n="compile_btn">Ricompila Documento</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Enter</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="toggle-logs">
+                <span data-i18n="logs_title">Pannello Errori e Log</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+U</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="clean-aux">
+                <span data-i18n="settings_clean_aux">Pulisci File Ausiliari</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- VIEW MENU -->
+          <div class="titlebar-menu-dropdown" id="menu-dropdown-view">
+            <button type="button" class="titlebar-menu-trigger" id="titlebar-btn-view">Visualizza</button>
+            <div class="titlebar-menu-content">
+              <button type="button" class="titlebar-menu-item" data-action="toggle-explorer">
+                <span data-i18n="toggle_explorer">Explorer</span>
+                <span class="titlebar-menu-shortcut">Ctrl+R</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="view-editor">
+                <span data-i18n="view_editor">Solo Editor</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+L</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="view-split">
+                <span data-i18n="view_split">Vista Divisa</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+K</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="view-preview">
+                <span data-i18n="view_preview">Solo Anteprima PDF</span>
+                <span class="titlebar-menu-shortcut">Ctrl+Shift+P</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="zoom-in">
+                <span>Ingrandisci</span>
+                <span class="titlebar-menu-shortcut">Ctrl++</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="zoom-out">
+                <span>Riduci</span>
+                <span class="titlebar-menu-shortcut">Ctrl+-</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="zoom-reset">
+                <span>Ripristina Zoom</span>
+                <span class="titlebar-menu-shortcut">Ctrl+0</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <div class="titlebar-menu-submenu-wrapper">
+                <div class="titlebar-menu-item titlebar-submenu-trigger" tabindex="0">
+                  <span data-i18n="settings_theme">Tema</span>
+                  <div class="titlebar-submenu-right">
+                    <span class="titlebar-menu-shortcut">Ctrl+M</span>
+                    <span class="titlebar-submenu-arrow">▸</span>
+                  </div>
+                </div>
+                <div class="titlebar-submenu-content">
+                  <button type="button" class="titlebar-menu-item" data-action="set-theme-light">
+                    <span>Tema Chiaro</span>
+                  </button>
+                  <button type="button" class="titlebar-menu-item" data-action="set-theme-dark">
+                    <span>Tema Scuro</span>
+                  </button>
+                  <button type="button" class="titlebar-menu-item" data-action="set-theme-github">
+                    <span>Tema GitHub</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="titlebar-center">
+        <span class="titlebar-title" id="titlebar-title">Lack</span>
+      </div>
+
+      <div class="titlebar-right">
+        <div id="window-controls">
+          <button id="win-minimize" class="win-ctrl-btn" data-i18n-title="win_minimize" title="Riduci a icona">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button id="win-maximize" class="win-ctrl-btn" data-i18n-title="win_maximize" title="Ingrandisci">
+            <svg class="icon-maximize" width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <rect x="2" y="2" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            <svg class="icon-restore" width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <rect x="3.5" y="1.5" width="6.5" height="6.5" rx="1" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M1.5 4.5v5a1 1 0 001 1h5" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+          </button>
+          <button id="win-close" class="win-ctrl-btn win-close-btn" data-i18n-title="win_close" title="Chiudi">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN NAVBAR & LATEX TOOLBAR -->
+    <div id="navbar">
+      <div class="navbar-left">
+        <button id="btn-toggle-explorer" class="icon-btn" data-i18n-title="toggle_explorer" title="Toggle Explorer">&lt;</button>
+      </div>
+
+      <div id="toolbar">
+        <!-- SECTIONS DROPDOWN -->
+        <div id="dropdown-title" class="dropdown">
+          <button id="btn-title" data-i18n-title="title_btn" title="Sezione">§</button>
+          <div id="dropdown-content" class="dropdown-content">
+            <button class="dropdown-item" data-action="insert-section" data-i18n="title_1">Sezione (\section)</button>
+            <button class="dropdown-item" data-action="insert-subsection" data-i18n="title_2">Sottosezione (\subsection)</button>
+            <button class="dropdown-item" data-action="insert-subsubsection" data-i18n="title_3">Sotto-sottosezione (\subsubsection)</button>
+            <button class="dropdown-item" data-action="insert-paragraph" data-i18n="title_paragraph">Paragrafo (\paragraph)</button>
+          </div>
+        </div>
+
+        <button id="btn-bold" data-i18n-title="bold" title="Grassetto (\textbf)"><b>B</b></button>
+        <button id="btn-italic" data-i18n-title="italic" title="Corsivo (\textit)"><i>I</i></button>
+        <button id="btn-underline" data-i18n-title="underline" title="Sottolineato (\underline)"><u>U</u></button>
+        <button id="btn-code" data-i18n-title="code" title="Monospazio (\texttt)">\tt</button>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- MATH TOOLS -->
+        <button id="btn-math-inline" class="toolbar-math-btn" data-i18n-title="math_inline" title="Matematica in linea ($x$)">$x$</button>
+        <button id="btn-math-display" class="toolbar-math-btn" data-i18n-title="math_display" title="Matematica in blocco (\[...\])">$$\int$$</button>
+        <button id="btn-fraction" class="toolbar-math-btn" data-i18n-title="fraction" title="Frazione (\frac)">a/b</button>
+        <button id="btn-sqrt" class="toolbar-math-btn" data-i18n-title="sqrt" title="Radice quadrata (\sqrt)">√</button>
+
+        <!-- GREEK SYMBOLS POPUP -->
+        <div id="dropdown-greek" class="dropdown">
+          <button id="btn-greek" data-i18n-title="greek_symbols" title="Simboli Greci">αβγ</button>
+          <div class="greek-palette dropdown-content">
+            <span class="greek-item" data-symbol="\alpha">α</span>
+            <span class="greek-item" data-symbol="\beta">β</span>
+            <span class="greek-item" data-symbol="\gamma">γ</span>
+            <span class="greek-item" data-symbol="\delta">δ</span>
+            <span class="greek-item" data-symbol="\epsilon">ϵ</span>
+            <span class="greek-item" data-symbol="\theta">θ</span>
+            <span class="greek-item" data-symbol="\lambda">λ</span>
+            <span class="greek-item" data-symbol="\mu">μ</span>
+            <span class="greek-item" data-symbol="\pi">π</span>
+            <span class="greek-item" data-symbol="\sigma">σ</span>
+            <span class="greek-item" data-symbol="\tau">τ</span>
+            <span class="greek-item" data-symbol="\omega">ω</span>
+            <span class="greek-item" data-symbol="\Delta">Δ</span>
+            <span class="greek-item" data-symbol="\Sigma">Σ</span>
+            <span class="greek-item" data-symbol="\Omega">Ω</span>
+            <span class="greek-item" data-symbol="\infty">∞</span>
+          </div>
+        </div>
+
+        <!-- ENVIRONMENTS & EXTRA DROPDOWN -->
+        <div id="dropdown-extra" class="dropdown">
+          <button id="btn-extra" data-i18n-title="extra" title="Strumenti e Ambienti LaTeX">+</button>
+          <div class="dropdown-content">
+            <button class="extra-item" data-action="insert-figure" data-i18n="image">Inserisci Figura (\begin{figure})</button>
+            <button class="extra-item" data-action="insert-table" data-i18n="table">Inserisci Tabella (\begin{table})</button>
+            <button class="extra-item" data-action="insert-equation">Equazione Numerata (\begin{equation})</button>
+            <button class="extra-item" data-action="insert-align">Equazioni Allineate (\begin{align})</button>
+            <button class="extra-item" data-action="insert-itemize" data-i18n="bullet_list">Elenco puntato (itemize)</button>
+            <button class="extra-item" data-action="insert-enumerate" data-i18n="numeric_list">Elenco numerato (enumerate)</button>
+            <div class="titlebar-menu-separator"></div>
+            <button class="extra-item" data-action="insert-cite" data-i18n="citation">Citazione bibliografica (\cite)</button>
+            <button class="extra-item" data-action="insert-ref" data-i18n="reference">Riferimento incrociato (\ref)</button>
+            <button class="extra-item" data-action="insert-label" data-i18n="label">Etichetta (\label)</button>
+            <button class="extra-item" data-action="insert-href" data-i18n="link">Collegamento (\href)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="navbar-right">
+        <!-- P2P COLLABORATION BUTTON -->
+        <button id="btn-collab" data-i18n-title="collaborate" title="Collabora in Tempo Reale (WebRTC)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+        </button>
+        <button id="btn-view-editor" data-i18n-title="view_editor" title="Solo Editor">&lt;</button>
+        <button id="btn-view-split" data-i18n-title="view_split" title="Vista Divisa">&gt;|&lt;</button>
+        <button id="btn-view-preview" data-i18n-title="view_preview" title="Solo Anteprima PDF">&gt;</button>
+      </div>
+    </div>
+
+    <!-- SEARCH IN DOCUMENT OVERLAY -->
+    <div id="search-container" class="hidden">
+      <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Cerca nel documento LaTeX..." />
+      <div id="search-buttons">
+        <button id="search-button" data-i18n-title="search_button" title="Cerca">&rarr;</button>
+        <button id="search-prev" data-i18n-title="search_prev" title="Precedente">&uarr;</button>
+        <button id="search-next" data-i18n-title="search_next" title="Successivo">&darr;</button>
+        <button id="search-close" data-i18n-title="search_close" title="Chiudi">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </div>
+      <span id="search-results">0/0</span>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app-container">
+      <!-- EXPLORER PANEL -->
+      <div id="explorer-panel">
+        <div id="explorer-header">
+          <span class="explorer-title" data-i18n="explorer_title">Explorer</span>
+          <div class="explorer-actions">
+            <button id="new-file" class="explorer-action-btn" data-i18n-title="new_file" title="Nuovo file">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 14h-2v2h-2v-2H9v-2h2v-2h2v2h2v2zm-2-8V3.5L18.5 9H13z"/>
+              </svg>
+            </button>
+            <button id="new-folder" class="explorer-action-btn" data-i18n-title="new_folder" title="Nuova cartella">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/>
+              </svg>
+            </button>
+            <button id="open-folder" class="explorer-action-btn" data-i18n-title="open_folder" title="Apri cartella progetto">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+              </svg>
+            </button>
+            <button id="refresh-explorer" class="explorer-action-btn" data-i18n-title="refresh" title="Aggiorna">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+              </svg>
+            </button>
+            <button id="collapse-all" class="explorer-action-btn" data-i18n-title="collapse_folders" title="Comprimi tutte le cartelle">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- POPUP SCELTA TEMPLATE PER NUOVO FILE -->
+        <div id="new-file-popup" class="new-file-popup hidden">
+          <div class="new-file-popup-header">
+            <span data-i18n="template_popup_header">Nuovo File LaTeX</span>
+            <button type="button" id="btn-close-new-file-popup" class="new-file-popup-close" title="Chiudi">&times;</button>
+          </div>
+          <div class="new-file-popup-items">
+            <button type="button" class="new-file-popup-item" data-template-id="blank">
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title" data-i18n="template_blank">Documento vuoto</span>
+                <span class="new-file-popup-desc" data-i18n="template_blank_desc">Articolo LaTeX di base</span>
+              </div>
+            </button>
+            <div class="new-file-popup-divider"></div>
+            <div class="new-file-popup-section-title" data-i18n="template_popup_predefined">Template LaTeX</div>
+            <button type="button" class="new-file-popup-item" data-template-id="ieee-article">
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+              </span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title">Articolo IEEE</span>
+                <span class="new-file-popup-desc">Due colonne per conferenze/giornali</span>
+              </div>
+            </button>
+            <button type="button" class="new-file-popup-item" data-template-id="lab-report">
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                </svg>
+              </span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title">Relazione di Laboratorio</span>
+                <span class="new-file-popup-desc">Obiettivi, dati, tabelle e grafici</span>
+              </div>
+            </button>
+            <button type="button" class="new-file-popup-item" data-template-id="beamer-slides">
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+              </span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title">Slide Beamer</span>
+                <span class="new-file-popup-desc">Presentazione accademica a slide</span>
+              </div>
+            </button>
+            <button type="button" class="new-file-popup-item" data-template-id="cv-modern">
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title">Curriculum Vitae</span>
+                <span class="new-file-popup-desc">CV accademico e professionale</span>
+              </div>
+            </button>
+            <div class="new-file-popup-divider"></div>
+            <button type="button" class="new-file-popup-item new-file-popup-more" id="btn-popup-browse-all">
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title" data-i18n="template_browse_all">Sfoglia tutti i template...</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div id="folder-path" class="folder-path hidden"></div>
+        <div id="file-tree"></div>
+      </div>
+
+      <div id="explorer-resizer"></div>
+
+      <!-- MAIN STAGE -->
+      <div id="main-stage">
+        <!-- TABS BAR -->
+        <div id="tabs-bar">
+          <div id="tabs-scroll-area"></div>
+          <div id="tab-drop-indicator"></div>
+          <button id="btn-new-tab" class="tab-action-btn" data-i18n-title="new_file" title="Nuovo file">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- EMPTY STATE SCREEN -->
+        <div id="empty-state" class="hidden">
+          <div class="empty-state-content">
+            <img id="empty-state-logo" src="./images/logo_white.png" alt="Lack" />
+            <p class="empty-state-subtitle" data-i18n="empty_subtitle">Editor e Suite Documentale LaTeX</p>
+            <div class="empty-state-menu">
+              <button id="empty-btn-new-file" class="empty-menu-item">
+                <span class="empty-item-left">
+                  <svg class="empty-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 14h-2v2h-2v-2H9v-2h2v-2h2v2h2v2zm-2-8V3.5L18.5 9H13z"/>
+                  </svg>
+                  <span class="empty-item-label" data-i18n="empty_create_file">Nuovo Documento LaTeX</span>
+                </span>
+                <span class="empty-item-shortcut"><kbd>Ctrl + N</kbd></span>
+              </button>
+              <button id="empty-btn-open-file" class="empty-menu-item">
+                <span class="empty-item-left">
+                  <svg class="empty-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
+                  </svg>
+                  <span class="empty-item-label" data-i18n="empty_open_file">Apri File</span>
+                </span>
+                <span class="empty-item-shortcut"><kbd>Ctrl + O</kbd></span>
+              </button>
+              <button id="empty-btn-open-folder" class="empty-menu-item">
+                <span class="empty-item-left">
+                  <svg class="empty-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                  </svg>
+                  <span class="empty-item-label" data-i18n="empty_open_folder">Apri Cartella Progetto</span>
+                </span>
+                <span class="empty-item-shortcut"><kbd>Ctrl + Shift + O</kbd></span>
+              </button>
+              <button id="empty-btn-templates" class="empty-menu-item">
+                <span class="empty-item-left">
+                  <svg class="empty-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                  </svg>
+                  <span class="empty-item-label" data-i18n="empty_templates">Galleria Template</span>
+                </span>
+                <span class="empty-item-shortcut"><kbd>Ctrl + T</kbd></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SPLIT CONTAINER (EDITOR ON LEFT, PREVIEW ON RIGHT) -->
+        <div id="container" class="split-view">
+          <!-- CODE EDITOR PANE ("IL NON COMPILATO") -->
+          <div id="editor-container">
+            <div id="editor-line-numbers" class="editor-gutter"></div>
+            <div class="editor-textarea-wrapper">
+              <textarea id="editor" placeholder="" spellcheck="false"></textarea>
+              <div id="editor-overlay" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- PDF VIEWER & PREVIEW PANE ("IL COMPILATO") -->
+          <div id="preview-container">
+            <!-- PDF VIEWER TOOLBAR: OVERLEAF COMPILA BUTTON POSITIONED EXACTLY BETWEEN EDITOR & PREVIEW -->
+            <div class="pdf-viewer-toolbar">
+              <div class="pdf-toolbar-left">
+                <!-- OVERLEAF-STYLE RECOMPILE BUTTON WITH SIGNATURE PURPLE #80007f -->
+                <button id="btn-recompile" class="compile-btn" data-i18n-title="compile_btn" title="Compila documento LaTeX (Ctrl + Enter)">
+                  <svg class="compile-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  <span class="compile-text" data-i18n="compile_btn">Compila</span>
+                  <span class="compile-status-dot"></span>
+                </button>
+
+                <button id="btn-toggle-logs" class="logs-indicator-btn" data-i18n-title="logs_title" title="Log ed Errori (Ctrl + Shift + U)">
+                  <svg class="logs-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                  </svg>
+                  <span class="logs-btn-text">Log</span>
+                  <span id="badge-errors" class="badge-count errors hidden">0</span>
+                  <span id="badge-warnings" class="badge-count warnings hidden">0</span>
+                </button>
+              </div>
+
+              <div class="pdf-toolbar-right">
+                <!-- Page navigation -->
+                <button id="pdf-btn-prev" class="pdf-tool-btn" title="Pagina Precedente">&larr;</button>
+                <span class="pdf-page-display">
+                  <span data-i18n="pdf_page">Pag.</span> 
+                  <input type="number" id="pdf-input-page" value="1" min="1" max="1" /> 
+                  <span data-i18n="pdf_of">di</span> 
+                  <span id="pdf-total-pages">1</span>
+                </span>
+                <button id="pdf-btn-next" class="pdf-tool-btn" title="Pagina Successiva">&rarr;</button>
+
+                <div class="toolbar-separator" style="height: 16px; margin: 0 2px;"></div>
+
+                <button id="pdf-btn-zoom-out" class="pdf-tool-btn" title="Riduci">-</button>
+                <span id="pdf-zoom-val" class="pdf-zoom-label">100%</span>
+                <button id="pdf-btn-zoom-in" class="pdf-tool-btn" title="Ingrandisci">+</button>
+                <button id="pdf-btn-fit-width" class="pdf-tool-btn" title="Adatta Larghezza">↔</button>
+                <button id="pdf-btn-fit-page" class="pdf-tool-btn" title="Adatta Pagina">↕</button>
+
+                <div class="toolbar-separator" style="height: 16px; margin: 0 2px;"></div>
+
+                <button id="pdf-btn-download" class="pdf-tool-btn" title="Scarica PDF">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                </button>
+                <button id="pdf-btn-refresh" class="pdf-tool-btn" title="Ricompila e Aggiorna">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- PDF DISPLAY / EMBED -->
+            <div id="pdf-viewport" class="pdf-viewport">
+              <iframe id="pdf-frame" class="pdf-frame hidden" src="about:blank"></iframe>
+              <div id="preview" class="markdown-body latex-body hidden"></div>
+              <div id="pdf-empty-placeholder" class="pdf-empty-placeholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <p>Nessun PDF compilato disponibile.</p>
+                <button id="btn-placeholder-compile" class="collab-submit-btn">Compila Documento</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLLAPSIBLE LOGS & ISSUES DRAWER (OVERLEAF STYLE) -->
+        <div id="logs-drawer" class="logs-drawer hidden">
+          <div class="logs-drawer-header">
+            <div class="logs-drawer-tabs">
+              <button id="tab-log-issues" class="logs-tab-btn active">
+                <span data-i18n="logs_errors">Errori e Avvisi</span>
+                <span id="drawer-issues-count" class="drawer-count-badge">0</span>
+              </button>
+              <button id="tab-log-raw" class="logs-tab-btn" data-i18n="logs_raw">Log TeX Completo</button>
+            </div>
+            <div class="logs-drawer-actions">
+              <button id="btn-clear-logs" class="logs-action-btn" data-i18n="logs_clear">Pulisci</button>
+              <button id="btn-close-logs" class="logs-action-btn" title="Chiudi Log">&times;</button>
+            </div>
+          </div>
+          <div class="logs-drawer-body">
+            <div id="logs-issues-pane" class="logs-pane active">
+              <div id="logs-issues-list" class="logs-issues-list"></div>
+            </div>
+            <div id="logs-raw-pane" class="logs-pane">
+              <pre id="logs-raw-text" class="logs-raw-text"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div id="footer">
+      <div id="footer-left" class="footer-left">
+        <button id="btn-options" data-i18n-title="settings" title="Impostazioni" class="icon-btn">Impostazioni</button>
+        <span id="footer-main-doc" class="footer-info-pill">Principale: main.tex</span>
+        <span id="footer-compiler-engine" class="footer-info-pill">Motore: pdfLaTeX</span>
+      </div>
+      <div id="footer-right" class="footer-right">
+        <div id="collab-status-container" class="collab-status-container hidden" title="Stato sessione">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="8"></circle>
+          </svg>
+          <span id="collab-status-text"></span>
+        </div>
+        <span id="line-col-counter">Ln 1, Col 1</span>
+        <span id="word-count">parole: 0</span>
+        <span id="footer-lang-display" class="footer-lang-display">IT</span>
+        <div class="connection-status">
+          <div class="status-indicator"></div>
+          <span id="connection-text" data-i18n="status_online">Online</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification-container"></div>
+
+  <!-- TEMPLATES & RENDERER SCRIPTS -->
+  <script src="templates.js"></script>
+  <script src="renderer.js"></script>
+
+  <!-- MODALS -->
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-content settings-modal-content">
+      <div class="modal-header settings-header">
+        <div class="settings-header-left">
+          <h2 data-i18n="settings_title">Impostazioni</h2>
+        </div>
+        <button id="btn-close-settings" class="collab-close-btn" title="Chiudi">&times;</button>
+      </div>
+
+      <div class="settings-layout">
+        <nav class="settings-sidebar" aria-label="Settings Categories">
+          <button type="button" class="settings-nav-btn active" data-settings-tab="appearance">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a7 7 0 0 0 0 14h1a3 3 0 0 1 3 3 3 3 0 0 0 3-3V12a10 10 0 0 0-7-10z"></path>
+            </svg>
+            <span data-i18n="settings_cat_appearance">Aspetto</span>
+          </button>
+          <button type="button" class="settings-nav-btn" data-settings-tab="editor">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span data-i18n="settings_cat_editor">Editor</span>
+          </button>
+          <button type="button" class="settings-nav-btn" data-settings-tab="compiler">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            <span data-i18n="settings_cat_compiler">LaTeX & Compilatore</span>
+          </button>
+          <button type="button" class="settings-nav-btn" data-settings-tab="shortcuts">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <line x1="6" y1="8" x2="6" y2="8"></line>
+              <line x1="10" y1="8" x2="10" y2="8"></line>
+              <line x1="14" y1="8" x2="14" y2="8"></line>
+              <line x1="18" y1="8" x2="18" y2="8"></line>
+            </svg>
+            <span data-i18n="settings_cat_shortcuts">Scorciatoie</span>
+          </button>
+        </nav>
+
+        <div class="settings-content-area">
+          <!-- APPEARANCE TAB -->
+          <div class="settings-tab-pane active" id="pane-settings-appearance">
+            <div class="settings-pane-header">
+              <h3 data-i18n="settings_cat_appearance">Aspetto</h3>
+              <p class="settings-pane-sub" data-i18n="settings_desc_appearance">Personalizza lo stile grafico di Lack</p>
+            </div>
+            <div class="settings-group">
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label data-i18n="settings_theme">Tema</label>
+                  <span class="settings-sublabel" data-i18n="settings_theme_desc">Scegli tra Chiaro, Scuro e GitHub</span>
+                </div>
+                <div class="collab-tabs settings-tabs" id="theme-segmented">
+                  <button type="button" class="collab-tab" id="theme-btn-light" data-theme="light">Chiaro</button>
+                  <button type="button" class="collab-tab active" id="theme-btn-dark" data-theme="dark">Scuro</button>
+                  <button type="button" class="collab-tab" id="theme-btn-github" data-theme="github">GitHub</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label data-i18n="settings_language">Lingua</label>
+                  <span class="settings-sublabel" data-i18n="settings_language_desc">Seleziona la lingua dell'interfaccia</span>
+                </div>
+                <div class="collab-tabs settings-tabs" id="lang-segmented">
+                  <button type="button" class="collab-tab active" id="lang-btn-it" data-lang="it">Italiano</button>
+                  <button type="button" class="collab-tab" id="lang-btn-en" data-lang="en">English</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="input-font-size" data-i18n="settings_font_size">Dimensione Carattere</label>
+                  <span class="settings-sublabel" data-i18n="settings_font_size_desc">Dimensione in pixel del codice nell'editor</span>
+                </div>
+                <div class="settings-input-wrapper">
+                  <input type="number" id="input-font-size" min="12" max="24" value="15" class="settings-number-input" />
+                  <span class="settings-unit">px</span>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label data-i18n="settings_zoom">Zoom Interfaccia</label>
+                  <span class="settings-sublabel" data-i18n="settings_zoom_desc">Scala l'intera applicazione</span>
+                </div>
+                <div class="settings-zoom-controls">
+                  <button type="button" id="btn-zoom-out" class="collab-tab">-</button>
+                  <span id="settings-zoom-display" class="settings-zoom-display">100%</span>
+                  <button type="button" id="btn-zoom-in" class="collab-tab">+</button>
+                  <button type="button" id="btn-zoom-reset" class="collab-tab">Reset</button>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label data-i18n="settings_window_controls">Stile Controlli Finestra</label>
+                  <span class="settings-sublabel" data-i18n="settings_window_controls_desc">Pulsanti della barra del titolo</span>
+                </div>
+                <div class="collab-tabs settings-tabs" id="win-controls-segmented">
+                  <button type="button" class="collab-tab active" data-controls-style="ubuntu">Ubuntu / GNOME</button>
+                  <button type="button" class="collab-tab" data-controls-style="mac">macOS</button>
+                  <button type="button" class="collab-tab" data-controls-style="win">Windows</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EDITOR TAB -->
+          <div class="settings-tab-pane" id="pane-settings-editor">
+            <div class="settings-pane-header">
+              <h3 data-i18n="settings_cat_editor">Editor</h3>
+              <p class="settings-pane-sub" data-i18n="settings_desc_editor">Preferenze di scrittura e supporto LaTeX</p>
+            </div>
+            <div class="settings-group">
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="toggle-autocomplete" data-i18n="settings_autocomplete">Autocompletamento Comandi</label>
+                  <span class="settings-sublabel" data-i18n="settings_autocomplete_desc">Suggerisce comandi LaTeX digitando \</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-autocomplete" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="toggle-autosave" data-i18n="settings_autosave">Salvataggio Automatico</label>
+                  <span class="settings-sublabel" data-i18n="settings_autosave_desc">Salva le modifiche durante la digitazione</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-autosave" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="toggle-autoscroll" data-i18n="settings_autoscroll">Sincronizzazione SyncTeX</label>
+                  <span class="settings-sublabel" data-i18n="settings_autoscroll_desc">Allinea posizione di visualizzazione tra codice e PDF</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-autoscroll" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="input-tab-size" data-i18n="settings_tab_size">Dimensione Tabulazione</label>
+                  <span class="settings-sublabel" data-i18n="settings_tab_size_desc">Spazi per livello di indentazione</span>
+                </div>
+                <div class="settings-input-wrapper">
+                  <input type="number" id="input-tab-size" min="2" max="8" value="2" class="settings-number-input" />
+                  <span class="settings-unit">sp</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COMPILER TAB -->
+          <div class="settings-tab-pane" id="pane-settings-compiler">
+            <div class="settings-pane-header">
+              <h3 data-i18n="settings_cat_compiler">LaTeX & Compilatore</h3>
+              <p class="settings-pane-sub" data-i18n="settings_desc_compiler">Motore di compilazione TeX e opzioni di build</p>
+            </div>
+            <div class="settings-group">
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="select-tex-engine" data-i18n="settings_engine">Motore TeX</label>
+                  <span class="settings-sublabel" data-i18n="settings_engine_desc">Seleziona il compilatore (pdfLaTeX, XeLaTeX, Tectonic...)</span>
+                </div>
+                <select id="select-tex-engine" class="settings-select">
+                  <option value="pdflatex">pdfLaTeX</option>
+                  <option value="xelatex">XeLaTeX</option>
+                  <option value="lualatex">LuaLaTeX</option>
+                  <option value="tectonic">Tectonic</option>
+                  <option value="latexmk">Latexmk</option>
+                  <option value="builtin">Motore Integrato Veloce (Built-in)</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="toggle-autocompile" data-i18n="settings_autocompile">Compilazione Automatica</label>
+                  <span class="settings-sublabel" data-i18n="settings_autocompile_desc">Compila automaticamente al salvataggio</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-autocompile" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="toggle-clean-aux" data-i18n="settings_clean_aux">Pulisci File Ausiliari</label>
+                  <span class="settings-sublabel" data-i18n="settings_clean_aux_desc">Elimina file .aux e .log dopo la compilazione</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-clean-aux" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label for="input-custom-engine-path" data-i18n="settings_custom_engine_path">Percorso Personalizzato Compilatore</label>
+                  <span class="settings-sublabel" data-i18n="settings_custom_engine_path_desc">Se il compilatore non è nel PATH di sistema</span>
+                </div>
+                <input type="text" id="input-custom-engine-path" class="collab-input" placeholder="/usr/bin/pdflatex" spellcheck="false" />
+              </div>
+            </div>
+          </div>
+
+          <!-- SHORTCUTS TAB -->
+          <div class="settings-tab-pane" id="pane-settings-shortcuts">
+            <div class="settings-pane-header">
+              <h3 data-i18n="settings_cat_shortcuts">Scorciatoie</h3>
+              <p class="settings-pane-sub" data-i18n="settings_desc_shortcuts">Comandi rapidi da tastiera</p>
+            </div>
+            <div class="shortcuts-container">
+              <div class="shortcuts-section">
+                <div class="shortcuts-section-title">Compilazione e Documento</div>
+                <div class="shortcut-list">
+                  <div class="shortcut-item">
+                    <span class="shortcut-action">Compila documento LaTeX</span>
+                    <span class="shortcut-keys"><kbd>Ctrl + Enter</kbd></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action">Mostra / Nascondi Log ed Errori</span>
+                    <span class="shortcut-keys"><kbd>Ctrl + Shift + U</kbd></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action">Nuovo file</span>
+                    <span class="shortcut-keys"><kbd>Ctrl + N</kbd></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action">Salva file</span>
+                    <span class="shortcut-keys"><kbd>Ctrl + S</kbd></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action">Galleria Template</span>
+                    <span class="shortcut-keys"><kbd>Ctrl + T</kbd></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action">Chiudi scheda attiva</span>
+                    <span class="shortcut-keys"><kbd>Ctrl + W</kbd></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLLABORATION MODAL (YJS + WEBRTC) -->
+  <div id="collab-modal" class="modal hidden">
+    <div class="modal-overlay" id="collab-overlay"></div>
+    <div class="modal-content collab-modal-content">
+      <div class="modal-header">
+        <div class="collab-header-title">
+          <h2 data-i18n="collab_title">Collabora in Tempo Reale</h2>
+          <span class="collab-beta-badge" style="background:#80007f;">GRATIS ILLIMITATO</span>
+        </div>
+        <button id="btn-close-collab" class="collab-close-btn" title="Chiudi">&times;</button>
+      </div>
+
+      <div class="modal-body collab-modal-body">
+        <div id="collab-disconnected-view" class="collab-pane">
+          <div class="collab-tabs">
+            <button id="tab-btn-create" class="collab-tab active" data-i18n="collab_tab_create">Crea Stanza</button>
+            <button id="tab-btn-join" class="collab-tab" data-i18n="collab_tab_join">Partecipa</button>
+          </div>
+
+          <div id="collab-pane-create" class="collab-pane">
+            <label class="collab-label" for="collab-new-room-id" data-i18n="collab_session_code">Codice Sessione</label>
+            <div class="collab-input-row">
+              <input type="text" id="collab-new-room-id" readonly spellcheck="false" class="collab-input" />
+              <button id="btn-collab-copy-id" class="collab-icon-btn" title="Copia codice">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                </svg>
+              </button>
+              <button id="btn-collab-regen-id" class="collab-icon-btn" title="Nuovo codice">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+              </button>
+            </div>
+            <button id="btn-collab-create" class="collab-submit-btn" data-i18n="collab_start_session">Avvia Sessione Collaborativa</button>
+          </div>
+
+          <div id="collab-pane-join" class="collab-pane hidden">
+            <label class="collab-label" for="collab-join-room-id" data-i18n="collab_session_code">Inserisci Codice Sessione</label>
+            <div class="collab-input-row">
+              <input type="text" id="collab-join-room-id" placeholder="lack-xxxxxx" spellcheck="false" class="collab-input" />
+            </div>
+            <button id="btn-collab-join" class="collab-submit-btn" data-i18n="collab_join_session">Partecipa alla Sessione</button>
+          </div>
+        </div>
+
+        <div id="collab-connected-view" class="collab-pane hidden">
+          <div class="collab-active-meta">
+            <div class="collab-live-indicator">
+              <span class="collab-status-dot"></span>
+              <span data-i18n="collab_session_active">Sessione attiva</span>
+            </div>
+            <div class="collab-users-pill" title="Partecipanti connessi">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span id="collab-users-count">1</span>
+            </div>
+          </div>
+          <label class="collab-label" for="collab-active-room-id" data-i18n="collab_session_code">Codice Stanza</label>
+          <div class="collab-input-row">
+            <input type="text" id="collab-active-room-id" readonly spellcheck="false" class="collab-input" />
+            <button id="btn-collab-copy-active-id" class="collab-icon-btn" title="Copia codice">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+            </button>
+          </div>
+          <button id="btn-collab-leave" class="collab-danger-btn" data-i18n="collab_leave_session">Termina Sessione</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLEAF-STYLE TEMPLATE GALLERY MODAL -->
+  <div id="template-gallery-modal" class="modal hidden">
+    <div class="modal-overlay" id="template-gallery-overlay"></div>
+    <div class="modal-content template-gallery-modal-content">
+      <div class="template-gallery-header">
+        <div class="template-gallery-header-left">
+          <div class="template-gallery-badge-icon" style="background:#80007f;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M3 9h18M9 21V9"/>
+            </svg>
+          </div>
+          <div class="template-gallery-header-titles">
+            <h2 data-i18n="template_gallery_title">Galleria Template LaTeX</h2>
+            <p class="template-gallery-subtitle" data-i18n="template_gallery_subtitle">Scegli un template professionale per iniziare subito a scrivere</p>
+          </div>
+        </div>
+
+        <div class="template-gallery-header-search">
+          <svg class="template-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="template-search-input" placeholder="Cerca template per titolo, categoria o tag..." />
+          <button type="button" id="template-search-clear" class="template-search-clear-btn hidden">&times;</button>
+        </div>
+
+        <div class="template-gallery-header-right">
+          <button type="button" id="btn-gallery-save-current" class="template-header-action-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span data-i18n="template_save_current_btn">Salva file corrente come template</span>
+          </button>
+          <button type="button" id="btn-close-template-gallery" class="collab-close-btn">&times;</button>
+        </div>
+      </div>
+
+      <div class="template-gallery-body">
+        <div class="template-gallery-sidebar">
+          <div class="template-sidebar-section-title" data-i18n="template_section_views">Viste</div>
+          <button type="button" class="template-nav-btn active" data-category="all">
+            <span>Tutti i template</span>
+            <span class="template-count-badge" id="count-all">6</span>
+          </button>
+          <button type="button" class="template-nav-btn" data-category="official">
+            <span>Predefiniti</span>
+            <span class="template-count-badge" id="count-official">6</span>
+          </button>
+          <button type="button" class="template-nav-btn" data-category="custom">
+            <span>I miei template</span>
+            <span class="template-count-badge" id="count-custom">0</span>
+          </button>
+
+          <div class="template-sidebar-divider"></div>
+          <div class="template-sidebar-section-title" data-i18n="template_section_categories">Categorie</div>
+          <div id="template-categories-nav-list" class="template-categories-nav-list">
+            <button type="button" class="template-nav-btn" data-category="academic">Academic & Papers</button>
+            <button type="button" class="template-nav-btn" data-category="reports">University & Lab Reports</button>
+            <button type="button" class="template-nav-btn" data-category="thesis">Theses & Books</button>
+            <button type="button" class="template-nav-btn" data-category="beamer">Presentations (Beamer)</button>
+            <button type="button" class="template-nav-btn" data-category="cv">Curriculum Vitae</button>
+            <button type="button" class="template-nav-btn" data-category="assignments">Assignments & Math</button>
+          </div>
+        </div>
+
+        <div class="template-gallery-cards-area">
+          <div class="template-cards-header">
+            <span class="template-cards-category-title" id="template-current-category-title">Tutti i template</span>
+            <span class="template-cards-count" id="template-visible-count"></span>
+          </div>
+          <div class="template-cards-grid" id="template-cards-grid"></div>
+        </div>
+
+        <!-- PREVIEW DRAWER (Overleaf Style) -->
+        <div class="template-preview-drawer hidden" id="template-preview-drawer">
+          <div class="template-preview-header">
+            <div class="template-preview-title-box">
+              <span class="template-preview-category-pill" id="preview-category-pill"></span>
+              <h3 id="preview-template-title"></h3>
+            </div>
+            <button type="button" id="btn-close-template-preview" class="collab-close-btn">&times;</button>
+          </div>
+          <div class="template-preview-desc" id="preview-template-desc"></div>
+          <div class="template-preview-toolbar">
+            <div class="template-preview-tabs">
+              <button type="button" class="template-preview-tab-btn active" id="btn-preview-rendered">Anteprima</button>
+              <button type="button" class="template-preview-tab-btn" id="btn-preview-source">Sorgente LaTeX</button>
+            </div>
+            <button type="button" id="btn-use-previewed-template" class="collab-submit-btn template-use-big-btn">
+              <span data-i18n="template_use_this">Usa questo template</span>
+            </button>
+          </div>
+          <div class="template-preview-content-box">
+            <div id="preview-rendered-body" class="preview-area rendered-markdown"></div>
+            <textarea id="preview-source-body" class="hidden" readonly spellcheck="false"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN-APP CONFIRM / ALERT MODAL -->
+  <div id="app-confirm-modal" class="modal hidden">
+    <div class="modal-overlay" id="app-confirm-overlay"></div>
+    <div class="modal-content app-confirm-content">
+      <div class="modal-header">
+        <h3 id="app-confirm-title" style="margin: 0; font-size: 14px; font-weight: 600;">Conferma</h3>
+        <button type="button" id="btn-close-app-confirm" class="collab-close-btn">&times;</button>
+      </div>
+      <div class="modal-body app-confirm-body">
+        <div class="app-confirm-icon-box" id="app-confirm-icon-box"></div>
+        <div class="app-confirm-text-box">
+          <p id="app-confirm-message" class="app-confirm-message"></p>
+        </div>
+      </div>
+      <div class="app-confirm-actions" id="app-confirm-actions">
+        <button type="button" id="btn-app-confirm-cancel" class="pdf-export-btn-cancel">Annulla</button>
+        <button type="button" id="btn-app-confirm-ok" class="collab-submit-btn">Conferma</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

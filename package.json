@@ -1,0 +1,110 @@
+{
+  "name": "Lack",
+  "desktopName": "Lack.desktop",
+  "version": "1.0.0",
+  "description": "Editor LaTeX professionale con compilatore, anteprima PDF e collaborazione in tempo reale",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "latex",
+    "editor",
+    "overleaf",
+    "tex",
+    "math",
+    "pdf",
+    "collaboration"
+  ],
+  "author": {
+    "name": "Gaetano",
+    "email": "gaetanocarbone2004@gmail.com"
+  },
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sGabellee/lack.git"
+  },
+  "devDependencies": {
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "@electron/remote": "^2.1.2",
+    "electron-updater": "^6.8.9",
+    "y-webrtc": "^10.3.0",
+    "yjs": "^13.6.33"
+  },
+  "build": {
+    "appId": "com.Giovanni.Lack",
+    "productName": "Lack",
+    "executableName": "lack",
+    "fileAssociations": [
+      {
+        "ext": "tex",
+        "name": "LaTeX Document",
+        "description": "File LaTeX",
+        "role": "Editor",
+        "icon": "build/lack.png"
+      },
+      {
+        "ext": "bib",
+        "name": "BibTeX Bibliography",
+        "description": "File BibTeX",
+        "role": "Editor",
+        "icon": "build/lack.png"
+      },
+      {
+        "ext": "cls",
+        "name": "LaTeX Class",
+        "description": "File LaTeX Class",
+        "role": "Editor",
+        "icon": "build/lack.png"
+      },
+      {
+        "ext": "sty",
+        "name": "LaTeX Style",
+        "description": "File LaTeX Style",
+        "role": "Editor",
+        "icon": "build/lack.png"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "build/lack.ico",
+      "target": [
+        "nsis"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "installerIcon": "build/lack.ico",
+      "uninstallerIcon": "build/lack.ico",
+      "installerHeaderIcon": "build/lack.ico"
+    },
+    "mac": {
+      "icon": "build/lack.icns",
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "icon": "build/lack.png",
+      "target": [
+        "AppImage",
+        "dir"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sGabellee",
+        "repo": "lack"
+      }
+    ]
+  }
+}
