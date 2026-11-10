@@ -8049,16 +8049,35 @@ body.dark .log-issue-line-badge {
   background-color: var(--virtual-halo) !important;
 }
 
-/* Linter & Compiler Error Marker (Red dot in gutter) */
+/* Gutter lint container */
+.cm-gutter-lint {
+  width: 16px !important;
+  min-width: 16px !important;
+}
+
+.cm-gutter-lint .cm-gutterElement {
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 22px !important;
+}
+
+/* Linter & Compiler Error Marker (Red dot in gutter: clean solid dot, perfectly centered, NO glow) */
+.cm-lint-marker,
 .cm-lint-marker-error {
   content: "" !important;
-  display: inline-block !important;
-  width: 8px !important;
-  height: 8px !important;
+  display: block !important;
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  min-height: 7px !important;
   background-color: #ef4444 !important;
   border-radius: 50% !important;
-  margin: 6px auto 0 4px !important;
-  box-shadow: 0 0 5px rgba(239, 68, 68, 0.7) !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  filter: none !important;
+  border: none !important;
 }
 
 /* Wrong Command / Syntax Error Highlighted in Red */

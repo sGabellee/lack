@@ -47348,16 +47348,32 @@ var require_themes = __commonJS({
         color: "#ef4444 !important",
         fontWeight: "bold !important"
       },
-      // Linter / Compiler error in gutter: solid red dot
-      ".cm-lint-marker-error": {
+      // Gutter lint container
+      ".cm-gutter-lint": {
+        width: "16px",
+        minWidth: "16px"
+      },
+      ".cm-gutter-lint .cm-gutterElement": {
+        padding: "0 !important",
+        display: "flex !important",
+        alignItems: "center !important",
+        justifyContent: "center !important",
+        lineHeight: "22px !important"
+      },
+      // Linter / Compiler error in gutter: solid red dot, perfectly centered, NO glow
+      ".cm-lint-marker, .cm-lint-marker-error": {
         content: '"" !important',
-        display: "inline-block !important",
-        width: "8px !important",
-        height: "8px !important",
+        display: "block !important",
+        width: "7px !important",
+        height: "7px !important",
+        minWidth: "7px !important",
+        minHeight: "7px !important",
         backgroundColor: "#ef4444 !important",
         borderRadius: "50% !important",
-        margin: "6px auto 0 4px !important",
-        boxShadow: "0 0 5px rgba(239, 68, 68, 0.7) !important"
+        margin: "0 auto !important",
+        boxShadow: "none !important",
+        filter: "none !important",
+        border: "none !important"
       },
       // Wrong command or text highlighted in red
       ".cm-lintRange-error": {
@@ -54655,6 +54671,230 @@ var require_linter_logic = __commonJS({
       validCommands.add("cite");
       validCommands.add("documentclass");
       validCommands.add("usepackage");
+      const CORE_LATEX_COMMANDS = [
+        // Delimiters
+        "langle",
+        "rangle",
+        "lceil",
+        "rceil",
+        "lfloor",
+        "rfloor",
+        "vert",
+        "Vert",
+        "backslash",
+        "lbrace",
+        "rbrace",
+        // Core math symbols & binary relations
+        "ell",
+        "wp",
+        "Re",
+        "Im",
+        "partial",
+        "infty",
+        "prime",
+        "emptyset",
+        "nabla",
+        "surd",
+        "top",
+        "bot",
+        "angle",
+        "forall",
+        "exists",
+        "neg",
+        "flat",
+        "natural",
+        "sharp",
+        "clubsuit",
+        "diamondsuit",
+        "heartsuit",
+        "spadesuit",
+        "pm",
+        "mp",
+        "times",
+        "div",
+        "ast",
+        "star",
+        "circ",
+        "bullet",
+        "cdot",
+        "cap",
+        "cup",
+        "uplus",
+        "sqcap",
+        "sqcup",
+        "triangleleft",
+        "triangleright",
+        "wr",
+        "bigcirc",
+        "bigtriangleup",
+        "bigtriangledown",
+        "vee",
+        "wedge",
+        "oplus",
+        "ominus",
+        "otimes",
+        "oslash",
+        "odot",
+        "dagger",
+        "ddagger",
+        "amalg",
+        "leq",
+        "geq",
+        "equiv",
+        "models",
+        "prec",
+        "succ",
+        "sim",
+        "perp",
+        "preceq",
+        "succeq",
+        "simeq",
+        "mid",
+        "ll",
+        "gg",
+        "asymp",
+        "parallel",
+        "subset",
+        "supset",
+        "approx",
+        "bowtie",
+        "subseteq",
+        "supseteq",
+        "cong",
+        "sqsubset",
+        "sqsupset",
+        "neq",
+        "smile",
+        "sqsubseteq",
+        "sqsupseteq",
+        "doteq",
+        "frown",
+        "in",
+        "ni",
+        "notin",
+        "propto",
+        "vdash",
+        "dashv",
+        // Arrows
+        "leftarrow",
+        "Leftarrow",
+        "rightarrow",
+        "Rightarrow",
+        "leftrightarrow",
+        "Leftrightarrow",
+        "mapsto",
+        "hookleftarrow",
+        "hookrightarrow",
+        "longleftarrow",
+        "Longleftarrow",
+        "longrightarrow",
+        "Longrightarrow",
+        "longleftrightarrow",
+        "Longleftrightarrow",
+        "longmapsto",
+        "uparrow",
+        "Uparrow",
+        "downarrow",
+        "Downarrow",
+        "updownarrow",
+        "Updownarrow",
+        "nearrow",
+        "searrow",
+        "swarrow",
+        "nwarrow",
+        "iff",
+        "to",
+        "gets",
+        // Dots
+        "dots",
+        "ldots",
+        "cdots",
+        "vdots",
+        "ddots",
+        "colon",
+        // Accents & decorations
+        "hat",
+        "widehat",
+        "check",
+        "tilde",
+        "widetilde",
+        "acute",
+        "grave",
+        "dot",
+        "ddot",
+        "breve",
+        "bar",
+        "vec",
+        "mathring",
+        "overline",
+        "underline",
+        "overbrace",
+        "underbrace",
+        // Font sizing & switches
+        "mathrm",
+        "mathbf",
+        "mathit",
+        "mathsf",
+        "mathtt",
+        "mathcal",
+        "text",
+        "textbf",
+        "textit",
+        "textrm",
+        "textsf",
+        "texttt",
+        "textsc",
+        "emph",
+        "scshape",
+        "bfseries",
+        "itshape",
+        "upshape",
+        "Huge",
+        "huge",
+        "LARGE",
+        "Large",
+        "large",
+        "normalsize",
+        "small",
+        "footnotesize",
+        "scriptsize",
+        "tiny",
+        // Spacing & TeX primitives
+        "mkern",
+        "kern",
+        "mskip",
+        "hskip",
+        "vskip",
+        "hspace",
+        "vspace",
+        "quad",
+        "qquad",
+        "phantom",
+        "vphantom",
+        "hphantom",
+        "smash",
+        "relax",
+        "hbox",
+        "vbox",
+        "vtop",
+        "par",
+        "indent",
+        "noindent",
+        "penalty",
+        "unskip",
+        "ignorespaces",
+        "leavevmode",
+        "allowbreak",
+        "centering",
+        "raggedright",
+        "raggedleft",
+        // Core references
+        "pageref"
+      ];
+      for (const cmd of CORE_LATEX_COMMANDS) {
+        validCommands.add(cmd);
+        knownCommandNames.push(cmd);
+      }
       if (options.compiledCleanMacros && typeof options.compiledCleanMacros.forEach === "function") {
         options.compiledCleanMacros.forEach((m) => validCommands.add(m));
       }
@@ -54675,8 +54915,48 @@ var require_linter_logic = __commonJS({
         "subcaption",
         "enumitem",
         "url",
-        "cite"
+        "cite",
+        "amsthm",
+        "tabularx",
+        "fontspec",
+        "amssymb",
+        "amsfonts",
+        "booktabs",
+        "geometry"
       ]);
+      const effectivePackages = new Set(loadedPackages);
+      if (effectivePackages.has("amsthm")) effectivePackages.add("mathtools");
+      if (effectivePackages.has("mathtools")) effectivePackages.add("amsmath");
+      if (effectivePackages.has("amssymb")) effectivePackages.add("amsfonts");
+      if (effectivePackages.has("amsart") || effectivePackages.has("amsbook") || effectivePackages.has("amsproc")) {
+        effectivePackages.add("amsmath");
+        effectivePackages.add("amssymb");
+        effectivePackages.add("amsthm");
+        effectivePackages.add("amsfonts");
+        effectivePackages.add("mathtools");
+      }
+      if (effectivePackages.has("amsthm") || effectivePackages.has("mathtools")) {
+        ["theoremstyle", "newtheoremstyle", "swapnumbers", "qed", "qedsymbol", "openbox", "theorembodyfont", "theoremheaderfont"].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+        validEnvironments.add("proof");
+      }
+      if (effectivePackages.has("amsmath") || effectivePackages.has("mathtools")) {
+        ["DeclareMathOperator", "operatorname", "tag", "notag", "nonumber", "intertext", "shortintertext", "eqref", "implies", "impliedby"].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+      }
+      if (effectivePackages.has("amssymb") || effectivePackages.has("amsfonts")) {
+        ["hbar", "mathbb", "mathfrak", "checkmark", "circledR", "maltese"].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+      }
+      if (effectivePackages.has("tabularx")) {
+        validEnvironments.add("tabularx");
+      }
       const dbPackages = /* @__PURE__ */ new Set([...db.packages, ...db.macros.map((m) => m.package)]);
       let allLoadedPackagesKnown = true;
       for (const pkg of loadedPackages) {
@@ -54687,12 +54967,12 @@ var require_linter_logic = __commonJS({
       }
       for (const macro of db.macros) {
         knownCommandNames.push(macro.name);
-        if (macro.package === "latex2e" || loadedPackages.has(macro.package)) {
+        if (macro.package === "latex2e" || effectivePackages.has(macro.package)) {
           validCommands.add(macro.name);
         }
       }
       for (const env of db.environments) {
-        if (env.package === "latex2e" || loadedPackages.has(env.package)) {
+        if (env.package === "latex2e" || effectivePackages.has(env.package)) {
           validEnvironments.add(env.name);
         }
       }
@@ -54757,6 +55037,20 @@ var require_linter_logic = __commonJS({
               bestMatch = known;
               if (d === 1) break;
             }
+          }
+          if (minDistance === 0) {
+            const macroInfo = db.macros.find((m) => m.name === cmdName);
+            if (macroInfo && macroInfo.package && macroInfo.package !== "latex2e" && !effectivePackages.has(macroInfo.package)) {
+              diagnostics.push({
+                from,
+                to,
+                severity: "error",
+                line: lineNum,
+                message: `! Package required: \\${cmdName} requires \\usepackage{${macroInfo.package}}`,
+                actions: []
+              });
+            }
+            continue;
           }
           if (!allLoadedPackagesKnown && minDistance > 2) {
             continue;

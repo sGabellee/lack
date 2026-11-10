@@ -83,16 +83,32 @@ const lackBaseTheme = EditorView.theme({
     color: '#ef4444 !important',
     fontWeight: 'bold !important'
   },
-  // Linter / Compiler error in gutter: solid red dot
-  '.cm-lint-marker-error': {
+  // Gutter lint container
+  '.cm-gutter-lint': {
+    width: '16px',
+    minWidth: '16px'
+  },
+  '.cm-gutter-lint .cm-gutterElement': {
+    padding: '0 !important',
+    display: 'flex !important',
+    alignItems: 'center !important',
+    justifyContent: 'center !important',
+    lineHeight: '22px !important'
+  },
+  // Linter / Compiler error in gutter: solid red dot, perfectly centered, NO glow
+  '.cm-lint-marker, .cm-lint-marker-error': {
     content: '"" !important',
-    display: 'inline-block !important',
-    width: '8px !important',
-    height: '8px !important',
+    display: 'block !important',
+    width: '7px !important',
+    height: '7px !important',
+    minWidth: '7px !important',
+    minHeight: '7px !important',
     backgroundColor: '#ef4444 !important',
     borderRadius: '50% !important',
-    margin: '6px auto 0 4px !important',
-    boxShadow: '0 0 5px rgba(239, 68, 68, 0.7) !important'
+    margin: '0 auto !important',
+    boxShadow: 'none !important',
+    filter: 'none !important',
+    border: 'none !important'
   },
   // Wrong command or text highlighted in red
   '.cm-lintRange-error': {

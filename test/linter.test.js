@@ -36,7 +36,26 @@ $\\mathbb{R}$
   assert.ok(!diagsWith.some(d => d.message.includes('\\mathbb')), 'Should allow \\mathbb when amssymb is loaded');
 });
 
+test('recognizes amsthm and amsmath commands without false positives', () => {
+  const amsDoc = `\\documentclass{article}
+\\usepackage{amsmath,amssymb,amsthm}
+\\theoremstyle{plain}
+\\newtheorem{theorem}{Theorem}
+\\theoremstyle{definition}
+\\newtheorem{definition}{Definition}
+\\begin{document}
+\\langle x, y \\rangle \\implies \\hbar \\mkern 2mu
+\\begin{proof}
+Proof content.
+\\end{proof}
+\\end{document}`;
+
+  const diags = lintLatexDocument(amsDoc);
+  assert.strictEqual(diags.length, 0, 'Should have 0 diagnostics for standard amsthm/amsmath document');
+});
+
 test('recognizes locally defined macros', () => {
+
   const input = `\\documentclass{article}
 \\newcommand{\\custommacro}{Valore}
 \\def\\anothermacro{Test}
