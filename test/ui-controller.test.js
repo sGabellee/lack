@@ -53,6 +53,7 @@ test('ui-controller: filterProjectEntries excludes dotfiles and sorts directorie
     { name: '.lack', isDirectory: () => true },
     { name: 'figures', isDirectory: () => true },
     { name: '.git', isDirectory: () => true },
+    { name: 'project.json', isDirectory: () => false },
     { name: 'chapters', isDirectory: () => true },
     { name: 'references.bib', isDirectory: () => false }
   ];

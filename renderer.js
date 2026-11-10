@@ -645,9 +645,18 @@ window.addEventListener("DOMContentLoaded", async () => {
       tabEl.title = tab.filePath || tab.title;
 
       const isProjectFile = isLinkedProject && currentProject && tab.filePath && tab.filePath.startsWith(currentProject.storePath);
+      const isFolderFile = isLinkedProject && currentProject && tab.filePath && !isProjectFile;
+
+      let badgeHtml = '';
+      if (isProjectFile) {
+        badgeHtml = '<span class="tab-link-badge" title="File del progetto collegato"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>';
+      } else if (isFolderFile) {
+        const folderName = path.basename(path.dirname(tab.filePath));
+        badgeHtml = `<span class="tab-folder-badge" style="font-size:10px; opacity:0.65; margin-right:4px;">${escapeHtml(folderName)}/</span>`;
+      }
 
       tabEl.innerHTML = `
-        ${isProjectFile ? '<span class="tab-link-badge" title="File del progetto collegato"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></span>' : ''}
+        ${badgeHtml}
         <span class="tab-title">${escapeHtml(tab.title)}${tab.dirty ? " *" : ""}</span>
         <span class="tab-dirty ${tab.dirty ? 'visible' : ''}"></span>
         <button type="button" class="tab-close-btn" title="Chiudi">&times;</button>
@@ -715,6 +724,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (tab && cm) {
       cm.setValue(tab.content || "");
       cm.clearErrorHighlight();
+      if (latestIssues && latestIssues.length > 0) {
+        cm.setCompilerIssues(latestIssues, tab.filePath);
+      } else {
+        cm.clearCompilerIssues();
+      }
+      syncActiveTreeItem(tab.filePath);
       cm.focus();
 
       // Phase 8: Text editor mode for non-compilable files
@@ -1175,7 +1190,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   // ====== MAIN DOCUMENT & COMPILATION ======
   function setMainDocument(filePath) {
     mainDocumentPath = filePath;
-    currentProjectDir = path.dirname(filePath);
+    if (!isLinkedProject) {
+      currentProjectDir = path.dirname(filePath);
+    }
     footerMainDoc.textContent = `Principale: ${path.basename(filePath)}`;
     showNotification(`Documento principale impostato: ${path.basename(filePath)}`, "info");
   }
@@ -1264,6 +1281,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       latestIssues = res.issues || [];
       renderLogIssues(latestIssues, res.log);
+
+      if (cm) {
+        if (latestIssues.length > 0) {
+          cm.setCompilerIssues(latestIssues, tab ? tab.filePath : null);
+        } else {
+          cm.clearCompilerIssues();
+        }
+      }
 
       if (res.success && res.pdfPath && fs.existsSync(res.pdfPath)) {
         currentCompiledPdfPath = res.pdfPath;
@@ -1605,19 +1630,304 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (currentProjectDir) renderFolderPane(currentProjectDir);
   }
 
+  function syncActiveTreeItem(filePath) {
+    if (!filePath) return;
+    try {
+      const resolved = path.resolve(filePath);
+      document.querySelectorAll(".tree-item").forEach(item => {
+        if (item.title && path.resolve(item.title) === resolved) {
+          item.classList.add("active");
+        } else {
+          item.classList.remove("active");
+        }
+      });
+    } catch (_) {}
+  }
+
   function renderFolderPane(dir) {
     const targetContainer = folderTreeEl || fileTreeLegacy;
     if (!targetContainer) return;
     targetContainer.innerHTML = "";
-    if (!dir || !fs.existsSync(dir)) {
+
+    let effectiveDir = dir;
+    if (isLinkedProject && currentProject && currentProject.targetPath) {
+      const targetFolder = path.dirname(currentProject.targetPath);
+      if (!effectiveDir || (currentProject.storePath && effectiveDir.startsWith(currentProject.storePath))) {
+        effectiveDir = targetFolder;
+      }
+    }
+
+    if (folderPathEl && effectiveDir) {
+      folderPathEl.textContent = path.basename(effectiveDir);
+      folderPathEl.classList.remove("hidden");
+    }
+
+    if (!effectiveDir || !fs.existsSync(effectiveDir)) {
       targetContainer.innerHTML = `<div style="padding: 16px; font-size: 11.5px; opacity: 0.6; text-align: center;">Nessuna cartella aperta</div>`;
       return;
     }
 
     const rootUl = document.createElement("ul");
     rootUl.className = "tree-root";
-    buildFolderTreeRecursive(dir, rootUl);
+    buildFolderTreeRecursive(effectiveDir, rootUl);
     targetContainer.appendChild(rootUl);
+    updateExplorerSelectionUI();
+  }
+
+  // ====== EXPLORER SELECTION, MULTI-SELECT & DELETION ======
+  let selectedExplorerPaths = [];
+  let selectedExplorerPath = null;
+  let selectedExplorerElement = null;
+  let lastExplorerAnchorElement = null;
+
+  function getAllExplorerItems() {
+    const container = document.getElementById("sidebar-tab-content-files") || document.getElementById("explorer-panel");
+    if (!container) return [];
+    const items = Array.from(container.querySelectorAll(".tree-item:not(.tree-inline-input)"));
+    const visible = items.filter(el => el.offsetParent !== null && !el.closest('.hidden'));
+    return visible.length > 0 ? visible : items;
+  }
+
+  function clearExplorerSelection() {
+    document.querySelectorAll(".tree-item.selected").forEach(el => {
+      el.classList.remove("selected");
+    });
+    selectedExplorerPaths = [];
+    selectedExplorerPath = null;
+    selectedExplorerElement = null;
+  }
+
+  function updateExplorerSelectionUI() {
+    const allItems = getAllExplorerItems();
+    const pathSet = new Set(selectedExplorerPaths.map(p => path.resolve(p)));
+    allItems.forEach(el => {
+      const elPath = el.dataset.path ? path.resolve(el.dataset.path) : null;
+      if (elPath && pathSet.has(elPath)) {
+        el.classList.add("selected");
+      } else {
+        el.classList.remove("selected");
+      }
+    });
+  }
+
+  function handleExplorerItemClick(itemPath, itemDiv, event, isDir, childUl, isTargetPdf) {
+    if (!itemPath || !itemDiv) return;
+    const normalPath = path.resolve(itemPath);
+    const isShift = event && event.shiftKey;
+    const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey);
+
+    if (isShift) {
+      if (typeof window !== 'undefined' && window.getSelection) {
+        try { window.getSelection().removeAllRanges(); } catch (_) {}
+      }
+      const allItems = getAllExplorerItems();
+      let anchorIdx = lastExplorerAnchorElement ? allItems.indexOf(lastExplorerAnchorElement) : -1;
+      if (anchorIdx === -1 && selectedExplorerElement) {
+        anchorIdx = allItems.indexOf(selectedExplorerElement);
+      }
+      const targetIdx = allItems.indexOf(itemDiv);
+      if (anchorIdx === -1) anchorIdx = 0;
+
+      const start = Math.min(anchorIdx, targetIdx);
+      const end = Math.max(anchorIdx, targetIdx);
+      const rangeElements = allItems.slice(start, end + 1);
+
+      if (!isCtrlOrCmd) {
+        selectedExplorerPaths = rangeElements.map(el => el.dataset.path).filter(Boolean);
+      } else {
+        const newPaths = rangeElements.map(el => el.dataset.path).filter(Boolean);
+        const combined = new Set([...selectedExplorerPaths.map(p => path.resolve(p)), ...newPaths.map(p => path.resolve(p))]);
+        selectedExplorerPaths = Array.from(combined);
+      }
+
+      selectedExplorerPath = itemPath;
+      selectedExplorerElement = itemDiv;
+      updateExplorerSelectionUI();
+
+      if (!isDir) {
+        if (itemPath.toLowerCase().endsWith(".pdf")) {
+          pdfViewer.loadPdfDocument(itemPath);
+        } else {
+          openFileFromPath(itemPath);
+        }
+      }
+    } else if (isCtrlOrCmd) {
+      const index = selectedExplorerPaths.findIndex(p => path.resolve(p) === normalPath);
+      if (index >= 0) {
+        selectedExplorerPaths.splice(index, 1);
+        if (selectedExplorerPath && path.resolve(selectedExplorerPath) === normalPath) {
+          selectedExplorerPath = selectedExplorerPaths.length > 0 ? selectedExplorerPaths[selectedExplorerPaths.length - 1] : null;
+          selectedExplorerElement = selectedExplorerPath ? document.querySelector(`.tree-item[data-path="${selectedExplorerPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`) : null;
+        }
+      } else {
+        selectedExplorerPaths.push(itemPath);
+        selectedExplorerPath = itemPath;
+        selectedExplorerElement = itemDiv;
+      }
+      lastExplorerAnchorElement = itemDiv;
+      updateExplorerSelectionUI();
+    } else {
+      selectedExplorerPaths = [itemPath];
+      selectedExplorerPath = itemPath;
+      selectedExplorerElement = itemDiv;
+      lastExplorerAnchorElement = itemDiv;
+
+      updateExplorerSelectionUI();
+
+      document.querySelectorAll(".tree-item").forEach(x => x.classList.remove("active"));
+      itemDiv.classList.add("active");
+
+      if (isDir) {
+        if (childUl) {
+          const chevron = itemDiv.querySelector(".tree-chevron-icon");
+          const isCollapsed = childUl.classList.toggle("hidden");
+          if (chevron) chevron.style.transform = isCollapsed ? "rotate(0deg)" : "rotate(90deg)";
+        }
+      } else {
+        if (itemPath.toLowerCase().endsWith(".pdf")) {
+          pdfViewer.loadPdfDocument(itemPath);
+        } else {
+          openFileFromPath(itemPath);
+        }
+      }
+    }
+
+    try {
+      itemDiv.focus();
+    } catch (_) {}
+  }
+
+  function handleExplorerContextMenu(e, itemDiv, fullPath, isTargetPdf, showMenuFn) {
+    const normalPath = path.resolve(fullPath);
+    const alreadySelected = (selectedExplorerPaths || []).some(p => path.resolve(p) === normalPath);
+    if (!alreadySelected) {
+      selectedExplorerPaths = [fullPath];
+      selectedExplorerPath = fullPath;
+      selectedExplorerElement = itemDiv;
+      lastExplorerAnchorElement = itemDiv;
+      updateExplorerSelectionUI();
+    }
+    showMenuFn();
+  }
+
+  async function deleteExplorerFiles(targets) {
+    if (!targets) return;
+    const pathList = (Array.isArray(targets) ? targets : [targets]).filter(Boolean);
+    if (pathList.length === 0) return;
+
+    const uniqueMap = new Map();
+    for (const fp of pathList) {
+      uniqueMap.set(path.resolve(fp), fp);
+    }
+    const uniquePaths = Array.from(uniqueMap.values());
+    const count = uniquePaths.length;
+    if (count === 0) return;
+
+    if (count === 1) {
+      const singlePath = uniquePaths[0];
+      const isTargetPdf = isLinkedProject && currentProject && currentProject.targetPath &&
+        (path.resolve(singlePath) === path.resolve(currentProject.targetPath));
+
+      if (isTargetPdf) {
+        const linkedProj = currentProject;
+        const choice = await showCustomConfirmDialog({
+          title: "Eliminazione PDF collegato",
+          message: `Stai spostando nel cestino il file PDF "${path.basename(singlePath)}" collegato al progetto "${linkedProj.name || 'LaTeX'}".\n\nVuoi mantenere i dati sorgente del progetto archiviati (in modo da poter ricreare o duplicare il PDF in qualsiasi momento), oppure eliminare anche tutti i dati del progetto?`,
+          buttons: [
+            { text: "Annulla", value: 'cancel', isCancel: true },
+            { text: "Mantieni sorgenti", value: 'keep_sources', isPrimary: true },
+            { text: "Elimina anche dati", value: 'delete_all', isDanger: true }
+          ]
+        });
+
+        if (!choice || choice === 'cancel') return;
+
+        const openTab = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(singlePath));
+        if (openTab) closeTab(openTab.id);
+
+        await ipcRenderer.invoke('project-trash-item', singlePath);
+
+        if (choice === 'delete_all') {
+          if (linkedProj.storePath && fs.existsSync(linkedProj.storePath)) {
+            await ipcRenderer.invoke('project-trash-item', linkedProj.storePath);
+          }
+          await ipcRenderer.invoke('project-unlink', singlePath);
+          showNotification(`PDF e dati del progetto spostati nel cestino.`, "info");
+        } else {
+          await ipcRenderer.invoke('project-unlink', singlePath);
+          showNotification(`PDF "${path.basename(singlePath)}" spostato nel cestino. I sorgenti sono conservati nello store.`, "info");
+        }
+
+        closeLinkedProject();
+        clearExplorerSelection();
+        if (currentProjectDir) renderFolderPane(currentProjectDir);
+        return;
+      }
+
+      const fileName = path.basename(singlePath);
+      const answer = await showCustomConfirmDialog({
+        type: 'warning',
+        icon: 'warning',
+        title: "Sposta nel cestino",
+        message: `Sei sicuro di voler spostare "${fileName}" nel cestino? Nessun file viene eliminato definitivamente.`,
+        buttons: [
+          { text: "Annulla", value: 1, isCancel: true },
+          { text: "Sposta nel cestino", value: 0, isDanger: true, isPrimary: true }
+        ]
+      });
+
+      if (answer !== 0) return;
+
+      try {
+        await ipcRenderer.invoke('project-trash-item', singlePath);
+        const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(singlePath));
+        for (const t of openTabs) {
+          t.dirty = false;
+          closeTab(t.id);
+        }
+        clearExplorerSelection();
+        showNotification(`"${fileName}" spostato nel cestino`, "info");
+      } catch (err) {
+        showNotification("Errore eliminazione: " + err.message, "error");
+      }
+    } else {
+      const answer = await showCustomConfirmDialog({
+        type: 'warning',
+        icon: 'warning',
+        title: "Sposta nel cestino",
+        message: `Sei sicuro di voler spostare ${count} elementi nel cestino? Nessun file viene eliminato definitivamente.`,
+        buttons: [
+          { text: "Annulla", value: 1, isCancel: true },
+          { text: "Sposta nel cestino", value: 0, isDanger: true, isPrimary: true }
+        ]
+      });
+
+      if (answer !== 0) return;
+
+      let deletedCount = 0;
+      for (const fp of uniquePaths) {
+        try {
+          await ipcRenderer.invoke('project-trash-item', fp);
+          const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(fp));
+          for (const t of openTabs) {
+            t.dirty = false;
+            closeTab(t.id);
+          }
+          deletedCount++;
+        } catch (err) {
+          console.warn("[LACK] Failed to trash item:", fp, err);
+        }
+      }
+      clearExplorerSelection();
+      showNotification(`${deletedCount} element${deletedCount === 1 ? 'o spostato' : 'i spostati'} nel cestino`, "info");
+    }
+
+    if (isLinkedProject && currentProject) {
+      renderProjectPane(currentProject.storePath);
+    }
+    if (currentProjectDir) {
+      renderFolderPane(currentProjectDir);
+    }
   }
 
   function buildFolderTreeRecursive(dir, parentElement) {
@@ -1640,6 +1950,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       const itemDiv = document.createElement("div");
       itemDiv.className = "tree-item";
       itemDiv.title = fullPath;
+      itemDiv.dataset.path = fullPath;
+      itemDiv.dataset.isDir = isDir ? "true" : "false";
+      itemDiv.tabIndex = -1;
 
       const isTargetPdf = isLinkedProject && currentProject && currentProject.targetPath && (path.resolve(fullPath) === path.resolve(currentProject.targetPath));
 
@@ -1653,15 +1966,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         const childUl = document.createElement("ul");
         childUl.className = "tree-children hidden";
 
-        itemDiv.addEventListener("click", () => {
-          const chevron = itemDiv.querySelector(".tree-chevron-icon");
-          const isCollapsed = childUl.classList.toggle("hidden");
-          chevron.style.transform = isCollapsed ? "rotate(0deg)" : "rotate(90deg)";
+        itemDiv.addEventListener("click", (e) => {
+          handleExplorerItemClick(fullPath, itemDiv, e, true, childUl, false);
         });
 
         itemDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          showFolderItemContextMenu(e, itemDiv, fullPath, false);
+          handleExplorerContextMenu(e, itemDiv, fullPath, false, () => showFolderItemContextMenu(e, itemDiv, fullPath, false));
         });
 
         li.appendChild(itemDiv);
@@ -1677,19 +1988,13 @@ window.addEventListener("DOMContentLoaded", async () => {
           ${linkBadge}
         `;
 
-        itemDiv.addEventListener("click", () => {
-          document.querySelectorAll(".tree-item").forEach(x => x.classList.remove("active"));
-          itemDiv.classList.add("active");
-          if (entry.name.toLowerCase().endsWith(".pdf")) {
-            pdfViewer.loadPdfDocument(fullPath);
-          } else {
-            openFileFromPath(fullPath);
-          }
+        itemDiv.addEventListener("click", (e) => {
+          handleExplorerItemClick(fullPath, itemDiv, e, false, null, isTargetPdf);
         });
 
         itemDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          showFolderItemContextMenu(e, itemDiv, fullPath, isTargetPdf);
+          handleExplorerContextMenu(e, itemDiv, fullPath, isTargetPdf, () => showFolderItemContextMenu(e, itemDiv, fullPath, isTargetPdf));
         });
 
         li.appendChild(itemDiv);
@@ -1796,64 +2101,12 @@ window.addEventListener("DOMContentLoaded", async () => {
       };
     }
 
-    menu.querySelector("#ctx-delete").onclick = async () => {
+    menu.querySelector("#ctx-delete").onclick = () => {
       menu.remove();
-      const isPdf = fullPath.toLowerCase().endsWith(".pdf");
-      let linkedProj = null;
-      if (isPdf) {
-        if (isTargetPdf && currentProject) {
-          linkedProj = currentProject;
-        } else {
-          try {
-            linkedProj = await ipcRenderer.invoke('project-find-by-target', fullPath);
-          } catch (_) {}
-        }
-      }
-
-      if (linkedProj) {
-        const choice = await showCustomConfirmDialog({
-          title: "Eliminazione PDF collegato",
-          message: `Stai spostando nel cestino il file PDF "${path.basename(fullPath)}" collegato al progetto "${linkedProj.name || 'LaTeX'}".\n\nVuoi mantenere i dati sorgente del progetto archiviati (in modo da poter ricreare o duplicare il PDF in qualsiasi momento), oppure eliminare anche tutti i dati del progetto?`,
-          buttons: [
-            { text: "Annulla", value: 'cancel', isCancel: true },
-            { text: "Mantieni sorgenti", value: 'keep_sources', isPrimary: true },
-            { text: "Elimina anche dati", value: 'delete_all', isDanger: true }
-          ]
-        });
-
-        if (choice === 'keep_sources') {
-          await ipcRenderer.invoke('project-trash-item', fullPath);
-          await ipcRenderer.invoke('project-unlink', fullPath);
-          showNotification(`PDF "${path.basename(fullPath)}" spostato nel cestino. I sorgenti sono conservati nello store.`, "info");
-          if (isLinkedProject && currentProject && path.resolve(currentProject.targetPath) === path.resolve(fullPath)) {
-            closeLinkedProject();
-          }
-          if (currentProjectDir) renderFolderPane(currentProjectDir);
-        } else if (choice === 'delete_all') {
-          await ipcRenderer.invoke('project-trash-item', fullPath);
-          if (linkedProj.storePath && fs.existsSync(linkedProj.storePath)) {
-            await ipcRenderer.invoke('project-trash-item', linkedProj.storePath);
-          }
-          await ipcRenderer.invoke('project-unlink', fullPath);
-          showNotification(`PDF e dati del progetto spostati nel cestino.`, "info");
-          if (isLinkedProject && currentProject && path.resolve(currentProject.targetPath) === path.resolve(fullPath)) {
-            closeLinkedProject();
-          }
-          if (currentProjectDir) renderFolderPane(currentProjectDir);
-        }
-      } else {
-        const ok = await showCustomConfirmDialog({
-          title: "Sposta nel cestino",
-          message: `Sei sicuro di voler spostare "${path.basename(fullPath)}" nel cestino? Nessun file viene eliminato definitivamente.`
-        });
-        if (ok) {
-          const openTab = tabs.find(t => t.filePath === fullPath);
-          if (openTab) closeTab(openTab.id);
-          await ipcRenderer.invoke('project-trash-item', fullPath);
-          showNotification(`"${path.basename(fullPath)}" spostato nel cestino`, "info");
-          if (currentProjectDir) renderFolderPane(currentProjectDir);
-        }
-      }
+      const targets = (selectedExplorerPaths && selectedExplorerPaths.length > 1 && selectedExplorerPaths.some(p => path.resolve(p) === path.resolve(fullPath)))
+        ? selectedExplorerPaths
+        : [fullPath];
+      deleteExplorerFiles(targets);
     };
 
     const closeHandler = () => {
@@ -1875,6 +2128,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     rootUl.className = "tree-root";
     buildProjectTreeRecursive(storeDir, rootUl);
     projectTreeEl.appendChild(rootUl);
+    updateExplorerSelectionUI();
   }
 
   function buildProjectTreeRecursive(dir, parentElement) {
@@ -1911,6 +2165,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       const itemDiv = document.createElement("div");
       itemDiv.className = "tree-item project-tree-item";
       itemDiv.title = fullPath;
+      itemDiv.dataset.path = fullPath;
+      itemDiv.dataset.isDir = isDir ? "true" : "false";
+      itemDiv.tabIndex = -1;
 
       const isMain = mainDocumentPath && (path.resolve(fullPath) === path.resolve(mainDocumentPath));
 
@@ -1927,15 +2184,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         const childUl = document.createElement("ul");
         childUl.className = "tree-children hidden";
 
-        itemDiv.addEventListener("click", () => {
-          const chevron = itemDiv.querySelector(".tree-chevron-icon");
-          const isCollapsed = childUl.classList.toggle("hidden");
-          chevron.style.transform = isCollapsed ? "rotate(0deg)" : "rotate(90deg)";
+        itemDiv.addEventListener("click", (e) => {
+          handleExplorerItemClick(fullPath, itemDiv, e, true, childUl, false);
         });
 
         itemDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          showProjectItemContextMenu(e, itemDiv, fullPath, entry.name, true, false);
+          handleExplorerContextMenu(e, itemDiv, fullPath, false, () => showProjectItemContextMenu(e, itemDiv, fullPath, entry.name, true, false));
         });
 
         li.appendChild(itemDiv);
@@ -1954,15 +2209,13 @@ window.addEventListener("DOMContentLoaded", async () => {
           ${mainBadge}
         `;
 
-        itemDiv.addEventListener("click", () => {
-          document.querySelectorAll(".tree-item").forEach(x => x.classList.remove("active"));
-          itemDiv.classList.add("active");
-          openFileFromPath(fullPath);
+        itemDiv.addEventListener("click", (e) => {
+          handleExplorerItemClick(fullPath, itemDiv, e, false, null, false);
         });
 
         itemDiv.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          showProjectItemContextMenu(e, itemDiv, fullPath, entry.name, false, isMain);
+          handleExplorerContextMenu(e, itemDiv, fullPath, false, () => showProjectItemContextMenu(e, itemDiv, fullPath, entry.name, false, isMain));
         });
 
         li.appendChild(itemDiv);
@@ -2048,20 +2301,12 @@ window.addEventListener("DOMContentLoaded", async () => {
       ipcRenderer.invoke('project-reveal-item', fullPath);
     };
 
-    menu.querySelector("#ctx-proj-delete").onclick = async () => {
+    menu.querySelector("#ctx-proj-delete").onclick = () => {
       menu.remove();
-      const ok = await showCustomConfirmDialog({
-        title: "Sposta nel cestino",
-        message: `Sei sicuro di voler spostare "${name}" nel cestino? Nessun file viene eliminato definitivamente.`
-      });
-      if (ok) {
-        const openTab = tabs.find(t => t.filePath === fullPath);
-        if (openTab) closeTab(openTab.id);
-
-        await ipcRenderer.invoke('project-trash-item', fullPath);
-        showNotification(`"${name}" spostato nel cestino`, "info");
-        renderProjectPane(currentProject.storePath);
-      }
+      const targets = (selectedExplorerPaths && selectedExplorerPaths.length > 1 && selectedExplorerPaths.some(p => path.resolve(p) === path.resolve(fullPath)))
+        ? selectedExplorerPaths
+        : [fullPath];
+      deleteExplorerFiles(targets);
     };
 
     const closeHandler = () => {
@@ -2202,8 +2447,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function openFileFromPath(filePath) {
-    if (!fs.existsSync(filePath)) return;
-    const existing = tabs.find(t => t.filePath === filePath);
+    if (!filePath || !fs.existsSync(filePath)) return;
+    const existing = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(filePath));
     if (existing) {
       switchTab(existing.id);
       return;
@@ -2228,6 +2473,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.closeSavedTabs = closeSavedTabs;
   window.closeAllTabs = closeAllTabs;
   window.showTabContextMenu = showTabContextMenu;
+  window.deleteExplorerFiles = deleteExplorerFiles;
+  window.getSelectedExplorerPaths = () => selectedExplorerPaths;
+  window.getSelectedExplorerPath = () => selectedExplorerPath;
+  window.clearExplorerSelection = clearExplorerSelection;
 
   function openFileDialog() {
     dialog.showOpenDialog({
@@ -2247,7 +2496,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Inline input row for new folder and new file
-  function showInlineTreeInput(containerEl, targetDir, type = "file") {
+  function showInlineTreeInput(containerEl, targetDir, type = "file", isProjectStore = false) {
     if (!targetDir || !fs.existsSync(targetDir)) return;
     const existing = document.querySelector(".tree-inline-input-row");
     if (existing) existing.remove();
@@ -2344,15 +2593,18 @@ window.addEventListener("DOMContentLoaded", async () => {
           await fs.promises.mkdir(targetPath, { recursive: true });
           showNotification(`Cartella "${name}" creata!`, "info");
         } else {
-          await fs.promises.writeFile(targetPath, '\\documentclass{article}\n\\begin{document}\n\n\\end{document}\n', 'utf8');
+          const starterContent = ext.toLowerCase() === '.tex'
+            ? '\\documentclass{article}\n\\begin{document}\n\n\\end{document}\n'
+            : '';
+          await fs.promises.writeFile(targetPath, starterContent, 'utf8');
           showNotification(`File "${name}" creato!`, "info");
           openFileFromPath(targetPath);
         }
 
-        if (isLinkedProject && currentProject && targetDir.startsWith(currentProject.storePath)) {
-          renderProjectPane(currentProject.storePath);
-        } else if (currentProjectDir) {
-          renderFolderPane(currentProjectDir);
+        if (isProjectStore) {
+          renderProjectPane(targetDir);
+        } else {
+          renderFolderPane(targetDir);
         }
       } catch (err) {
         showNotification("Errore: " + err.message, "error");
@@ -2527,11 +2779,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Explorer & Pane Action Buttons
   document.getElementById("new-folder")?.addEventListener("click", async () => {
-    if (isLinkedProject && currentProject) {
-      showInlineTreeInput(projectTreeEl, currentProject.storePath, "folder");
-      return;
-    }
-    if (!currentProjectDir) {
+    const targetDir = (isLinkedProject && currentProject && currentProject.targetPath)
+      ? path.dirname(currentProject.targetPath)
+      : currentProjectDir;
+    if (!targetDir) {
       const res = await dialog.showOpenDialog({
         title: "Seleziona o crea la cartella di progetto",
         properties: ["openDirectory", "createDirectory"]
@@ -2539,26 +2790,26 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (!res.canceled && res.filePaths.length > 0) openFolder(res.filePaths[0]);
       return;
     }
-    showInlineTreeInput(folderTreeEl || fileTreeLegacy, currentProjectDir, "folder");
+    showInlineTreeInput(folderTreeEl || fileTreeLegacy, targetDir, "folder", false);
   });
 
   document.getElementById("new-file")?.addEventListener("click", () => {
-    if (isLinkedProject && currentProject) {
-      showInlineTreeInput(projectTreeEl, currentProject.storePath, "file");
-      return;
-    }
-    if (!currentProjectDir) {
+    const targetDir = (isLinkedProject && currentProject && currentProject.targetPath)
+      ? path.dirname(currentProject.targetPath)
+      : currentProjectDir;
+    if (!targetDir) {
       newFile();
       return;
     }
-    showInlineTreeInput(folderTreeEl || fileTreeLegacy, currentProjectDir, "file");
+    showInlineTreeInput(folderTreeEl || fileTreeLegacy, targetDir, "file", false);
   });
 
   document.getElementById("open-folder")?.addEventListener("click", () => openFolderDialog());
   document.getElementById("refresh-explorer")?.addEventListener("click", () => {
     if (isLinkedProject && currentProject) {
       renderProjectPane(currentProject.storePath);
-      if (currentProjectDir) renderFolderPane(currentProjectDir);
+      const targetFolder = path.dirname(currentProject.targetPath);
+      renderFolderPane(targetFolder);
     } else if (currentProjectDir) {
       renderFolderPane(currentProjectDir);
     }
@@ -2571,9 +2822,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("explorer-panel")?.classList.toggle("hidden");
   });
 
+  // Clear explorer selection when clicking on empty background
+  document.getElementById("sidebar-tab-content-files")?.addEventListener("click", (e) => {
+    if (!e.target.closest(".tree-item") && !e.target.closest(".tree-inline-input-row") && !e.target.closest(".sidebar-pane-header")) {
+      clearExplorerSelection();
+    }
+  });
+
+  // Mouse wheel delegation on sidebar panes to always scroll tree containers
+  document.querySelectorAll(".sidebar-pane").forEach(pane => {
+    pane.addEventListener("wheel", (e) => {
+      const tree = pane.querySelector(".tree-container");
+      if (tree && e.target !== tree && !tree.contains(e.target)) {
+        tree.scrollTop += e.deltaY;
+      }
+    }, { passive: true });
+  });
+
   // Folder pane specific buttons
   document.getElementById("folder-btn-refresh")?.addEventListener("click", () => {
-    if (currentProjectDir) renderFolderPane(currentProjectDir);
+    const targetFolder = (isLinkedProject && currentProject && currentProject.targetPath)
+      ? path.dirname(currentProject.targetPath)
+      : currentProjectDir;
+    if (targetFolder) renderFolderPane(targetFolder);
   });
   document.getElementById("folder-btn-collapse")?.addEventListener("click", () => {
     folderPane?.classList.toggle("collapsed");
@@ -2585,11 +2856,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Project pane specific buttons
   document.getElementById("proj-btn-add-file")?.addEventListener("click", () => {
     if (!isLinkedProject || !currentProject) return;
-    showInlineTreeInput(projectTreeEl, currentProject.storePath, "file");
+    showInlineTreeInput(projectTreeEl, currentProject.storePath, "file", true);
   });
   document.getElementById("proj-btn-add-folder")?.addEventListener("click", () => {
     if (!isLinkedProject || !currentProject) return;
-    showInlineTreeInput(projectTreeEl, currentProject.storePath, "folder");
+    showInlineTreeInput(projectTreeEl, currentProject.storePath, "folder", true);
   });
   document.getElementById("proj-btn-link-asset")?.addEventListener("click", async () => {
     if (!isLinkedProject || !currentProject) return;
@@ -3563,6 +3834,55 @@ window.addEventListener("DOMContentLoaded", async () => {
       closeAllTitlebarMenus();
       closeAllToolbarDropdowns();
       document.getElementById('new-file-popup')?.classList.add('hidden');
+    }
+
+    const activeEl = document.activeElement;
+    const tag = activeEl ? activeEl.tagName : '';
+    if (['TEXTAREA', 'INPUT', 'BUTTON', 'SELECT'].includes(tag) || activeEl?.isContentEditable) {
+      return;
+    }
+
+    if (document.querySelector('.modal:not(.hidden)')) {
+      return;
+    }
+
+    // Rename shortcut (F2) on single selected explorer item
+    if (e.key === 'F2' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      if (selectedExplorerPaths && selectedExplorerPaths.length > 1) return;
+      if (selectedExplorerElement && selectedExplorerPath) {
+        e.preventDefault();
+        showInlineRename(selectedExplorerElement, selectedExplorerPath, () => {
+          if (isLinkedProject && currentProject) renderProjectPane(currentProject.storePath);
+          if (currentProjectDir) renderFolderPane(currentProjectDir);
+        });
+        return;
+      }
+    }
+
+    // Delete shortcut (Delete / Canc / Del / Mac Cmd+Backspace)
+    if (selectedExplorerPath || (selectedExplorerPaths && selectedExplorerPaths.length > 0)) {
+      const isExplorerFocused =
+        (selectedExplorerElement && document.activeElement === selectedExplorerElement) ||
+        document.getElementById('explorer-panel')?.contains(document.activeElement) ||
+        document.activeElement === document.body;
+
+      if (isExplorerFocused) {
+        const isDarwin = process.platform === 'darwin';
+        const isDelete = isDarwin
+          ? (e.metaKey && (e.key === 'Backspace' || e.key === 'Delete'))
+          : (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === 'Delete' || e.key === 'Del' || e.code === 'Delete' || e.key === 'Canc'));
+
+        if (isDelete) {
+          e.preventDefault();
+          const targets = (selectedExplorerPaths && selectedExplorerPaths.length > 0)
+            ? selectedExplorerPaths
+            : (selectedExplorerPath ? [selectedExplorerPath] : []);
+          if (targets.length > 0) {
+            deleteExplorerFiles(targets);
+          }
+          return;
+        }
+      }
     }
   });
 

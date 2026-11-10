@@ -41,7 +41,7 @@ function isCompilableLatexFile(filePath) {
 function filterProjectEntries(entries) {
   return entries
     .filter(entry => {
-      if (entry.name.startsWith('.') || entry.name === 'node_modules') return false;
+      if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'project.json') return false;
       return true;
     })
     .sort((a, b) => {

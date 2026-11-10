@@ -83,6 +83,26 @@ const lackBaseTheme = EditorView.theme({
     color: '#ef4444 !important',
     fontWeight: 'bold !important'
   },
+  // Linter / Compiler error in gutter: solid red dot
+  '.cm-lint-marker-error': {
+    content: '"" !important',
+    display: 'inline-block !important',
+    width: '8px !important',
+    height: '8px !important',
+    backgroundColor: '#ef4444 !important',
+    borderRadius: '50% !important',
+    margin: '6px auto 0 4px !important',
+    boxShadow: '0 0 5px rgba(239, 68, 68, 0.7) !important'
+  },
+  // Wrong command or text highlighted in red
+  '.cm-lintRange-error': {
+    backgroundColor: 'rgba(239, 68, 68, 0.22) !important',
+    color: '#ef4444 !important',
+    borderBottom: '2px solid #ef4444 !important',
+    textDecoration: 'underline wavy #ef4444 !important',
+    borderRadius: '2px !important',
+    fontWeight: '500 !important'
+  },
   '.cm-tooltip': {
     backgroundColor: 'var(--editor-bg) !important',
     border: '1px solid var(--explorer-border) !important',

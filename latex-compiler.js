@@ -172,11 +172,24 @@ function parseLatexLog(logContent) {
     // 1. Standard file-line-error format: "filename.tex:14: Error message"
     const fileLineErrorMatch = line.match(/^(.+?\.tex):(\d+):\s*(.*)$/);
     if (fileLineErrorMatch) {
+      let errorCmd = null;
+      for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+        const lineMatch = lines[j].match(/^l\.(\d+)(?:\s+(.*))?/);
+        if (lineMatch) {
+          if (lineMatch[2]) {
+            const cmdMatch = lineMatch[2].match(/\\([a-zA-Z@]+)/);
+            if (cmdMatch) errorCmd = cmdMatch[0];
+          }
+          break;
+        }
+      }
+
       issues.push({
         type: "error",
         file: path.basename(fileLineErrorMatch[1]),
         line: parseInt(fileLineErrorMatch[2], 10),
         message: fileLineErrorMatch[3].trim(),
+        command: errorCmd,
         raw: line
       });
       continue;
@@ -186,12 +199,17 @@ function parseLatexLog(logContent) {
     if (line.startsWith("!")) {
       const errorMsg = line.slice(1).trim();
       let errorLine = null;
+      let errorCmd = null;
 
       // Check next lines for "l.NN" context indicator
       for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
-        const lineMatch = lines[j].match(/^l\.(\d+)/);
+        const lineMatch = lines[j].match(/^l\.(\d+)(?:\s+(.*))?/);
         if (lineMatch) {
           errorLine = parseInt(lineMatch[1], 10);
+          if (lineMatch[2]) {
+            const cmdMatch = lineMatch[2].match(/\\([a-zA-Z@]+)/);
+            if (cmdMatch) errorCmd = cmdMatch[0];
+          }
           break;
         }
       }
@@ -208,6 +226,7 @@ function parseLatexLog(logContent) {
         file: currentFile ? path.basename(currentFile) : "",
         line: errorLine || 1,
         message: errorMsg,
+        command: errorCmd,
         missingPackage,
         raw: line
       });

@@ -29,7 +29,7 @@ const {
   syntaxHighlighting
 } = require('@codemirror/language');
 const { search, searchKeymap, openSearchPanel } = require('@codemirror/search');
-const { lintGutter, lintKeymap } = require('@codemirror/lint');
+const { lintGutter, lintKeymap, forceLinting } = require('@codemirror/lint');
 const { latexLanguage } = require('./latex-syntax');
 const { vim } = require('@replit/codemirror-vim');
 const { yCollab } = require('y-codemirror.next');
@@ -175,14 +175,23 @@ const errorHighlightField = ViewPlugin.fromClass(
     constructor() {
       this.decorations = Decoration.none;
     }
-    setLine(view, lineNum) {
-      if (!lineNum || lineNum < 1 || lineNum > view.state.doc.lines) {
+    setLines(view, lineNums) {
+      if (!lineNums || lineNums.length === 0) {
         this.decorations = Decoration.none;
       } else {
-        const line = view.state.doc.line(lineNum);
-        this.decorations = Decoration.set([errorLineDeco.range(line.from)]);
+        const decos = [];
+        const lines = view.state.doc.lines;
+        const valid = [...new Set(lineNums.filter(n => n >= 1 && n <= lines))].sort((a, b) => a - b);
+        for (const n of valid) {
+          const line = view.state.doc.line(n);
+          decos.push(errorLineDeco.range(line.from));
+        }
+        this.decorations = Decoration.set(decos);
       }
       view.requestMeasure();
+    }
+    setLine(view, lineNum) {
+      this.setLines(view, lineNum ? [lineNum] : []);
     }
   },
   {
@@ -194,6 +203,8 @@ class CodeMirrorManager {
   constructor(containerEl, options = {}) {
     this.containerEl = containerEl;
     this.options = options;
+    this.compilerIssues = [];
+    this.activeFilePath = null;
 
     this.wrappingCompartment = new Compartment();
     this.vimCompartment = new Compartment();
@@ -326,7 +337,7 @@ class CodeMirrorManager {
           override: [createLatexCompletionSource(this.projectContext)],
           defaultKeymap: true
         }),
-        latexLinterExtension(),
+        latexLinterExtension(this),
         createSpellCheckPlugin(),
         errorHighlightField,
         Prec.high(keymap.of(customKeymaps)),
@@ -501,6 +512,37 @@ class CodeMirrorManager {
       scrollIntoView: true
     });
     this.view.focus();
+  }
+
+  setCompilerIssues(issues = [], activeFilePath = null) {
+    this.compilerIssues = Array.isArray(issues) ? issues : [];
+    this.activeFilePath = activeFilePath;
+    if (this.view) {
+      try { forceLinting(this.view); } catch (_) {}
+      const errorLines = this.compilerIssues
+        .filter(i => i.type === 'error' && i.line)
+        .map(i => i.line);
+      if (errorLines.length > 0) {
+        this.highlightErrorLines(errorLines);
+      } else {
+        this.clearErrorHighlight();
+      }
+    }
+  }
+
+  clearCompilerIssues() {
+    this.compilerIssues = [];
+    this.clearErrorHighlight();
+    if (this.view) {
+      try { forceLinting(this.view); } catch (_) {}
+    }
+  }
+
+  highlightErrorLines(lineNums) {
+    const plugin = this.view.plugin(errorHighlightField);
+    if (plugin) {
+      plugin.setLines(this.view, lineNums);
+    }
   }
 
   highlightErrorLine(lineNum) {

@@ -24851,7 +24851,7 @@ var require_dist12 = __commonJS({
         lintExtensions
       ];
     }
-    function forceLinting(view2) {
+    function forceLinting2(view2) {
       let plugin = view2.plugin(lintPlugin);
       if (plugin)
         plugin.force();
@@ -25394,7 +25394,7 @@ var require_dist12 = __commonJS({
     exports2.closeLintPanel = closeLintPanel;
     exports2.diagnosticCount = diagnosticCount;
     exports2.forEachDiagnostic = forEachDiagnostic;
-    exports2.forceLinting = forceLinting;
+    exports2.forceLinting = forceLinting2;
     exports2.lintGutter = lintGutter2;
     exports2.lintKeymap = lintKeymap2;
     exports2.linter = linter;
@@ -47348,6 +47348,26 @@ var require_themes = __commonJS({
         color: "#ef4444 !important",
         fontWeight: "bold !important"
       },
+      // Linter / Compiler error in gutter: solid red dot
+      ".cm-lint-marker-error": {
+        content: '"" !important',
+        display: "inline-block !important",
+        width: "8px !important",
+        height: "8px !important",
+        backgroundColor: "#ef4444 !important",
+        borderRadius: "50% !important",
+        margin: "6px auto 0 4px !important",
+        boxShadow: "0 0 5px rgba(239, 68, 68, 0.7) !important"
+      },
+      // Wrong command or text highlighted in red
+      ".cm-lintRange-error": {
+        backgroundColor: "rgba(239, 68, 68, 0.22) !important",
+        color: "#ef4444 !important",
+        borderBottom: "2px solid #ef4444 !important",
+        textDecoration: "underline wavy #ef4444 !important",
+        borderRadius: "2px !important",
+        fontWeight: "500 !important"
+      },
       ".cm-tooltip": {
         backgroundColor: "var(--editor-bg) !important",
         border: "1px solid var(--explorer-border) !important",
@@ -54638,10 +54658,29 @@ var require_linter_logic = __commonJS({
       if (options.compiledCleanMacros && typeof options.compiledCleanMacros.forEach === "function") {
         options.compiledCleanMacros.forEach((m) => validCommands.add(m));
       }
-      const dbPackages = new Set(db.packages);
+      const KNOWN_STANDARD_PACKAGES = /* @__PURE__ */ new Set([
+        "inputenc",
+        "fontenc",
+        "babel",
+        "lmodern",
+        "textcomp",
+        "microtype",
+        "csquotes",
+        "indentfirst",
+        "cmap",
+        "fixltx2e",
+        "array",
+        "float",
+        "caption",
+        "subcaption",
+        "enumitem",
+        "url",
+        "cite"
+      ]);
+      const dbPackages = /* @__PURE__ */ new Set([...db.packages, ...db.macros.map((m) => m.package)]);
       let allLoadedPackagesKnown = true;
       for (const pkg of loadedPackages) {
-        if (pkg !== "latex2e" && !dbPackages.has(pkg)) {
+        if (pkg !== "latex2e" && !dbPackages.has(pkg) && !KNOWN_STANDARD_PACKAGES.has(pkg)) {
           allLoadedPackagesKnown = false;
           break;
         }
@@ -54849,11 +54888,12 @@ var require_linter = __commonJS({
   "src/editor/linter.js"(exports2, module2) {
     var { linter } = require_dist12();
     var { lintLatexDocument } = require_linter_logic();
-    function latexLinterExtension2() {
+    var path = require("path");
+    function latexLinterExtension2(manager = null) {
       return linter((view) => {
         const text2 = view.state.doc.toString();
-        const diagnostics = lintLatexDocument(text2);
-        return diagnostics.map((d) => {
+        const staticDiagnostics = lintLatexDocument(text2);
+        const result = staticDiagnostics.map((d) => {
           const item = {
             from: Math.max(0, Math.min(d.from, text2.length)),
             to: Math.max(0, Math.min(d.to, text2.length)),
@@ -54876,7 +54916,53 @@ var require_linter = __commonJS({
           }
           return item;
         });
-      }, { delay: 350 });
+        if (manager && manager.compilerIssues && manager.compilerIssues.length > 0) {
+          const activeFilePath = manager.activeFilePath;
+          const activeBase = activeFilePath ? path.basename(activeFilePath) : null;
+          const docLines = view.state.doc.lines;
+          for (const iss of manager.compilerIssues) {
+            if (iss.type !== "error" && iss.type !== "warning") continue;
+            if (iss.file && activeBase && path.basename(iss.file) !== activeBase) continue;
+            const lineNum = iss.line;
+            if (!lineNum || lineNum < 1 || lineNum > docLines) continue;
+            const line = view.state.doc.line(lineNum);
+            const lineText = line.text;
+            let from = line.from;
+            let to = line.to;
+            if (iss.command) {
+              const cleanCmd = iss.command.startsWith("\\") ? iss.command : `\\${iss.command}`;
+              const idx = lineText.indexOf(cleanCmd);
+              if (idx !== -1) {
+                from = line.from + idx;
+                to = from + cleanCmd.length;
+              }
+            } else {
+              const cmdMatch = lineText.match(/\\[a-zA-Z@]+/);
+              if (cmdMatch) {
+                from = line.from + cmdMatch.index;
+                to = from + cmdMatch[0].length;
+              } else {
+                const trimmed = lineText.trim();
+                if (trimmed.length > 0) {
+                  const start = lineText.indexOf(trimmed);
+                  from = line.from + start;
+                  to = from + trimmed.length;
+                }
+              }
+            }
+            const isDup = result.some((d) => d.from === from && d.to === to);
+            if (!isDup) {
+              result.push({
+                from: Math.max(0, Math.min(from, text2.length)),
+                to: Math.max(0, Math.min(to, text2.length)),
+                severity: iss.type === "warning" ? "warning" : "error",
+                message: `[LaTeX] ${iss.message}`
+              });
+            }
+          }
+        }
+        return result;
+      }, { delay: 250 });
     }
     module2.exports = { latexLinterExtension: latexLinterExtension2 };
   }
@@ -56319,7 +56405,7 @@ var {
   syntaxHighlighting
 } = require_dist8();
 var { search, searchKeymap, openSearchPanel } = require_dist11();
-var { lintGutter, lintKeymap } = require_dist12();
+var { lintGutter, lintKeymap, forceLinting } = require_dist12();
 var { latexLanguage } = require_latex_syntax();
 var { vim } = require_dist13();
 var { yCollab: yCollab2 } = (init_src2(), __toCommonJS(src_exports));
@@ -56432,14 +56518,23 @@ var errorHighlightField = ViewPlugin2.fromClass(
     constructor() {
       this.decorations = Decoration2.none;
     }
-    setLine(view, lineNum) {
-      if (!lineNum || lineNum < 1 || lineNum > view.state.doc.lines) {
+    setLines(view, lineNums) {
+      if (!lineNums || lineNums.length === 0) {
         this.decorations = Decoration2.none;
       } else {
-        const line = view.state.doc.line(lineNum);
-        this.decorations = Decoration2.set([errorLineDeco.range(line.from)]);
+        const decos = [];
+        const lines = view.state.doc.lines;
+        const valid = [...new Set(lineNums.filter((n) => n >= 1 && n <= lines))].sort((a, b) => a - b);
+        for (const n of valid) {
+          const line = view.state.doc.line(n);
+          decos.push(errorLineDeco.range(line.from));
+        }
+        this.decorations = Decoration2.set(decos);
       }
       view.requestMeasure();
+    }
+    setLine(view, lineNum) {
+      this.setLines(view, lineNum ? [lineNum] : []);
     }
   },
   {
@@ -56450,6 +56545,8 @@ var CodeMirrorManager = class {
   constructor(containerEl, options = {}) {
     this.containerEl = containerEl;
     this.options = options;
+    this.compilerIssues = [];
+    this.activeFilePath = null;
     this.wrappingCompartment = new Compartment2();
     this.vimCompartment = new Compartment2();
     this.themeCompartment = new Compartment2();
@@ -56574,7 +56671,7 @@ var CodeMirrorManager = class {
           override: [createLatexCompletionSource(this.projectContext)],
           defaultKeymap: true
         }),
-        latexLinterExtension(),
+        latexLinterExtension(this),
         createSpellCheckPlugin(),
         errorHighlightField,
         Prec2.high(keymap.of(customKeymaps)),
@@ -56718,6 +56815,38 @@ var CodeMirrorManager = class {
       scrollIntoView: true
     });
     this.view.focus();
+  }
+  setCompilerIssues(issues = [], activeFilePath = null) {
+    this.compilerIssues = Array.isArray(issues) ? issues : [];
+    this.activeFilePath = activeFilePath;
+    if (this.view) {
+      try {
+        forceLinting(this.view);
+      } catch (_) {
+      }
+      const errorLines = this.compilerIssues.filter((i2) => i2.type === "error" && i2.line).map((i2) => i2.line);
+      if (errorLines.length > 0) {
+        this.highlightErrorLines(errorLines);
+      } else {
+        this.clearErrorHighlight();
+      }
+    }
+  }
+  clearCompilerIssues() {
+    this.compilerIssues = [];
+    this.clearErrorHighlight();
+    if (this.view) {
+      try {
+        forceLinting(this.view);
+      } catch (_) {
+      }
+    }
+  }
+  highlightErrorLines(lineNums) {
+    const plugin = this.view.plugin(errorHighlightField);
+    if (plugin) {
+      plugin.setLines(this.view, lineNums);
+    }
   }
   highlightErrorLine(lineNum) {
     const plugin = this.view.plugin(errorHighlightField);

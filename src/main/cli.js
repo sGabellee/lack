@@ -169,9 +169,9 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
     const res = {
       action: 'create-linked',
       targetPath,
+      ...options,
       name: options.name || path.basename(targetPath, '.pdf'),
       template: options.template || 'standard',
-      ...options,
       debug
     };
     if (debug) console.log('[LACK_DEBUG] Resolver decision (create-linked PDF):', res);
@@ -189,10 +189,10 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
           const res = {
             action: 'open-linked',
             projectId: link.id,
-            name: link.name || regHit.name,
             storePath: regHit.storePath,
             targetPath: pdfCandidate,
             ...options,
+            name: link.name || regHit.name || options.name || path.basename(targetPath),
             debug
           };
           if (debug) console.log('[LACK_DEBUG] Resolver decision (extension-less -> linked PDF):', res);
@@ -201,10 +201,10 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
         const res = {
           action: 'prompt-relink-or-restore',
           projectId: link.id,
-          name: link.name,
           targetPath: pdfCandidate,
           hasSnapshot: !!link.hasSnapshot,
           ...options,
+          name: link.name || options.name || path.basename(targetPath),
           debug
         };
         if (debug) console.log('[LACK_DEBUG] Resolver decision (extension-less -> prompt relink):', res);
@@ -214,9 +214,9 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
       const res = {
         action: 'prompt-claim-pdf',
         targetPath: pdfCandidate,
-        name: options.name || path.basename(pdfCandidate, '.pdf'),
-        template: options.template,
         ...options,
+        name: options.name || path.basename(pdfCandidate, '.pdf'),
+        template: options.template || 'standard',
         debug
       };
       if (debug) console.log('[LACK_DEBUG] Resolver decision (extension-less -> claim PDF):', res);
@@ -241,9 +241,9 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
     const res = {
       action: 'create-linked',
       targetPath: pdfCandidate,
+      ...options,
       name: options.name || path.basename(targetPath),
       template: options.template || 'standard',
-      ...options,
       debug
     };
     if (debug) console.log('[LACK_DEBUG] Resolver decision (extension-less -> create-linked):', res);

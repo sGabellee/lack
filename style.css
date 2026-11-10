@@ -1330,17 +1330,25 @@ body.dark .empty-item-shortcut kbd {
 }
 
 .tree-item.selected {
-  background-color: rgba(128, 0, 127, 0.12);
-  box-shadow: none;
-  outline: none;
+  background-color: rgba(128, 0, 127, 0.14) !important;
+  color: #80007f !important;
+  font-weight: 500;
 }
 
-body.dark .tree-item.selected {
-  background-color: rgba(128, 0, 127, 0.22);
+body.dark .tree-item.selected,
+body.theme-dark .tree-item.selected {
+  background-color: rgba(190, 118, 222, 0.22) !important;
+  color: var(--purple-text, #be76de) !important;
 }
 
 body.theme-github .tree-item.selected {
-  background-color: rgba(56, 139, 253, 0.18);
+  background-color: rgba(56, 139, 253, 0.20) !important;
+  color: #58a6ff !important;
+}
+
+.tree-item.selected .tree-item-icon,
+.tree-item.selected .tree-chevron-icon {
+  color: currentColor;
 }
 
 .tree-item.active {
@@ -6577,10 +6585,12 @@ body.dark .editor-gutter {
   flex: 1 1 auto;
   width: 100%;
   height: calc(100% - 38px);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: auto;
   position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
   background-color: #525659;
 }
@@ -6600,6 +6610,8 @@ body.dark .pdf-viewport {
   color: var(--preview-fg, var(--fg));
 }
 
+.pdf-canvas-container.hidden,
+.pdf-viewport .pdf-canvas-container.hidden,
 .pdf-viewport #preview.hidden,
 .pdf-viewport .pdf-frame.hidden,
 .pdf-viewport .pdf-empty-placeholder.hidden {
@@ -6615,18 +6627,47 @@ body.dark .pdf-viewport {
 }
 
 .pdf-empty-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: var(--fg);
-  opacity: 0.75;
-  width: 100%;
-  height: 100%;
-  gap: 14px;
-  padding: 20px;
+  opacity: 0.85;
+  gap: 16px;
+  padding: 24px;
   box-sizing: border-box;
   text-align: center;
+  margin: auto;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.pdf-empty-placeholder svg {
+  margin: 0 auto;
+  display: block;
+  opacity: 0.75;
+}
+
+.pdf-empty-placeholder p {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.pdf-empty-placeholder #btn-placeholder-compile,
+.pdf-empty-placeholder .collab-submit-btn {
+  width: auto;
+  min-width: 180px;
+  max-width: 260px;
+  margin: 0 auto;
+  display: inline-block;
 }
 
 /* Collapsible Logs Drawer (Overleaf style) */
@@ -7292,7 +7333,6 @@ body.dark .log-issue-line-badge {
 .tree-container {
   flex: 1;
   min-height: 0;
-  height: 100%;
   overflow-y: auto !important;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -7807,6 +7847,35 @@ body.dark .log-issue-line-badge {
   outline-offset: -3px;
   background-color: var(--virtual-halo) !important;
 }
+
+/* Linter & Compiler Error Marker (Red dot in gutter) */
+.cm-lint-marker-error {
+  content: "" !important;
+  display: inline-block !important;
+  width: 8px !important;
+  height: 8px !important;
+  background-color: #ef4444 !important;
+  border-radius: 50% !important;
+  margin: 6px auto 0 4px !important;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.7) !important;
+}
+
+/* Wrong Command / Syntax Error Highlighted in Red */
+.cm-lintRange-error {
+  background-color: rgba(239, 68, 68, 0.22) !important;
+  color: #ef4444 !important;
+  border-bottom: 2px solid #ef4444 !important;
+  text-decoration: underline wavy #ef4444 !important;
+  border-radius: 2px !important;
+  font-weight: 500 !important;
+}
+
+body.dark .cm-lintRange-error {
+  background-color: rgba(239, 68, 68, 0.28) !important;
+  color: #ff6b6b !important;
+  border-bottom: 2px solid #ef4444 !important;
+}
+
 
 
 

@@ -185,11 +185,19 @@ function lintLatexDocument(text, options = {}) {
     options.compiledCleanMacros.forEach((m) => validCommands.add(m));
   }
 
+  // Standard core packages that do not define custom macro suites
+  const KNOWN_STANDARD_PACKAGES = new Set([
+    'inputenc', 'fontenc', 'babel', 'lmodern', 'textcomp',
+    'microtype', 'csquotes', 'indentfirst', 'cmap', 'fixltx2e',
+    'array', 'float', 'caption', 'subcaption', 'enumitem',
+    'url', 'cite'
+  ]);
+
   // Check if every loaded package is known in the DB
-  const dbPackages = new Set(db.packages);
+  const dbPackages = new Set([...db.packages, ...db.macros.map(m => m.package)]);
   let allLoadedPackagesKnown = true;
   for (const pkg of loadedPackages) {
-    if (pkg !== 'latex2e' && !dbPackages.has(pkg)) {
+    if (pkg !== 'latex2e' && !dbPackages.has(pkg) && !KNOWN_STANDARD_PACKAGES.has(pkg)) {
       allLoadedPackagesKnown = false;
       break;
     }

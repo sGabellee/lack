@@ -68,6 +68,12 @@ async function loadPdfDocument(pdfPathOrBytes) {
       pageInputEl.value = 1;
     }
 
+    if (containerEl) containerEl.classList.remove('hidden');
+    const placeholder = document.getElementById('pdf-empty-placeholder');
+    if (placeholder) placeholder.classList.add('hidden');
+    const livePreviewEl = document.getElementById('preview');
+    if (livePreviewEl) livePreviewEl.classList.add('hidden');
+
     if (fitMode === 'width') {
       await autoFitWidth();
     } else if (fitMode === 'page') {

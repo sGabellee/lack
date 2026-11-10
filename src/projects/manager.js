@@ -42,7 +42,10 @@ class ProjectManager {
   createProject({ name = 'Untitled Document', targetPath, template = 'standard', templateContent = null }) {
     const id = crypto.randomUUID();
     const id8 = id.slice(0, 8);
-    const baseName = targetPath ? path.basename(targetPath, path.extname(targetPath)) : (name || 'main');
+    const projectName = (name && typeof name === 'string' && name !== 'null')
+      ? name
+      : (targetPath ? path.basename(targetPath, path.extname(targetPath)) : 'Untitled Document');
+    const baseName = targetPath ? path.basename(targetPath, path.extname(targetPath)) : projectName;
     const slug = this.slugify(baseName);
     const folderName = `${slug}-${id8}`;
     const storePath = path.join(this.storeRoot, folderName);
@@ -53,14 +56,14 @@ class ProjectManager {
 
     const mainFileName = `${baseName}.tex`;
     const defaultContent = templateContent ||
-      `\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}\n\n\\title{${name}}\n\\author{Author}\n\\date{\\today}\n\n\\begin{document}\n\\maketitle\n\n\\section{Introduction}\nWrite your content here...\n\n\\end{document}\n`;
+      `\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}\n\n\\title{${projectName}}\n\\author{Author}\n\\date{\\today}\n\n\\begin{document}\n\\maketitle\n\n\\section{Introduction}\nWrite your content here...\n\n\\end{document}\n`;
 
     fs.writeFileSync(path.join(storePath, mainFileName), defaultContent, 'utf8');
 
     const manifest = {
       schema: 1,
       id,
-      name,
+      name: projectName,
       main: mainFileName,
       engine: 'pdflatex',
       target: targetPath ? path.resolve(targetPath) : '',
