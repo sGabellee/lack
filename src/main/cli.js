@@ -114,20 +114,30 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
       }
 
       // Existing regular file without extension or other extension (.tex, .txt, etc.)
+      const isTex = targetPath.toLowerCase().endsWith('.tex');
+      const storeRoot = options.storeRoot;
+      const isInsideStore = isTex && storeRoot && path.resolve(targetPath).startsWith(path.resolve(storeRoot));
+
       const res = {
         action: 'classic',
         openFilePath: targetPath,
         openFolderPath: path.dirname(targetPath),
+        promptConvertTexToProject: (isTex && !isInsideStore) ? targetPath : null,
         ...options,
         debug
       };
       if (debug) console.log('[LACK_DEBUG] Resolver decision (existing file):', res);
       return res;
     } catch (err) {
+      const isTex = targetPath.toLowerCase().endsWith('.tex');
+      const storeRoot = options.storeRoot;
+      const isInsideStore = isTex && storeRoot && path.resolve(targetPath).startsWith(path.resolve(storeRoot));
+
       const res = {
         action: 'classic',
         openFilePath: targetPath,
         openFolderPath: path.dirname(targetPath),
+        promptConvertTexToProject: (isTex && !isInsideStore) ? targetPath : null,
         ...options,
         debug
       };
@@ -140,11 +150,15 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
   const ext = path.extname(targetPath).toLowerCase();
 
   if (ext === '.tex') {
-    // lack NAME.tex -> Classic, unchanged
+    // lack NAME.tex -> Classic, prompt to convert if outside storeRoot
+    const storeRoot = options.storeRoot;
+    const isInsideStore = storeRoot && path.resolve(targetPath).startsWith(path.resolve(storeRoot));
+
     const res = {
       action: 'classic',
       openFilePath: targetPath,
       openFolderPath: path.dirname(targetPath),
+      promptConvertTexToProject: !isInsideStore ? targetPath : null,
       ...options,
       debug
     };

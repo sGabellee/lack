@@ -291,6 +291,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   const logsRawText = document.getElementById("logs-raw-text");
   const pdfCanvasContainer = document.getElementById("pdf-canvas-container");
   const pdfEmptyPlaceholder = document.getElementById("pdf-empty-placeholder");
+  const pdfErrorPlaceholder = document.getElementById("pdf-error-placeholder");
+  const pdfErrorFileline = document.getElementById("pdf-error-fileline");
+  const pdfErrorMsg = document.getElementById("pdf-error-msg");
+  const btnShowCompileLog = document.getElementById("btn-show-compile-log");
+  const btnRetryCompile = document.getElementById("btn-retry-compile");
   const livePreviewEl = document.getElementById("preview");
   const footerMainDoc = document.getElementById("footer-main-doc");
   const footerCompilerEngine = document.getElementById("footer-compiler-engine");
@@ -1292,6 +1297,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       if (res.success && res.pdfPath && fs.existsSync(res.pdfPath)) {
         currentCompiledPdfPath = res.pdfPath;
+        pdfErrorPlaceholder?.classList.add("hidden");
         pdfEmptyPlaceholder.classList.add("hidden");
         livePreviewEl.classList.add("hidden");
         pdfCanvasContainer.classList.remove("hidden");
@@ -1319,6 +1325,7 @@ window.addEventListener("DOMContentLoaded", async () => {
           showNotification(i18n.t("notif_compiled_ok", { time: (res.durationMs / 1000).toFixed(1) }), "info");
         }
       } else if (res.isBuiltin && res.htmlPreview) {
+        pdfErrorPlaceholder?.classList.add("hidden");
         pdfEmptyPlaceholder.classList.add("hidden");
         pdfCanvasContainer.classList.add("hidden");
         livePreviewEl.classList.remove("hidden");
@@ -1328,6 +1335,22 @@ window.addEventListener("DOMContentLoaded", async () => {
           showNotification("Anteprima renderizzata con successo", "info");
         }
       } else {
+        pdfCanvasContainer.classList.add("hidden");
+        livePreviewEl.classList.add("hidden");
+        pdfEmptyPlaceholder.classList.add("hidden");
+
+        if (pdfErrorPlaceholder) {
+          pdfErrorPlaceholder.classList.remove("hidden");
+          const primaryErr = (latestIssues || []).find(i => i.type === "error");
+          if (primaryErr) {
+            if (pdfErrorFileline) pdfErrorFileline.textContent = `${primaryErr.file || 'main.tex'}:${primaryErr.line || 1}`;
+            if (pdfErrorMsg) pdfErrorMsg.textContent = primaryErr.message || "Errore sconosciuto";
+          } else {
+            if (pdfErrorFileline) pdfErrorFileline.textContent = "Errore di compilazione";
+            if (pdfErrorMsg) pdfErrorMsg.textContent = "Il compilatore TeX ha interrotto l'esecuzione senza produrre il PDF.";
+          }
+        }
+
         if (!isAuto) {
           showNotification(i18n.t("notif_compiled_fail"), "error");
           logsDrawer.classList.remove("hidden");
@@ -1336,11 +1359,27 @@ window.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       isCompiling = false;
       btnRecompile.classList.remove("compiling");
+      pdfCanvasContainer.classList.add("hidden");
+      livePreviewEl.classList.add("hidden");
+      pdfEmptyPlaceholder.classList.add("hidden");
+      if (pdfErrorPlaceholder) {
+        pdfErrorPlaceholder.classList.remove("hidden");
+        if (pdfErrorFileline) pdfErrorFileline.textContent = "Errore fatale";
+        if (pdfErrorMsg) pdfErrorMsg.textContent = err.message || "Errore sconosciuto";
+      }
       if (!isAuto) {
         showNotification("Errore di compilazione: " + err.message, "error");
       }
     }
   }
+
+  btnShowCompileLog?.addEventListener("click", () => {
+    logsDrawer.classList.remove("hidden");
+    document.getElementById("tab-log-issues")?.click();
+  });
+  btnRetryCompile?.addEventListener("click", () => {
+    triggerCompile(false);
+  });
 
   btnRecompile.onclick = () => triggerCompile(false);
   document.getElementById("btn-placeholder-compile")?.addEventListener("click", () => triggerCompile(false));
@@ -1376,7 +1415,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     logsRawText.textContent = rawLog || "";
 
     const errors = issues.filter(i => i.type === "error");
-    const warnings = issues.filter(i => i.type === "warning");
+    const warnings = issues.filter(i => i.type === "warning" || i.type === "box");
 
     badgeErrors.textContent = errors.length;
     badgeWarnings.textContent = warnings.length;
@@ -1391,8 +1430,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     issues.forEach(iss => {
+      const isErr = iss.type === "error";
       const item = document.createElement("div");
-      item.className = `log-issue-item ${iss.type}`;
+      item.className = `log-issue-item ${isErr ? 'error' : 'warning'}`;
 
       let missingPackageBanner = "";
       if (iss.missingPackage) {
@@ -1405,9 +1445,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         `;
       }
 
+      const badgeLabel = isErr ? "ERRORE" : (iss.type === "box" ? "BOX" : "AVVISO");
+
       item.innerHTML = `
         <div class="log-issue-header">
-          <span class="log-issue-badge ${iss.type}">${iss.type.toUpperCase()}</span>
+          <span class="log-issue-badge ${isErr ? 'error' : 'warning'}">${badgeLabel}</span>
           <span class="log-issue-file">${escapeHtml(iss.file || "main.tex")}:${iss.line}</span>
         </div>
         <div class="log-issue-msg">${escapeHtml(iss.message)}</div>
@@ -1520,6 +1562,15 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function openFolder(folderPath) {
     if (!fs.existsSync(folderPath)) return;
+
+    if (isLinkedProject) {
+      const isSameFolder = currentProject && currentProject.targetPath &&
+        path.resolve(folderPath) === path.resolve(path.dirname(currentProject.targetPath));
+      if (!isSameFolder) {
+        closeLinkedProject();
+      }
+    }
+
     currentProjectDir = folderPath;
     if (folderPathEl) {
       folderPathEl.textContent = path.basename(folderPath);
@@ -1710,6 +1761,45 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  async function activateExplorerFile(itemPath) {
+    if (!itemPath) return;
+    if (itemPath.toLowerCase().endsWith(".pdf")) {
+      let isLinked = false;
+      try {
+        const link = await ipcRenderer.invoke('project-read-link', itemPath);
+        const regHit = await ipcRenderer.invoke('project-registry-lookup', (link && link.id) ? link.id : itemPath);
+        if (regHit && regHit.storePath && fs.existsSync(regHit.storePath)) {
+          isLinked = true;
+          await openLinkedProject({
+            projectId: regHit.projectId || link?.id,
+            name: regHit.name || link?.name || path.basename(itemPath, '.pdf'),
+            storePath: regHit.storePath,
+            targetPath: itemPath,
+            compileImmediate: false
+          });
+        }
+      } catch (e) {
+        console.warn('[LACK] PDF link check error:', e);
+      }
+
+      if (!isLinked) {
+        if (isLinkedProject) {
+          closeLinkedProject();
+        }
+        pdfViewer.loadPdfDocument(itemPath);
+      }
+    } else {
+      const isInsideCurrentProjectStore = isLinkedProject && currentProject && currentProject.storePath &&
+        path.resolve(itemPath).startsWith(path.resolve(currentProject.storePath));
+
+      if (!isInsideCurrentProjectStore && isLinkedProject) {
+        closeLinkedProject();
+      }
+
+      openFileFromPath(itemPath);
+    }
+  }
+
   function handleExplorerItemClick(itemPath, itemDiv, event, isDir, childUl, isTargetPdf) {
     if (!itemPath || !itemDiv) return;
     const normalPath = path.resolve(itemPath);
@@ -1745,11 +1835,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       updateExplorerSelectionUI();
 
       if (!isDir) {
-        if (itemPath.toLowerCase().endsWith(".pdf")) {
-          pdfViewer.loadPdfDocument(itemPath);
-        } else {
-          openFileFromPath(itemPath);
-        }
+        activateExplorerFile(itemPath);
       }
     } else if (isCtrlOrCmd) {
       const index = selectedExplorerPaths.findIndex(p => path.resolve(p) === normalPath);
@@ -1784,11 +1870,7 @@ window.addEventListener("DOMContentLoaded", async () => {
           if (chevron) chevron.style.transform = isCollapsed ? "rotate(0deg)" : "rotate(90deg)";
         }
       } else {
-        if (itemPath.toLowerCase().endsWith(".pdf")) {
-          pdfViewer.loadPdfDocument(itemPath);
-        } else {
-          openFileFromPath(itemPath);
-        }
+        activateExplorerFile(itemPath);
       }
     }
 
@@ -1953,6 +2035,17 @@ window.addEventListener("DOMContentLoaded", async () => {
       itemDiv.dataset.path = fullPath;
       itemDiv.dataset.isDir = isDir ? "true" : "false";
       itemDiv.tabIndex = -1;
+      itemDiv.draggable = true;
+
+      itemDiv.addEventListener("dragstart", (e) => {
+        const isSelected = selectedExplorerPaths && selectedExplorerPaths.some(p => path.resolve(p) === path.resolve(fullPath));
+        const pathsToSend = isSelected && selectedExplorerPaths.length > 0
+          ? selectedExplorerPaths
+          : [fullPath];
+        e.dataTransfer.setData("application/x-lack-explorer-paths", JSON.stringify(pathsToSend));
+        e.dataTransfer.setData("text/plain", JSON.stringify(pathsToSend));
+        e.dataTransfer.effectAllowed = "copy";
+      });
 
       const isTargetPdf = isLinkedProject && currentProject && currentProject.targetPath && (path.resolve(fullPath) === path.resolve(currentProject.targetPath));
 
@@ -2474,9 +2567,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.closeAllTabs = closeAllTabs;
   window.showTabContextMenu = showTabContextMenu;
   window.deleteExplorerFiles = deleteExplorerFiles;
+  window.activateExplorerFile = activateExplorerFile;
+  window.triggerCompile = triggerCompile;
+  window.closeLinkedProject = closeLinkedProject;
   window.getSelectedExplorerPaths = () => selectedExplorerPaths;
   window.getSelectedExplorerPath = () => selectedExplorerPath;
   window.clearExplorerSelection = clearExplorerSelection;
+  window.isLinkedProject = () => isLinkedProject;
+  window.getCurrentProject = () => currentProject;
 
   function openFileDialog() {
     dialog.showOpenDialog({
@@ -2693,12 +2791,20 @@ window.addEventListener("DOMContentLoaded", async () => {
       projectPane.classList.remove("drag-over");
       if (!isLinkedProject || !currentProject) return;
 
-      const droppedFiles = e.dataTransfer.files;
-      if (!droppedFiles || droppedFiles.length === 0) return;
+      let pathsToImport = [];
+      const customData = e.dataTransfer.getData("application/x-lack-explorer-paths");
+      if (customData) {
+        try {
+          pathsToImport = JSON.parse(customData);
+        } catch (_) {}
+      } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        pathsToImport = Array.from(e.dataTransfer.files).map(f => f.path);
+      }
+
+      if (!pathsToImport || pathsToImport.length === 0) return;
 
       let count = 0;
-      for (const f of droppedFiles) {
-        const src = f.path;
+      for (const src of pathsToImport) {
         if (!src || !fs.existsSync(src)) continue;
         const isDir = fs.statSync(src).isDirectory();
         const ext = isDir ? "" : path.extname(src);
@@ -2793,7 +2899,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     showInlineTreeInput(folderTreeEl || fileTreeLegacy, targetDir, "folder", false);
   });
 
-  document.getElementById("new-file")?.addEventListener("click", () => {
+  document.getElementById("new-file")?.addEventListener("click", async () => {
     const targetDir = (isLinkedProject && currentProject && currentProject.targetPath)
       ? path.dirname(currentProject.targetPath)
       : currentProjectDir;
@@ -2801,7 +2907,25 @@ window.addEventListener("DOMContentLoaded", async () => {
       newFile();
       return;
     }
-    showInlineTreeInput(folderTreeEl || fileTreeLegacy, targetDir, "file", false);
+
+    const choice = await showCustomConfirmDialog({
+      title: "Nuovo file o progetto",
+      message: "Cosa desideri creare nella cartella?",
+      buttons: [
+        { text: "Annulla", value: "cancel", isCancel: true },
+        { text: "File standard", value: "standard" },
+        { text: "Documento LaTeX", value: "latex_project", isPrimary: true }
+      ]
+    });
+
+    if (!choice || choice === "cancel") return;
+
+    if (choice === "latex_project") {
+      const defaultTarget = path.join(targetDir, uniqueName(targetDir, "documento", ".pdf"));
+      openNewProjectModal(defaultTarget);
+    } else {
+      showInlineTreeInput(folderTreeEl || fileTreeLegacy, targetDir, "file", false);
+    }
   });
 
   document.getElementById("open-folder")?.addEventListener("click", () => openFolderDialog());
@@ -4346,6 +4470,51 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   ipcRenderer.on("prompt-relink-or-restore", (_e, payload) => {
     promptRelinkOrRestore(payload);
+  });
+  ipcRenderer.on("prompt-convert-tex-to-project", async (_e, { texPath }) => {
+    if (!texPath || !fs.existsSync(texPath)) return;
+    const baseName = path.basename(texPath, ".tex");
+    const folderDir = path.dirname(texPath);
+
+    const answer = await showCustomConfirmDialog({
+      title: "Converti in Progetto LaTeX",
+      message: `Vuoi convertire "${path.basename(texPath)}" in un progetto Lack collegato?\n\nQuesto creerà il documento PDF "${baseName}.pdf" nella cartella corrente e gestirà i sorgenti e gli asset nel gestore progetti Lack.`,
+      buttons: [
+        { text: "No, mantieni file singolo", value: "no", isCancel: true },
+        { text: "Sì, converti in Progetto", value: "yes", isPrimary: true }
+      ]
+    });
+
+    if (answer === "yes") {
+      try {
+        const content = fs.readFileSync(texPath, "utf8");
+        const targetPdfPath = path.join(folderDir, `${baseName}.pdf`);
+        const created = await ipcRenderer.invoke("project-create", {
+          name: baseName,
+          targetPath: targetPdfPath,
+          template: "blank"
+        });
+
+        // Write original content to <name>.tex in storePath
+        const mainTexInStore = path.join(created.storePath, `${baseName}.tex`);
+        await fs.promises.writeFile(mainTexInStore, content, "utf8");
+
+        const manifest = created.manifest;
+        manifest.main = `${baseName}.tex`;
+        await ipcRenderer.invoke("project-save-manifest", created.storePath, manifest);
+
+        showNotification(`File "${path.basename(texPath)}" convertito in progetto collegato!`, "info");
+        await openLinkedProject({
+          projectId: created.id,
+          name: created.manifest.name,
+          storePath: created.storePath,
+          targetPath: targetPdfPath,
+          compileImmediate: true
+        });
+      } catch (err) {
+        showNotification("Errore conversione progetto: " + err.message, "error");
+      }
+    }
   });
   ipcRenderer.on("menu-new-project", () => {
     openNewProjectModal();

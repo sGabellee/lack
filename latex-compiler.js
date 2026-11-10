@@ -169,9 +169,35 @@ function parseLatexLog(logContent) {
       currentFile = fileStack[fileStack.length - 1] || "";
     }
 
-    // 1. Standard file-line-error format: "filename.tex:14: Error message"
-    const fileLineErrorMatch = line.match(/^(.+?\.tex):(\d+):\s*(.*)$/);
-    if (fileLineErrorMatch) {
+    // 1. File-line message format: e.g. "filename.tex:14: Error message" or "warning: filename.tex:93: Overfull \hbox"
+    const fileLineMatch = line.match(/^(?:(warning|error|info):\s*)?(.+?\.(?:tex|sty|cls|aux|bib)):(\d+):\s*(.*)$/i);
+    if (fileLineMatch) {
+      const prefixSev = (fileLineMatch[1] || "").toLowerCase();
+      let rawFilePath = fileLineMatch[2].trim();
+      rawFilePath = rawFilePath.replace(/^(?:warning|error|info):\s*/i, "");
+      const lineNum = parseInt(fileLineMatch[3], 10);
+      const msg = fileLineMatch[4].trim();
+
+      const isWarning = prefixSev === "warning" ||
+        /^warning:\s*/i.test(msg) ||
+        /\b(?:overfull|underfull)\s+\\[hv]box\b/i.test(msg) ||
+        /\b(?:latex\s+)?warning\b/i.test(msg);
+
+      const isBox = /\b(?:overfull|underfull)\s+\\[hv]box\b/i.test(msg);
+
+      if (isWarning || isBox) {
+        issues.push({
+          type: isBox ? "box" : "warning",
+          file: path.basename(rawFilePath),
+          line: lineNum,
+          message: msg.replace(/^warning:\s*/i, ""),
+          command: null,
+          raw: line
+        });
+        continue;
+      }
+
+      // Actual compilation error
       let errorCmd = null;
       for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
         const lineMatch = lines[j].match(/^l\.(\d+)(?:\s+(.*))?/);
@@ -184,11 +210,18 @@ function parseLatexLog(logContent) {
         }
       }
 
+      if (!errorCmd) {
+        const undefMatch = msg.match(/Undefined control sequence\s*(\\?[a-zA-Z@]+)?/i);
+        if (undefMatch && undefMatch[1]) {
+          errorCmd = undefMatch[1].startsWith('\\') ? undefMatch[1] : `\\${undefMatch[1]}`;
+        }
+      }
+
       issues.push({
         type: "error",
-        file: path.basename(fileLineErrorMatch[1]),
-        line: parseInt(fileLineErrorMatch[2], 10),
-        message: fileLineErrorMatch[3].trim(),
+        file: path.basename(rawFilePath),
+        line: lineNum,
+        message: msg.replace(/^error:\s*/i, ""),
         command: errorCmd,
         raw: line
       });

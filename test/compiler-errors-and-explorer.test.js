@@ -42,6 +42,25 @@ l.16 \\endmd
   assert.strictEqual(issues[0].message, 'Undefined control sequence.');
 });
 
+test('parseLatexLog treats tectonic warning and overfull hbox as warning/box, never error', () => {
+  const sampleLog = `
+Running TeX ...
+warning: prova2.tex:93: Overfull \\hbox (74.64427pt too wide) in paragraph at lines 83--93
+warning: prova2.tex:247: Underfull \\hbox (badness 10000) in paragraph at lines 247--247
+`;
+  const issues = parseLatexLog(sampleLog);
+  assert.strictEqual(issues.length, 2);
+  assert.strictEqual(issues[0].file, 'prova2.tex');
+  assert.strictEqual(issues[0].line, 93);
+  assert.strictEqual(issues[0].type, 'box');
+  assert.strictEqual(issues[0].command, null);
+
+  assert.strictEqual(issues[1].file, 'prova2.tex');
+  assert.strictEqual(issues[1].line, 247);
+  assert.strictEqual(issues[1].type, 'box');
+  assert.strictEqual(issues[1].command, null);
+});
+
 test('CodeMirrorManager setCompilerIssues correctly converts TeX errors into diagnostics on exact command range', () => {
   const docText = `\\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}

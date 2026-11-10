@@ -5996,7 +5996,59 @@ body.dark .template-use-big-btn:hover {
   line-height: 1.6;
   background: var(--editor-bg);
   min-width: 0;
-  word-break: break-word;
+}
+
+/* Table layout and word-wrapping protection (LaTeX & Markdown) */
+.latex-table-container {
+  overflow-x: auto;
+  margin: 18px 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.latex-table,
+.preview-area table,
+.rendered-markdown table,
+#preview table,
+.template-preview-content-box table {
+  border-collapse: collapse;
+  margin: 16px auto;
+  font-size: 13.5px;
+  line-height: 1.5;
+  width: auto;
+  max-width: 100%;
+  border-spacing: 0;
+}
+
+.latex-table th,
+.latex-table td,
+.preview-area table th,
+.preview-area table td,
+.rendered-markdown table th,
+.rendered-markdown table td,
+#preview table th,
+#preview table td,
+.template-preview-content-box table th,
+.template-preview-content-box table td {
+  padding: 8px 16px;
+  text-align: left;
+  word-break: normal !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  white-space: nowrap;
+}
+
+.latex-table tr:first-child th,
+.latex-table tr:first-child td {
+  border-top: 1.5px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  font-weight: 600;
+}
+
+.latex-table tr:last-child td {
+  border-bottom: 1.5px solid currentColor;
 }
 
 .template-preview-content-box pre {
@@ -6668,6 +6720,155 @@ body.dark .pdf-viewport {
   max-width: 260px;
   margin: 0 auto;
   display: inline-block;
+}
+
+/* Overleaf-Style Compilation Error Card */
+.pdf-error-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: var(--bg);
+  z-index: 15;
+}
+
+.pdf-error-placeholder.hidden {
+  display: none !important;
+}
+
+.pdf-error-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--editor-bg);
+  border: 1.5px solid var(--purple-solid, #80007f);
+  border-radius: 12px;
+  padding: 24px 28px;
+  box-shadow: 0 8px 30px rgba(128, 0, 127, 0.16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.pdf-error-icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(128, 0, 127, 0.1);
+  color: var(--purple-solid, #80007f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+body.dark .pdf-error-icon-box {
+  background: rgba(190, 118, 222, 0.15);
+  color: var(--purple-text, #be76de);
+}
+
+.pdf-error-title {
+  margin: 0 0 6px 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--purple-solid, #80007f);
+}
+
+body.dark .pdf-error-title {
+  color: var(--purple-text, #be76de);
+}
+
+.pdf-error-subtitle {
+  margin: 0 0 16px 0;
+  font-size: 12.5px;
+  opacity: 0.75;
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.pdf-error-details {
+  width: 100%;
+  background: rgba(128, 0, 127, 0.05);
+  border: 1px solid rgba(128, 0, 127, 0.18);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  text-align: left;
+  box-sizing: border-box;
+  font-family: var(--font-code, monospace);
+  font-size: 11.5px;
+  line-height: 1.5;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+body.dark .pdf-error-details {
+  background: rgba(190, 118, 222, 0.08);
+  border-color: rgba(190, 118, 222, 0.25);
+}
+
+.pdf-error-fileline {
+  font-weight: 600;
+  color: var(--purple-solid, #80007f);
+  margin-bottom: 4px;
+}
+
+body.dark .pdf-error-fileline {
+  color: var(--purple-text, #be76de);
+}
+
+.pdf-error-msg {
+  color: var(--fg);
+  word-break: break-word;
+}
+
+.pdf-error-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.pdf-error-log-btn {
+  background: var(--purple-solid, #80007f);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.pdf-error-log-btn:hover {
+  opacity: 0.9;
+}
+
+.pdf-error-retry-btn {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pdf-error-retry-btn:hover {
+  background: var(--explorer-hover);
 }
 
 /* Collapsible Logs Drawer (Overleaf style) */

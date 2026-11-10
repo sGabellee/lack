@@ -47,7 +47,8 @@ if (!gotTheLock) {
       rawArgv: instanceArgs,
       cwd,
       registry: projectRegistry,
-      readLinkFn: readLink
+      readLinkFn: readLink,
+      storeRoot: defaultStoreRoot
     });
 
     handleResolvedAction(action, null);
@@ -175,6 +176,11 @@ ipcMain.handle('project-read-link', async (_e, pdfPath) => {
   return await readLink(pdfPath);
 });
 
+ipcMain.handle('project-registry-lookup', (_e, idOrTarget) => {
+  if (!idOrTarget) return null;
+  return projectRegistry.getProject(idOrTarget) || projectRegistry.findByTarget(idOrTarget) || null;
+});
+
 ipcMain.handle('project-extract-snapshot', async (_e, { pdfPath, targetDir }) => {
   return await extractSnapshot(pdfPath, targetDir);
 });
@@ -280,6 +286,9 @@ function handleResolvedAction(action, targetWin) {
       if (action.openFilePath) {
         const content = fs.existsSync(action.openFilePath) ? fs.readFileSync(action.openFilePath, 'utf8') : '';
         currentWin.webContents.send('load-tex', action.openFilePath, content);
+      }
+      if (action.promptConvertTexToProject) {
+        currentWin.webContents.send('prompt-convert-tex-to-project', { texPath: action.promptConvertTexToProject });
       }
     }
   }
@@ -632,7 +641,8 @@ app.whenReady().then(async () => {
     rawArgv: rawCliArgs,
     cwd: invocationCwd,
     registry: projectRegistry,
-    readLinkFn: readLink
+    readLinkFn: readLink,
+    storeRoot: defaultStoreRoot
   });
 
   win.webContents.once('did-finish-load', () => {
@@ -673,7 +683,8 @@ app.on("open-file", async (event, filePath) => {
     rawArgv: [filePath],
     cwd: invocationCwd,
     registry: projectRegistry,
-    readLinkFn: readLink
+    readLinkFn: readLink,
+    storeRoot: defaultStoreRoot
   });
   handleResolvedAction(action, win);
 });

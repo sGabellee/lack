@@ -707,6 +707,27 @@
                 <p>Nessun PDF compilato disponibile.</p>
                 <button id="btn-placeholder-compile" class="collab-submit-btn">Compila Documento</button>
               </div>
+              <div id="pdf-error-placeholder" class="pdf-error-placeholder hidden">
+                <div class="pdf-error-card">
+                  <div class="pdf-error-icon-box">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                  </div>
+                  <h3 class="pdf-error-title">Errore di compilazione LaTeX</h3>
+                  <p class="pdf-error-subtitle">Il compilatore ha riscontrato un errore fatale e non ha potuto generare il PDF.</p>
+                  <div class="pdf-error-details" id="pdf-error-details">
+                    <div class="pdf-error-fileline" id="pdf-error-fileline"></div>
+                    <div class="pdf-error-msg" id="pdf-error-msg"></div>
+                  </div>
+                  <div class="pdf-error-actions">
+                    <button type="button" id="btn-show-compile-log" class="pdf-error-log-btn">Visualizza log completo</button>
+                    <button type="button" id="btn-retry-compile" class="pdf-error-retry-btn">Riprova a compilare</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
