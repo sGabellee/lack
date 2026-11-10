@@ -15,15 +15,29 @@ let COMMANDS_DB = null;
 function getCommandsDb() {
   if (!COMMANDS_DB) {
     try {
-      const dbPath = path.join(__dirname, '../../data/latex-commands.json');
-      if (fs.existsSync(dbPath)) {
-        COMMANDS_DB = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+      COMMANDS_DB = require('../../data/latex-commands.json');
+    } catch (_) {}
+    if (!COMMANDS_DB) {
+      const candidates = [
+        path.join(__dirname, '../../data/latex-commands.json'),
+        path.join(__dirname, '../data/latex-commands.json'),
+        path.join(__dirname, 'data/latex-commands.json'),
+        path.resolve(process.cwd(), 'data/latex-commands.json')
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          try {
+            COMMANDS_DB = JSON.parse(fs.readFileSync(p, 'utf8'));
+            break;
+          } catch (_) {}
+        }
       }
-    } catch (e) {
-      console.warn('Could not load latex-commands.json:', e.message);
     }
     if (!COMMANDS_DB) {
       COMMANDS_DB = { macros: [], environments: [], packages: [] };
+    }
+    if (process.env.LACK_DEBUG) {
+      console.log(`[LACK_DEBUG] Linter DB size: ${COMMANDS_DB.macros.length} macros, ${COMMANDS_DB.packages.length} packages`);
     }
   }
   return COMMANDS_DB;
@@ -123,8 +137,14 @@ function extractLocalDefinitions(text, extraStyContent = '') {
     localCommands.add(m[1]);
   }
 
+  // \newcounter{name} -> defines \thename
+  const counterRegex = /\\newcounter\{([a-zA-Z0-9*_-]+)\}/g;
+  while ((m = counterRegex.exec(combined)) !== null) {
+    localCommands.add(`the${m[1]}`);
+  }
+
   // \newenvironment{name}
-  const newenvRegex = /\\newenvironment\*?\{([a-zA-Z0-9*_-]+)\}/g;
+  const newenvRegex = /\\(?:re)?newenvironment\*?\{([a-zA-Z0-9*_-]+)\}/g;
   while ((m = newenvRegex.exec(combined)) !== null) {
     localEnvironments.add(m[1]);
   }
@@ -160,9 +180,23 @@ function lintLatexDocument(text, options = {}) {
   validCommands.add('documentclass');
   validCommands.add('usepackage');
 
+  // Add any macros confirmed valid by TeX engine compilation of this revision
+  if (options.compiledCleanMacros && typeof options.compiledCleanMacros.forEach === 'function') {
+    options.compiledCleanMacros.forEach((m) => validCommands.add(m));
+  }
+
+  // Check if every loaded package is known in the DB
+  const dbPackages = new Set(db.packages);
+  let allLoadedPackagesKnown = true;
+  for (const pkg of loadedPackages) {
+    if (pkg !== 'latex2e' && !dbPackages.has(pkg)) {
+      allLoadedPackagesKnown = false;
+      break;
+    }
+  }
+
   for (const macro of db.macros) {
     knownCommandNames.push(macro.name);
-    // Active if in core or loaded package
     if (macro.package === 'latex2e' || loadedPackages.has(macro.package)) {
       validCommands.add(macro.name);
     }
@@ -226,7 +260,16 @@ function lintLatexDocument(text, options = {}) {
 
     const cmdName = cm[1];
     // Skip definition commands themselves
-    if (cmdName === 'newcommand' || cmdName === 'renewcommand' || cmdName === 'providecommand' || cmdName === 'def') {
+    if (
+      cmdName === 'newcommand' ||
+      cmdName === 'renewcommand' ||
+      cmdName === 'providecommand' ||
+      cmdName === 'def' ||
+      cmdName === 'let' ||
+      cmdName === 'newenvironment' ||
+      cmdName === 'renewenvironment' ||
+      cmdName === 'newcounter'
+    ) {
       continue;
     }
 
@@ -243,6 +286,12 @@ function lintLatexDocument(text, options = {}) {
           bestMatch = known;
           if (d === 1) break;
         }
+      }
+
+      // Policy: false positive is worse than missed error.
+      // If document uses packages not in DB, only flag if within Levenshtein <= 2 of known command.
+      if (!allLoadedPackagesKnown && minDistance > 2) {
+        continue;
       }
 
       const actions = [];

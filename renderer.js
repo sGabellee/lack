@@ -94,7 +94,7 @@ function showNotification(message, type = 'info') {
 }
 
 // ====== CUSTOM CONFIRM DIALOG ======
-function showCustomConfirmDialog({ title, message, okText, cancelText }) {
+function showCustomConfirmDialog({ title, message, okText, cancelText, abortText }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'app-confirm-overlay';
@@ -112,6 +112,7 @@ function showCustomConfirmDialog({ title, message, okText, cancelText }) {
         </div>
         <div class="app-confirm-message">${escapeHtml(message)}</div>
         <div class="app-confirm-actions">
+          ${abortText ? `<button type="button" class="app-confirm-btn app-confirm-btn-secondary" id="confirm-abort">${escapeHtml(abortText)}</button>` : ''}
           <button type="button" class="app-confirm-btn app-confirm-btn-secondary" id="confirm-no">${escapeHtml(cancelText || "No")}</button>
           <button type="button" class="app-confirm-btn app-confirm-btn-primary" id="confirm-yes">${escapeHtml(okText || "Sì")}</button>
         </div>
@@ -122,12 +123,18 @@ function showCustomConfirmDialog({ title, message, okText, cancelText }) {
 
     overlay.querySelector('#confirm-yes').onclick = () => {
       overlay.remove();
-      resolve(true);
+      resolve(abortText ? 'yes' : true);
     };
     overlay.querySelector('#confirm-no').onclick = () => {
       overlay.remove();
-      resolve(false);
+      resolve(abortText ? 'no' : false);
     };
+    if (abortText) {
+      overlay.querySelector('#confirm-abort').onclick = () => {
+        overlay.remove();
+        resolve('cancel');
+      };
+    }
   });
 }
 
@@ -169,7 +176,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     fontSize: parseInt(localStorage.getItem('lack-fontSize') || '14', 10),
     lineWrapping: localStorage.getItem('lack-lineWrapping') !== 'false',
     vimMode: localStorage.getItem('lack-vimMode') === 'true',
-    spellLanguage: localStorage.getItem('lack-spellLanguage') || 'it',
+    spellLanguage: localStorage.getItem('lack-spellLanguage') || 'it+en',
     engine: localStorage.getItem('lack-engine') || 'pdflatex',
     customEnginePath: localStorage.getItem('lack-customEnginePath') || '',
     autoCompile: localStorage.getItem('lack-autoCompile') === 'true',
@@ -246,6 +253,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   window.cm = cm;
   window.__lackCmInstance = cm;
+  window.__lackGetActiveTab = getActiveTab;
+  window.__lackTabs = tabs;
 
   cm.setLineWrapping(config.lineWrapping);
   cm.setVimMode(config.vimMode);
@@ -253,14 +262,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Initialize spellchecker
   editorLib.setSpellLanguage(config.spellLanguage, __dirname);
 
-  // Document change handler
+  // Document change handler: reactive dirty-state derivation
   cm.onDocChange((content) => {
     const tab = getActiveTab();
     if (tab) {
-      if (tab.content !== content) {
-        tab.content = content;
-        updateTabDirty(tab.id, true);
-      }
+      tab.content = content;
+      const isDirty = content !== (tab.savedContent ?? "");
+      updateTabDirty(tab.id, isDirty);
     }
     updateWordCount();
     updateOutlineTree();
@@ -466,6 +474,17 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (dirty) dirtyDot.classList.add("visible");
         else dirtyDot.classList.remove("visible");
       }
+      const titleSpan = tabEl.querySelector(".tab-title");
+      if (titleSpan && tab) {
+        titleSpan.textContent = `${tab.title}${dirty ? " *" : ""}`;
+      }
+    }
+    if (tab && tab.filePath) {
+      const escaped = tab.filePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      const treeItem = document.querySelector(`.file-tree-item[data-path="${escaped}"]`);
+      if (treeItem) {
+        treeItem.classList.toggle("is-dirty", dirty);
+      }
     }
     updateTitle();
   }
@@ -474,8 +493,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     const tab = getActiveTab();
     if (!tab) {
       titlebarTitle.textContent = "Lack";
+      document.title = "Lack";
     } else {
-      titlebarTitle.textContent = `${tab.title}${tab.dirty ? " •" : ""} - Lack`;
+      const fullTitle = `${tab.title}${tab.dirty ? " *" : ""} - Lack`;
+      titlebarTitle.textContent = fullTitle;
+      document.title = fullTitle;
     }
   }
 
@@ -500,7 +522,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       tabEl.title = tab.filePath || tab.title;
 
       tabEl.innerHTML = `
-        <span class="tab-title">${escapeHtml(tab.title)}</span>
+        <span class="tab-title">${escapeHtml(tab.title)}${tab.dirty ? " *" : ""}</span>
         <span class="tab-dirty ${tab.dirty ? 'visible' : ''}"></span>
         <button type="button" class="tab-close-btn" title="Chiudi">&times;</button>
       `;
@@ -526,6 +548,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       id: id,
       title: title,
       content: content,
+      savedContent: content,
       filePath: filePath,
       dirty: false
     };
@@ -534,6 +557,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (filePath && !mainDocumentPath && filePath.endsWith(".tex")) {
       setMainDocument(filePath);
+    }
+    if (filePath) {
+      watchFileForChanges(filePath);
     }
     return newTab;
   }
@@ -559,13 +585,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!tab) return;
 
     if (tab.dirty) {
-      const save = await showCustomConfirmDialog({
-        title: i18n.t("save_changes_title"),
-        message: i18n.t("save_changes_message", { name: tab.title }),
-        okText: i18n.t("save"),
-        cancelText: i18n.t("save_dont_save")
+      const choice = await showCustomConfirmDialog({
+        title: i18n.t("save_changes_title") || "Modifiche non salvate",
+        message: i18n.t("save_changes_message", { name: tab.title }) || `Salvare le modifiche a "${tab.title}" prima di chiudere?`,
+        okText: i18n.t("save") || "Salva",
+        cancelText: i18n.t("save_dont_save") || "Non salvare",
+        abortText: i18n.t("cancel") || "Annulla"
       });
-      if (save) {
+      if (choice === 'cancel') {
+        return; // Abort closing
+      }
+      if (choice === 'yes') {
         await saveFile(tab);
       }
     }
@@ -621,11 +651,13 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     try {
       await fs.promises.writeFile(targetTab.filePath, targetTab.content, "utf8");
+      targetTab.savedContent = targetTab.content;
       updateTabDirty(targetTab.id, false);
       showNotification(`File salvato con successo: ${targetTab.title}`, "info");
 
       // Save local history revision in .lack-history/
       saveFileHistorySnapshot(targetTab.filePath, targetTab.content);
+      if (targetTab.filePath) watchFileForChanges(targetTab.filePath);
 
       if (currentProjectDir) renderFileTree(currentProjectDir);
     } catch (err) {
@@ -649,9 +681,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     tab.title = path.basename(result.filePath);
     try {
       await fs.promises.writeFile(tab.filePath, tab.content, "utf8");
+      tab.savedContent = tab.content;
       updateTabDirty(tab.id, false);
       showNotification(`File salvato: ${tab.title}`, "info");
       saveFileHistorySnapshot(tab.filePath, tab.content);
+      watchFileForChanges(tab.filePath);
       if (currentProjectDir) renderFileTree(currentProjectDir);
     } catch (err) {
       showNotification("Errore durante il salvataggio: " + err.message, "error");
@@ -683,6 +717,35 @@ window.addEventListener("DOMContentLoaded", async () => {
     } catch (e) {
       console.warn("Could not save history snapshot:", e);
     }
+  }
+
+  // External file watching: detects external changes to open files
+  const activeFileWatchers = new Map();
+  function watchFileForChanges(filePath) {
+    if (!filePath || activeFileWatchers.has(filePath)) return;
+    try {
+      const watcher = fs.watch(filePath, { persistent: false }, async (eventType) => {
+        if (eventType === 'change') {
+          const tab = tabs.find(t => t.filePath === filePath);
+          if (!tab) return;
+          try {
+            const diskContent = await fs.promises.readFile(filePath, 'utf8');
+            if (diskContent === tab.content) return;
+            if (!tab.dirty) {
+              tab.content = diskContent;
+              tab.savedContent = diskContent;
+              if (activeTabId === tab.id && cm) {
+                cm.setValue(diskContent);
+              }
+              showNotification(`File "${tab.title}" ricaricato dal disco`, 'info');
+            } else {
+              showNotification(`Attenzione: "${tab.title}" modificato esternamente`, 'warning');
+            }
+          } catch (_) {}
+        }
+      });
+      activeFileWatchers.set(filePath, watcher);
+    } catch (_) {}
   }
 
   function updateWordCount() {
@@ -1233,9 +1296,147 @@ window.addEventListener("DOMContentLoaded", async () => {
     templateModal.classList.remove("hidden");
   }
 
+  function generateMiniSheet(t) {
+    if (t.id === 'ieee-conference') {
+      return `
+        <div style="text-align:center; display:flex; flex-direction:column; align-items:center; margin-bottom:4px;">
+          <div class="sheet-mini-title" style="width:85%;"></div>
+          <div class="sheet-mini-sub" style="width:55%;"></div>
+          <div class="sheet-mini-badges">
+            <span class="sheet-mini-badge" style="width:28px;"></span>
+            <span class="sheet-mini-badge" style="width:28px;"></span>
+          </div>
+        </div>
+        <div class="sheet-mini-cols">
+          <div class="sheet-mini-col">
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-80"></div>
+            <div class="sheet-mini-math"></div>
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-60"></div>
+          </div>
+          <div class="sheet-mini-col">
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-80"></div>
+            <div class="sheet-mini-line w-60"></div>
+            <div class="sheet-mini-line w-40"></div>
+          </div>
+        </div>
+      `;
+    }
+    if (t.id === 'lab-report' || t.category === 'reports') {
+      return `
+        <div style="text-align:center; display:flex; flex-direction:column; align-items:center;">
+          <div class="sheet-mini-title" style="width:75%;"></div>
+          <div class="sheet-mini-sub" style="width:45%;"></div>
+        </div>
+        <div class="sheet-mini-line w-full" style="opacity:0.4;"></div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-math"></div>
+        <div class="sheet-mini-table">
+          <div class="sheet-mini-line w-full"></div>
+          <div class="sheet-mini-line w-full" style="opacity:0.15;"></div>
+        </div>
+        <div class="sheet-mini-cols">
+          <div class="sheet-mini-col"><div class="sheet-mini-line w-full"></div><div class="sheet-mini-line w-60"></div></div>
+          <div class="sheet-mini-col"><div class="sheet-mini-line w-full"></div><div class="sheet-mini-line w-80"></div></div>
+        </div>
+      `;
+    }
+    if (t.id === 'beamer-presentation' || t.category === 'beamer') {
+      return `
+        <div style="height:10px; background:currentColor; opacity:0.75; border-radius:2px 2px 0 0; margin:-10px -10px 4px -10px;"></div>
+        <div class="sheet-mini-title" style="width:70%;"></div>
+        <div class="sheet-mini-line w-60" style="margin-bottom:6px;"></div>
+        <div class="sheet-mini-box">
+          <div class="sheet-mini-title" style="width:40%; height:4px;"></div>
+          <div class="sheet-mini-line w-full"></div>
+          <div class="sheet-mini-line w-80"></div>
+        </div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-60"></div>
+      `;
+    }
+    if (t.id === 'academic-thesis' || t.category === 'thesis') {
+      return `
+        <div style="margin-top:8px;">
+          <div class="sheet-mini-title" style="width:50%; height:8px; margin-bottom:6px;"></div>
+          <div class="sheet-mini-sub" style="width:30%; margin-bottom:8px;"></div>
+        </div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-60"></div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-line w-40"></div>
+      `;
+    }
+    if (t.id === 'modern-cv' || t.category === 'cv') {
+      return `
+        <div class="sheet-mini-cols">
+          <div class="sheet-mini-col" style="flex:0 0 35px; border-right:1px solid rgba(0,0,0,0.1); padding-right:4px;">
+            <div style="width:18px; height:18px; border-radius:50%; background:currentColor; opacity:0.35; margin:0 auto 4px;"></div>
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-full"></div>
+          </div>
+          <div class="sheet-mini-col">
+            <div class="sheet-mini-title" style="width:70%;"></div>
+            <div class="sheet-mini-sub" style="width:40%;"></div>
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-80"></div>
+            <div class="sheet-mini-line w-full"></div>
+            <div class="sheet-mini-line w-60"></div>
+          </div>
+        </div>
+      `;
+    }
+    if (t.id === 'homework-assignment' || t.category === 'assignments') {
+      return `
+        <div class="sheet-mini-title" style="width:85%;"></div>
+        <div class="sheet-mini-sub" style="width:50%;"></div>
+        <div class="sheet-mini-box">
+          <div class="sheet-mini-line w-full"></div>
+          <div class="sheet-mini-line w-80"></div>
+        </div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-60"></div>
+        <div class="sheet-mini-math"></div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-line w-40"></div>
+      `;
+    }
+    return `
+      <div class="sheet-mini-title" style="width:80%;"></div>
+      <div class="sheet-mini-sub" style="width:45%;"></div>
+      <div class="sheet-mini-line w-full"></div>
+      <div class="sheet-mini-line w-80"></div>
+      <div class="sheet-mini-line w-full"></div>
+      <div class="sheet-mini-line w-60"></div>
+      <div class="sheet-mini-code">
+        <div class="sheet-mini-line w-80"></div>
+      </div>
+      <div class="sheet-mini-line w-full"></div>
+      <div class="sheet-mini-line w-40"></div>
+    `;
+  }
+
   function renderTemplateCards(category = "all", filterText = "") {
     templateGrid.innerHTML = "";
     const all = LackTemplates.getAllTemplates();
+    const official = all.filter(t => !t.isCustom);
+    const custom = all.filter(t => !!t.isCustom);
+
+    const countAllEl = document.getElementById("count-all");
+    const countOfficialEl = document.getElementById("count-official");
+    const countCustomEl = document.getElementById("count-custom");
+    if (countAllEl) countAllEl.textContent = all.length;
+    if (countOfficialEl) countOfficialEl.textContent = official.length;
+    if (countCustomEl) countCustomEl.textContent = custom.length;
 
     const filtered = all.filter(t => {
       const matchCat = category === "all" ? true :
@@ -1243,47 +1444,70 @@ window.addEventListener("DOMContentLoaded", async () => {
                        category === "custom" ? !!t.isCustom :
                        t.category === category;
       const matchText = !filterText ? true :
-                        (t.title + " " + t.description + " " + t.category).toLowerCase().includes(filterText.toLowerCase());
+                        (t.title + " " + t.description + " " + (t.categoryLabel || t.category)).toLowerCase().includes(filterText.toLowerCase());
       return matchCat && matchText;
     });
 
-    document.getElementById("template-visible-count").textContent = `${filtered.length} template disponibili`;
+    const visibleCountEl = document.getElementById("template-visible-count");
+    if (visibleCountEl) {
+      visibleCountEl.textContent = `${filtered.length} template ${filtered.length === 1 ? 'disponibile' : 'disponibili'}`;
+    }
 
-    const getCategoryIconSvg = (cat) => {
-      switch (cat) {
-        case 'academic':
-          return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
-        case 'beamer':
-          return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
-        case 'cv':
-          return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-        case 'reports':
-          return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
-        default:
-          return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-      }
-    };
-
-    filtered.forEach(t => {
-      const card = document.createElement("div");
-      card.className = "template-card";
-      card.innerHTML = `
-        <div class="template-card-category-pill">${escapeHtml(t.categoryLabel || t.category)}</div>
-        <div class="template-card-header-line">
-          <span class="template-card-icon">${getCategoryIconSvg(t.category)}</span>
-          <h4 class="template-card-title">${escapeHtml(t.title)}</h4>
-        </div>
-        <p class="template-card-desc">${escapeHtml(t.description)}</p>
-        <div class="template-card-footer">
-          <button class="template-btn-preview">Anteprima</button>
-          <button class="template-btn-use">Usa Template</button>
+    if (filtered.length === 0) {
+      templateGrid.innerHTML = `
+        <div class="template-cards-empty" style="grid-column: 1 / -1; text-align: center; padding: 40px; opacity: 0.6;">
+          <p>Nessun template trovato</p>
         </div>
       `;
+      return;
+    }
 
-      card.querySelector(".template-btn-preview").onclick = (e) => { e.stopPropagation(); showTemplatePreview(t); };
-      card.querySelector(".template-btn-use").onclick = (e) => { e.stopPropagation(); useTemplate(t); };
-      card.onclick = () => showTemplatePreview(t);
-      templateGrid.appendChild(card);
+    templateGrid.innerHTML = filtered.map(t => {
+      const isCustom = !!t.isCustom;
+      const customBadge = isCustom ? `<span class="template-badge-pill custom">Custom</span>` : '';
+
+      return `
+        <div class="template-card" data-template-id="${escapeHtml(t.id)}">
+          <div class="template-card-sheet-preview">
+            <div class="template-card-sheet">
+              ${generateMiniSheet(t)}
+            </div>
+          </div>
+          <div class="template-card-content">
+            <div class="template-card-meta">
+              <span class="template-category-pill">${escapeHtml(t.categoryLabel || t.category || '')}</span>
+              ${customBadge}
+            </div>
+            <h4 class="template-card-title">${escapeHtml(t.title)}</h4>
+            <p class="template-card-description">${escapeHtml(t.description || '')}</p>
+          </div>
+          <div class="template-card-footer">
+            <button type="button" class="template-card-btn-use" data-action="use-template" data-template-id="${escapeHtml(t.id)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>${i18n.t('template_use') || 'Usa template'}</span>
+            </button>
+            <button type="button" class="template-card-btn-preview" data-action="preview-template" data-template-id="${escapeHtml(t.id)}">
+              <span>${i18n.t('template_preview') || 'Anteprima'}</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    templateGrid.querySelectorAll(".template-card").forEach(card => {
+      const templateId = card.dataset.templateId;
+      const template = LackTemplates.getTemplateById(templateId);
+      if (!template) return;
+
+      card.querySelector(".template-card-btn-use").onclick = (e) => {
+        e.stopPropagation();
+        useTemplate(template);
+      };
+      card.querySelector(".template-card-btn-preview").onclick = (e) => {
+        e.stopPropagation();
+        showTemplatePreview(template);
+      };
+      card.onclick = () => showTemplatePreview(template);
     });
   }
 
@@ -1347,14 +1571,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // ====== TOOLBAR LATEX ACTIONS ======
   function wrapSelection(prefix, suffix) {
-    cm.wrapSelection(prefix, suffix);
+    if (cm) cm.wrapSelection(prefix, suffix);
   }
 
   document.getElementById("btn-bold").onclick = () => wrapSelection("\\textbf{", "}");
   document.getElementById("btn-italic").onclick = () => wrapSelection("\\textit{", "}");
   document.getElementById("btn-underline").onclick = () => wrapSelection("\\underline{", "}");
   document.getElementById("btn-code").onclick = () => wrapSelection("\\texttt{", "}");
-  document.getElementById("btn-math-inline").onclick = () => wrapSelection("$", "$");
+  document.getElementById("btn-math-inline").onclick = () => { if (cm) cm.toggleMath(); };
   document.getElementById("btn-math-display").onclick = () => wrapSelection("\\[\n  ", "\n\\]");
   document.getElementById("btn-fraction").onclick = () => wrapSelection("\\frac{", "}{denominator}");
   document.getElementById("btn-sqrt").onclick = () => wrapSelection("\\sqrt{", "}");
@@ -1753,6 +1977,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       document.body.classList.add("dark", "theme-github");
     }
 
+    if (cm && typeof cm.setTheme === "function") {
+      cm.setTheme(theme);
+    }
+
     document.querySelectorAll("#theme-segmented button").forEach(b => {
       b.classList.toggle("active", b.dataset.theme === theme);
     });
@@ -1812,6 +2040,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     toggleCleanAuxEl.addEventListener("change", (e) => {
       config.cleanAux = e.target.checked;
       localStorage.setItem("lack-cleanAux", config.cleanAux);
+    });
+  }
+
+  // Spell checker footer indicator & language toggler
+  const footerLangEl = document.getElementById("footer-lang-display");
+  function updateSpellFooterLabel() {
+    if (!footerLangEl) return;
+    const l = config.spellLanguage;
+    footerLangEl.textContent = l === 'it+en' ? 'IT+EN' : l === 'it' ? 'IT' : l === 'en' ? 'EN' : 'OFF';
+  }
+  updateSpellFooterLabel();
+
+  if (footerLangEl) {
+    footerLangEl.style.cursor = 'pointer';
+    footerLangEl.title = 'Correttore ortografico (clicca per cambiare: IT+EN, IT, EN, OFF)';
+    footerLangEl.addEventListener("click", () => {
+      const order = ['it+en', 'it', 'en', 'none'];
+      const nextIdx = (order.indexOf(config.spellLanguage) + 1) % order.length;
+      config.spellLanguage = order[nextIdx];
+      localStorage.setItem('lack-spellLanguage', config.spellLanguage);
+      editorLib.setSpellLanguage(config.spellLanguage, __dirname);
+      updateSpellFooterLabel();
+      showNotification(`Correttore ortografico: ${footerLangEl.textContent}`, "info");
     });
   }
 
@@ -1882,18 +2133,75 @@ window.addEventListener("DOMContentLoaded", async () => {
     openFileFromPath(filePath) || createTab(path.basename(filePath), content, filePath);
   });
   ipcRenderer.on("open-folder", (_e, folderPath) => openFolder(folderPath));
-  ipcRenderer.on("zoom-in", () => {
-    currentZoomLevel = Math.min(2.5, currentZoomLevel + 0.1);
-    webFrame.setZoomFactor(currentZoomLevel);
-  });
-  ipcRenderer.on("zoom-out", () => {
-    currentZoomLevel = Math.max(0.6, currentZoomLevel - 0.1);
-    webFrame.setZoomFactor(currentZoomLevel);
-  });
-  ipcRenderer.on("zoom-reset", () => {
-    currentZoomLevel = 1.0;
-    webFrame.setZoomFactor(1.0);
-  });
+  // Contextual zoom handling (PDF viewer when hovering preview, UI otherwise)
+  let isMouseOverPreview = false;
+  const previewContainer = document.getElementById("preview-container");
+  if (previewContainer) {
+    previewContainer.addEventListener("mouseenter", () => { isMouseOverPreview = true; });
+    previewContainer.addEventListener("mouseleave", () => { isMouseOverPreview = false; });
+  }
+
+  function handleZoomIn() {
+    if (isMouseOverPreview && typeof pdfViewer.zoomIn === "function") {
+      pdfViewer.zoomIn();
+    } else {
+      currentZoomLevel = Math.min(2.5, Math.round((currentZoomLevel + 0.1) * 10) / 10);
+      webFrame.setZoomFactor(currentZoomLevel);
+      showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
+    }
+  }
+
+  function handleZoomOut() {
+    if (isMouseOverPreview && typeof pdfViewer.zoomOut === "function") {
+      pdfViewer.zoomOut();
+    } else {
+      currentZoomLevel = Math.max(0.5, Math.round((currentZoomLevel - 0.1) * 10) / 10);
+      webFrame.setZoomFactor(currentZoomLevel);
+      showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
+    }
+  }
+
+  function handleZoomReset() {
+    if (isMouseOverPreview && typeof pdfViewer.resetZoom === "function") {
+      pdfViewer.resetZoom();
+    } else {
+      currentZoomLevel = 1.0;
+      webFrame.setZoomFactor(1.0);
+      showNotification("Zoom: 100%", "info");
+    }
+  }
+
+  ipcRenderer.on("zoom-in", handleZoomIn);
+  ipcRenderer.on("zoom-out", handleZoomOut);
+  ipcRenderer.on("zoom-reset", handleZoomReset);
+
+  window.addEventListener("keydown", (e) => {
+    const isCtrlOrCmd = process.platform === "darwin" ? e.metaKey : e.ctrlKey;
+    if (!isCtrlOrCmd || e.altKey) return;
+
+    if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd" || (e.shiftKey && e.code === "Equal")) {
+      e.preventDefault();
+      handleZoomIn();
+    } else if (e.key === "-" || e.key === "_" || e.code === "NumpadSubtract" || e.code === "Minus") {
+      e.preventDefault();
+      handleZoomOut();
+    } else if (e.key === "0" || e.code === "Numpad0" || e.code === "Digit0") {
+      e.preventDefault();
+      handleZoomReset();
+    }
+  }, true);
+
+  window.addEventListener("wheel", (e) => {
+    const isCtrlOrCmd = process.platform === "darwin" ? e.metaKey : e.ctrlKey;
+    if (isCtrlOrCmd) {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        handleZoomIn();
+      } else if (e.deltaY > 0) {
+        handleZoomOut();
+      }
+    }
+  }, { passive: false });
   ipcRenderer.on("toggle-theme", () => {
     const nextTheme = config.theme === "dark" ? "light" : config.theme === "light" ? "github" : "dark";
     applyTheme(nextTheme);

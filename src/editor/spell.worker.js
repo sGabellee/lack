@@ -1,7 +1,7 @@
 const nspell = require('nspell');
 
-let spInstance = null;
-let currentLang = null;
+let spInstances = [];
+let currentLang = 'it+en';
 
 function handleMessage(data) {
   if (!data) return;
@@ -9,12 +9,29 @@ function handleMessage(data) {
   switch (data.type) {
     case 'init': {
       try {
-        const { lang, aff, dic, customWords } = data;
-        spInstance = nspell(aff, dic);
+        const { lang, dictionaries, customWords } = data;
         currentLang = lang;
+        spInstances = [];
+
+        if (Array.isArray(dictionaries) && dictionaries.length > 0) {
+          for (const d of dictionaries) {
+            if (d && d.aff && d.dic) {
+              const sp = nspell(d.aff, d.dic);
+              spInstances.push(sp);
+            }
+          }
+        } else if (data.aff && data.dic) {
+          // Backward compatibility for single dictionary
+          const sp = nspell(data.aff, data.dic);
+          spInstances.push(sp);
+        }
+
         if (Array.isArray(customWords)) {
           customWords.forEach((w) => {
-            if (w && w.trim()) spInstance.add(w.trim());
+            if (w && w.trim()) {
+              const clean = w.trim();
+              spInstances.forEach((sp) => sp.add(clean));
+            }
           });
         }
         respond({ type: 'ready', lang });
@@ -26,14 +43,16 @@ function handleMessage(data) {
 
     case 'check': {
       const { id, words } = data;
-      if (!spInstance) {
+      if (!spInstances || spInstances.length === 0) {
         respond({ type: 'checkResult', id, misspelled: [] });
         return;
       }
       const misspelled = [];
       for (let i = 0; i < words.length; i++) {
         const item = words[i];
-        if (!spInstance.correct(item.word)) {
+        // Bilingual check: correct if accepted by ANY loaded dictionary
+        const isCorrect = spInstances.some((sp) => sp.correct(item.word));
+        if (!isCorrect) {
           misspelled.push(item);
         }
       }
@@ -43,19 +62,29 @@ function handleMessage(data) {
 
     case 'suggest': {
       const { id, word } = data;
-      if (!spInstance) {
+      if (!spInstances || spInstances.length === 0) {
         respond({ type: 'suggestResult', id, word, suggestions: [] });
         return;
       }
-      const suggestions = spInstance.suggest(word) || [];
-      respond({ type: 'suggestResult', id, word, suggestions });
+      const seen = new Set();
+      const suggestions = [];
+      for (const sp of spInstances) {
+        const list = sp.suggest(word) || [];
+        for (const s of list) {
+          if (!seen.has(s)) {
+            seen.add(s);
+            suggestions.push(s);
+          }
+        }
+      }
+      respond({ type: 'suggestResult', id, word, suggestions: suggestions.slice(0, 8) });
       break;
     }
 
     case 'addWord': {
       const { word } = data;
-      if (spInstance && word) {
-        spInstance.add(word);
+      if (word) {
+        spInstances.forEach((sp) => sp.add(word));
       }
       respond({ type: 'wordAdded', word });
       break;

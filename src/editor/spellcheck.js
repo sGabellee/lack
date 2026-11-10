@@ -12,10 +12,9 @@ const spellErrorMark = Decoration.mark({
 let workerInstance = null;
 let reqId = 0;
 const pendingRequests = new Map();
-let currentLang = 'it';
+let currentLang = 'it+en';
 let userDictionary = new Set();
 let userDictPath = null;
-let onDecorationsUpdate = null;
 
 function getUserDictionaryPath() {
   if (userDictPath) return userDictPath;
@@ -80,7 +79,6 @@ function initSpellWorker(baseDir) {
     const { handleMessage } = require('./spell.worker');
     workerInstance = {
       postMessage(msg) {
-        // Run asynchronously
         setTimeout(() => {
           handleMessage(msg);
         }, 0);
@@ -92,6 +90,35 @@ function initSpellWorker(baseDir) {
   return workerInstance;
 }
 
+function loadSingleDictionary(langCode, baseDir) {
+  let affPath, dicPath;
+  let stripPfx = false;
+
+  if (langCode === 'it') {
+    affPath = path.join(baseDir, 'node_modules/dictionary-it/index.aff');
+    dicPath = path.join(baseDir, 'node_modules/dictionary-it/index.dic');
+    stripPfx = true;
+  } else if (langCode === 'en-gb') {
+    affPath = path.join(baseDir, 'node_modules/dictionary-en-gb/index.aff');
+    dicPath = path.join(baseDir, 'node_modules/dictionary-en-gb/index.dic');
+  } else {
+    affPath = path.join(baseDir, 'node_modules/dictionary-en/index.aff');
+    dicPath = path.join(baseDir, 'node_modules/dictionary-en/index.dic');
+  }
+
+  let aff = fs.readFileSync(affPath, 'utf8');
+  const dic = fs.readFileSync(dicPath, 'utf8');
+
+  if (stripPfx) {
+    aff = aff
+      .split('\n')
+      .filter((line) => !line.startsWith('PFX '))
+      .join('\n') + '\nREP h ch\nREP è é\n';
+  }
+
+  return { lang: langCode, aff, dic };
+}
+
 function setLanguage(lang, baseDir = process.cwd()) {
   currentLang = lang;
   if (lang === 'none' || !lang) {
@@ -101,30 +128,17 @@ function setLanguage(lang, baseDir = process.cwd()) {
   const worker = initSpellWorker(baseDir);
 
   return new Promise((resolve) => {
-    let affPath, dicPath;
-    let stripPfx = false;
-
-    if (lang === 'it') {
-      affPath = path.join(baseDir, 'node_modules/dictionary-it/index.aff');
-      dicPath = path.join(baseDir, 'node_modules/dictionary-it/index.dic');
-      stripPfx = true;
-    } else if (lang === 'en-gb') {
-      affPath = path.join(baseDir, 'node_modules/dictionary-en-gb/index.aff');
-      dicPath = path.join(baseDir, 'node_modules/dictionary-en-gb/index.dic');
-    } else {
-      affPath = path.join(baseDir, 'node_modules/dictionary-en/index.aff');
-      dicPath = path.join(baseDir, 'node_modules/dictionary-en/index.dic');
-    }
-
     try {
-      let aff = fs.readFileSync(affPath, 'utf8');
-      const dic = fs.readFileSync(dicPath, 'utf8');
-
-      if (stripPfx) {
-        aff = aff
-          .split('\n')
-          .filter((line) => !line.startsWith('PFX '))
-          .join('\n') + '\nREP h ch\nREP è é\n';
+      const dictionaries = [];
+      if (lang === 'it+en' || lang === 'bilingual' || !lang) {
+        dictionaries.push(loadSingleDictionary('it', baseDir));
+        dictionaries.push(loadSingleDictionary('en', baseDir));
+      } else if (lang === 'it') {
+        dictionaries.push(loadSingleDictionary('it', baseDir));
+      } else if (lang === 'en-gb') {
+        dictionaries.push(loadSingleDictionary('en-gb', baseDir));
+      } else {
+        dictionaries.push(loadSingleDictionary('en', baseDir));
       }
 
       const id = ++reqId;
@@ -134,8 +148,7 @@ function setLanguage(lang, baseDir = process.cwd()) {
         type: 'init',
         id,
         lang,
-        aff,
-        dic,
+        dictionaries,
         customWords: Array.from(userDictionary)
       });
     } catch (e) {

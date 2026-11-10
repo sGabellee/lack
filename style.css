@@ -1350,7 +1350,7 @@ body.theme-github .tree-item.selected {
 }
 
 body.dark .tree-item.active {
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 .tree-item.active.selected {
@@ -2869,7 +2869,7 @@ body.dark .modal-content {
 }
 
 body.dark .settings-header-icon {
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 .settings-layout {
@@ -3303,7 +3303,7 @@ body.dark .preview-export-btn {
 
 body.dark .preview-export-btn:hover {
   background: transparent !important;
-  color: #e070e0 !important;
+  color: #d98cd9 !important;
 }
 
 .preview-export-menu {
@@ -4352,8 +4352,8 @@ body.dark .pdf-export-modal-content {
 }
 
 body.dark .pdf-export-browse-btn:hover {
-  border-color: #e070e0;
-  color: #e070e0;
+  border-color: #d98cd9;
+  color: #d98cd9;
 }
 
 .pdf-export-summary-header {
@@ -4375,7 +4375,7 @@ body.dark .pdf-export-browse-btn:hover {
 }
 
 body.dark .pdf-export-edit-link {
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 .pdf-export-edit-link:hover {
@@ -4462,8 +4462,8 @@ body.dark .pdf-summary-item:hover .pdf-summary-select {
 
 body.dark .pdf-summary-select:hover,
 body.dark .pdf-summary-select:focus {
-  border-color: #e070e0 !important;
-  color: #e070e0 !important;
+  border-color: #d98cd9 !important;
+  color: #d98cd9 !important;
 }
 
 .pdf-summary-select option {
@@ -4693,7 +4693,7 @@ body.dark .drop-card {
 
 body.dark .drop-icon-wrapper {
   background: rgba(190, 60, 190, 0.15);
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 .drop-icon {
@@ -5100,7 +5100,7 @@ body.dark .new-file-popup-more:hover {
 
 body.dark .new-file-popup-more .new-file-popup-icon,
 body.dark .new-file-popup-more .new-file-popup-title {
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 /* --- Overleaf-Style Template Gallery Modal --- */
@@ -5738,7 +5738,7 @@ body.dark .template-card-btn-use:hover {
 }
 
 body.dark .save-template-text-btn {
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 .save-template-text-btn:hover {
@@ -6101,7 +6101,7 @@ body.dark .template-use-big-btn:hover {
 
 body.dark .app-confirm-icon-box.question {
   background: rgba(128, 0, 127, 0.28);
-  color: #e070e0;
+  color: #d98cd9;
 }
 
 .app-confirm-text-box {
@@ -6237,7 +6237,7 @@ body.dark .app-confirm-icon-box.question {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background-color: #e070e0;
+  background-color: #d98cd9;
 }
 
 .compile-status-dot.error {
@@ -7228,34 +7228,5 @@ body.dark .log-issue-line-badge {
   display: flex;
   gap: 8px;
   margin-top: auto;
-}
-
-.template-btn-preview {
-  padding: 6px 12px;
-  font-size: 11.5px;
-  background: transparent;
-  color: var(--fg);
-  border: 1px solid var(--explorer-border);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.template-btn-preview:hover {
-  background: var(--explorer-hover);
-}
-
-.template-btn-use {
-  padding: 6px 14px;
-  font-size: 11.5px;
-  background: #80007f;
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.template-btn-use:hover {
-  opacity: 0.9;
 }
 

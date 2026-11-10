@@ -1,24 +1,17 @@
 /**
  * src/editor/spell-tokenizer.js
- * Tokenizes LaTeX prose for spellchecking, excluding commands, math, comments, and arguments.
+ * Tokenizes LaTeX prose for spellchecking.
+ *
+ * Rules:
+ * - Uses tokenizeLatexStream() from latex-syntax.js: only tokens of type 'text' are candidates.
+ * - Entirely excludes commands, delimiters, arguments, math, and comments.
+ * - Words containing digits (e.g. 'a4paper', 'utf8', '11pt', 'v2.0', 'node12') or underscores are NEVER checked and NEVER split.
+ * - Words shorter than 3 characters are skipped.
+ * - ALL-CAPS words (e.g. 'IEEE', 'PDF', 'HTML', 'NASA') are skipped.
+ * - Handles Italian elisions (l', d', dell', un', quest') and contractions (don't, it's).
  */
 
-// Environments whose entire content is excluded from spellcheck
-const EXCLUDED_ENVIRONMENTS = new Set([
-  'equation', 'equation*', 'align', 'align*', 'gather', 'gather*',
-  'eqnarray', 'eqnarray*', 'multline', 'multline*', 'split', 'cases',
-  'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix',
-  'verbatim', 'lstlisting', 'minted', 'tikzpicture', 'circuitikz'
-]);
-
-// Commands whose first (or all) mandatory arguments are excluded
-const EXCLUDED_ARG_COMMANDS = new Set([
-  'cite', 'citep', 'citet', 'citeauthor', 'citeyear',
-  'ref', 'eqref', 'pageref', 'autoref', 'cref', 'Cref',
-  'label', 'usepackage', 'documentclass',
-  'input', 'include', 'includegraphics', 'bibliography', 'addbibresource',
-  'url', 'begin', 'end'
-]);
+const { tokenizeLatexStream } = require('./latex-syntax');
 
 // Common Italian elision prefixes (when followed by apostrophe)
 const ELISION_PREFIX_REGEX = /^(?:l|d|un|all|dell|dall|nell|sull|coll|quest|quell)'/i;
@@ -30,226 +23,68 @@ const ELISION_PREFIX_REGEX = /^(?:l|d|un|all|dell|dall|nell|sull|coll|quest|quel
 function tokenizeLatexProse(text) {
   if (!text || typeof text !== 'string') return [];
 
-  const len = text.length;
-  const isExcluded = new Uint8Array(len);
+  const streamTokens = tokenizeLatexStream(text);
+  const resultWords = [];
 
-  // 1. Mask comments: % until end of line (unless escaped with \%)
-  for (let i = 0; i < len; i++) {
-    if (text[i] === '%') {
-      // Check if escaped
-      let backslashes = 0;
-      let j = i - 1;
-      while (j >= 0 && text[j] === '\\') {
-        backslashes++;
-        j--;
-      }
-      if (backslashes % 2 === 0) {
-        // Real comment: mask to newline
-        while (i < len && text[i] !== '\n') {
-          isExcluded[i] = 1;
-          i++;
-        }
-      }
-    }
-  }
+  for (let i = 0; i < streamTokens.length; i++) {
+    const token = streamTokens[i];
 
-  // 2. Mask display math: $$ ... $$
-  let pos = 0;
-  while ((pos = text.indexOf('$$', pos)) !== -1) {
-    if (isExcluded[pos]) { pos += 2; continue; }
-    const end = text.indexOf('$$', pos + 2);
-    if (end !== -1) {
-      for (let k = pos; k < end + 2; k++) isExcluded[k] = 1;
-      pos = end + 2;
-    } else {
-      for (let k = pos; k < len; k++) isExcluded[k] = 1;
-      break;
-    }
-  }
-
-  // 3. Mask display math: \[ ... \]
-  pos = 0;
-  while ((pos = text.indexOf('\\[', pos)) !== -1) {
-    if (isExcluded[pos]) { pos += 2; continue; }
-    const end = text.indexOf('\\]', pos + 2);
-    if (end !== -1) {
-      for (let k = pos; k < end + 2; k++) isExcluded[k] = 1;
-      pos = end + 2;
-    } else {
-      for (let k = pos; k < len; k++) isExcluded[k] = 1;
-      break;
-    }
-  }
-
-  // 4. Mask inline math: \( ... \)
-  pos = 0;
-  while ((pos = text.indexOf('\\(', pos)) !== -1) {
-    if (isExcluded[pos]) { pos += 2; continue; }
-    const end = text.indexOf('\\)', pos + 2);
-    if (end !== -1) {
-      for (let k = pos; k < end + 2; k++) isExcluded[k] = 1;
-      pos = end + 2;
-    } else {
-      for (let k = pos; k < len; k++) isExcluded[k] = 1;
-      break;
-    }
-  }
-
-  // 5. Mask inline math: $ ... $ (handling escaped \$)
-  for (let i = 0; i < len; i++) {
-    if (text[i] === '$' && !isExcluded[i]) {
-      let backslashes = 0;
-      let j = i - 1;
-      while (j >= 0 && text[j] === '\\') { backslashes++; j--; }
-      if (backslashes % 2 === 0) {
-        // Start of $
-        let end = -1;
-        for (let k = i + 1; k < len; k++) {
-          if (text[k] === '$') {
-            let bs = 0;
-            let m = k - 1;
-            while (m >= i + 1 && text[m] === '\\') { bs++; m--; }
-            if (bs % 2 === 0) {
-              end = k;
-              break;
-            }
-          }
-        }
-        if (end !== -1) {
-          for (let k = i; k <= end; k++) isExcluded[k] = 1;
-          i = end;
-        }
-      }
-    }
-  }
-
-  // 6. Mask excluded environments: \begin{env} ... \end{env}
-  const envRegex = /\\begin\{([a-zA-Z0-9*_-]+)\}/g;
-  let match;
-  while ((match = envRegex.exec(text)) !== null) {
-    const envName = match[1];
-    if (EXCLUDED_ENVIRONMENTS.has(envName)) {
-      const startIndex = match.index;
-      const closeTag = `\\end{${envName}}`;
-      const endIndex = text.indexOf(closeTag, startIndex + match[0].length);
-      if (endIndex !== -1) {
-        const fullEnd = endIndex + closeTag.length;
-        for (let k = startIndex; k < fullEnd; k++) isExcluded[k] = 1;
-      }
-    }
-  }
-
-  // 7. Mask inline \verb|...|
-  const verbRegex = /\\verb([^\sa-zA-Z0-9])[\s\S]*?\1/g;
-  while ((match = verbRegex.exec(text)) !== null) {
-    for (let k = match.index; k < match.index + match[0].length; k++) isExcluded[k] = 1;
-  }
-
-  // 8. Mask command names and excluded arguments
-  const cmdRegex = /\\([a-zA-Z@]+)\*?/g;
-  while ((match = cmdRegex.exec(text)) !== null) {
-    const cmdIndex = match.index;
-    const cmdName = match[1];
-    const cmdEnd = cmdIndex + match[0].length;
-
-    // Mask command name itself
-    for (let k = cmdIndex; k < cmdEnd; k++) isExcluded[k] = 1;
-
-    // Special case for \href{URL}{text}: mask only 1st argument (URL), keep 2nd (text)
-    if (cmdName === 'href') {
-      let idx = cmdEnd;
-      while (idx < len && /\s/.test(text[idx])) idx++;
-      if (idx < len && text[idx] === '{') {
-        const arg1Start = idx;
-        let depth = 0;
-        let arg1End = -1;
-        for (let k = idx; k < len; k++) {
-          if (text[k] === '{') depth++;
-          else if (text[k] === '}') {
-            depth--;
-            if (depth === 0) { arg1End = k; break; }
-          }
-        }
-        if (arg1End !== -1) {
-          for (let k = arg1Start; k <= arg1End; k++) isExcluded[k] = 1;
-        }
-      }
+    // Only process pure 'text' tokens: ignore command, argument, math, comment, delimiter
+    if (token.type !== 'text') {
       continue;
     }
 
-    // Commands whose mandatory arguments should be masked
-    if (EXCLUDED_ARG_COMMANDS.has(cmdName)) {
-      let idx = cmdEnd;
-      // Skip optional arguments [ ... ]
-      while (idx < len && /\s/.test(text[idx])) idx++;
-      if (idx < len && text[idx] === '[') {
-        let bDepth = 0;
-        for (let k = idx; k < len; k++) {
-          if (text[k] === '[') bDepth++;
-          else if (text[k] === ']') {
-            bDepth--;
-            if (bDepth === 0) { idx = k + 1; break; }
-          }
-        }
+    const chunk = token.text;
+    const baseOffset = token.from;
+
+    // Split chunk into candidate word segments by whitespace/punctuation
+    // Match sequences of letters and optional inner apostrophes/hyphens
+    const segmentRegex = /([^\s.,;:!?"'()\[\]{}<>/\\#*+=~`$|&^%_]+(?:[''-][^\s.,;:!?"'()\[\]{}<>/\\#*+=~`$|&^%_]+)*)/gu;
+    let match;
+
+    while ((match = segmentRegex.exec(chunk)) !== null) {
+      let rawSegment = match[1];
+      let segStart = baseOffset + match.index;
+      let segEnd = segStart + rawSegment.length;
+
+      // Rule: If segment contains digits or underscores, it is a technical identifier (a4paper, utf8, 11pt, var_name)
+      // Completely skip it; NEVER split at digits!
+      if (/[\d_]/.test(rawSegment)) {
+        continue;
       }
-      while (idx < len && /\s/.test(text[idx])) idx++;
-      // Mask mandatory argument { ... }
-      if (idx < len && text[idx] === '{') {
-        let depth = 0;
-        let argEnd = -1;
-        for (let k = idx; k < len; k++) {
-          if (text[k] === '{') depth++;
-          else if (text[k] === '}') {
-            depth--;
-            if (depth === 0) { argEnd = k; break; }
-          }
-        }
-        if (argEnd !== -1) {
-          for (let k = idx; k <= argEnd; k++) isExcluded[k] = 1;
-        }
+
+      // Handle Italian elisions like "dell'albero" or "l'ombra"
+      const elisionMatch = rawSegment.match(ELISION_PREFIX_REGEX);
+      if (elisionMatch) {
+        const prefixLen = elisionMatch[0].length;
+        rawSegment = rawSegment.slice(prefixLen);
+        segStart += prefixLen;
       }
+
+      // Strip any trailing punctuation or apostrophe
+      rawSegment = rawSegment.replace(/[''-]+$/, '');
+      segEnd = segStart + rawSegment.length;
+
+      // Filter: shorter than 3 characters
+      if (rawSegment.length < 3) continue;
+
+      // Filter: must consist of letters (Unicode \p{L})
+      if (!/^[\p{L}'-]+$/u.test(rawSegment)) continue;
+
+      // Filter: ALL-CAPS words (e.g. PDF, HTML, IEEE)
+      if (rawSegment === rawSegment.toUpperCase() && rawSegment.length > 1) continue;
+
+      resultWords.push({
+        word: rawSegment,
+        from: segStart,
+        to: segEnd
+      });
     }
   }
 
-  // 9. Extract remaining valid prose words
-  // Unicode letter matching: \p{L}
-  const wordRegex = /[\p{L}]+/gu;
-  const tokens = [];
-
-  while ((match = wordRegex.exec(text)) !== null) {
-    let rawWord = match[0];
-    let start = match.index;
-    let end = start + rawWord.length;
-
-    // Check if within excluded region
-    if (isExcluded[start] || isExcluded[end - 1]) continue;
-
-    // Handle Italian elisions: check if previous chars were an elision prefix, e.g. "dell'albero"
-    // If the word has an apostrophe attached before it
-    if (start > 1 && text[start - 1] === "'") {
-      // The word already starts after the apostrophe, which is correct
-    }
-
-    // Filter: shorter than 3 characters
-    if (rawWord.length < 3) continue;
-
-    // Filter: ALL-CAPS words (e.g. HTML, PDF, IEEE)
-    if (rawWord === rawWord.toUpperCase() && rawWord.length > 1) continue;
-
-    // Filter: words with digits (already guaranteed by [\p{L}]+ regex)
-
-    tokens.push({
-      word: rawWord,
-      from: start,
-      to: end
-    });
-  }
-
-  return tokens;
+  return resultWords;
 }
 
 module.exports = {
-  tokenizeLatexProse,
-  EXCLUDED_ENVIRONMENTS,
-  EXCLUDED_ARG_COMMANDS
+  tokenizeLatexProse
 };

@@ -17,7 +17,8 @@ const {
 const {
   closeBrackets,
   closeBracketsKeymap,
-  autocompletion
+  autocompletion,
+  acceptCompletion
 } = require('@codemirror/autocomplete');
 const {
   bracketMatching,
@@ -29,11 +30,11 @@ const {
 } = require('@codemirror/language');
 const { search, searchKeymap, openSearchPanel } = require('@codemirror/search');
 const { lintGutter, lintKeymap } = require('@codemirror/lint');
-const { stex } = require('@codemirror/legacy-modes/mode/stex');
+const { latexLanguage } = require('./latex-syntax');
 const { vim } = require('@replit/codemirror-vim');
 const { yCollab } = require('y-codemirror.next');
 
-const { lackBaseTheme, lackSyntaxHighlighting } = require('./themes');
+const { getThemeExtensions } = require('./themes');
 const {
   backspacePairCommand,
   enterBeginEnvCommand,
@@ -247,6 +248,17 @@ class CodeMirrorManager {
         }
       },
       {
+        key: 'Mod-m',
+        run: () => {
+          self.toggleMath();
+          return true;
+        }
+      },
+      {
+        key: 'Tab',
+        run: acceptCompletion
+      },
+      {
         key: 'Mod-/',
         run: () => {
           self.toggleComment();
@@ -285,9 +297,8 @@ class CodeMirrorManager {
         latexFoldService,
         search({ top: true }),
         lintGutter(),
-        StreamLanguage.define(stex),
-        lackSyntaxHighlighting,
-        lackBaseTheme,
+        latexLanguage,
+        this.themeCompartment.of(getThemeExtensions(this.options.theme || 'dark')),
         this.wrappingCompartment.of(EditorView.lineWrapping),
         this.vimCompartment.of([]),
         this.collabCompartment.of([]),
@@ -355,14 +366,62 @@ class CodeMirrorManager {
 
   wrapSelection(before, after) {
     const sel = this.view.state.selection.main;
+    const doc = this.view.state.doc;
     const selectedText = this.view.state.sliceDoc(sel.from, sel.to);
+
+    // 1. If selection itself starts with before and ends with after -> UNWRAP
+    if (selectedText.length >= before.length + after.length &&
+        selectedText.startsWith(before) &&
+        selectedText.endsWith(after)) {
+      const unwrapped = selectedText.slice(before.length, selectedText.length - after.length);
+      this.view.dispatch({
+        changes: { from: sel.from, to: sel.to, insert: unwrapped },
+        selection: { anchor: sel.from, head: sel.from + unwrapped.length }
+      });
+      this.view.focus();
+      return;
+    }
+
+    // 2. If selection is surrounded in document by before and after -> UNWRAP
+    const bLen = before.length;
+    const aLen = after.length;
+    if (sel.from >= bLen && sel.to + aLen <= doc.length) {
+      const textBefore = doc.sliceString(sel.from - bLen, sel.from);
+      const textAfter = doc.sliceString(sel.to, sel.to + aLen);
+      if (textBefore === before && textAfter === after) {
+        this.view.dispatch({
+          changes: [
+            { from: sel.to, to: sel.to + aLen, insert: '' },
+            { from: sel.from - bLen, to: sel.from, insert: '' }
+          ],
+          selection: { anchor: sel.from - bLen, head: sel.to - bLen }
+        });
+        this.view.focus();
+        return;
+      }
+    }
+
+    // 3. Otherwise -> WRAP
     const replacement = `${before}${selectedText}${after}`;
-    const newCursor = sel.from + before.length + selectedText.length;
+    const newAnchor = sel.from + bLen;
+    const newHead = newAnchor + selectedText.length;
     this.view.dispatch({
       changes: { from: sel.from, to: sel.to, insert: replacement },
-      selection: { anchor: selectedText ? newCursor + after.length : newCursor }
+      selection: selectedText.length > 0
+        ? { anchor: newAnchor, head: newHead }
+        : { anchor: newAnchor }
     });
     this.view.focus();
+  }
+
+  toggleMath() {
+    this.wrapSelection('$', '$');
+  }
+
+  setTheme(themeName) {
+    this.view.dispatch({
+      effects: this.themeCompartment.reconfigure(getThemeExtensions(themeName))
+    });
   }
 
   insertSnippet(text) {

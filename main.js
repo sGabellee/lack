@@ -174,6 +174,35 @@ function createWindow() {
   win = new BrowserWindow(windowOptions);
   remoteMain.enable(win.webContents);
 
+  // Global reliable zoom interceptor across all keyboard layouts (IT, US, EU)
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+
+    const isCtrlOrCmd = process.platform === 'darwin' ? input.meta : input.control;
+    if (!isCtrlOrCmd || input.alt) return;
+
+    // Zoom In: Ctrl + Plus, Ctrl + =, NumpadAdd
+    if (input.key === '+' || input.key === '=' || input.code === 'NumpadAdd' || (input.shift && input.code === 'Equal')) {
+      if (!win.isDestroyed()) win.webContents.send('zoom-in');
+      event.preventDefault();
+      return;
+    }
+
+    // Zoom Out: Ctrl + Minus, Ctrl + _, NumpadSubtract
+    if (input.key === '-' || input.key === '_' || input.code === 'NumpadSubtract' || input.code === 'Minus') {
+      if (!win.isDestroyed()) win.webContents.send('zoom-out');
+      event.preventDefault();
+      return;
+    }
+
+    // Zoom Reset: Ctrl + 0, Numpad0
+    if (input.key === '0' || input.code === 'Numpad0' || input.code === 'Digit0') {
+      if (!win.isDestroyed()) win.webContents.send('zoom-reset');
+      event.preventDefault();
+      return;
+    }
+  });
+
   win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     console.error(`[RENDERER CONSOLE] [Level ${level}] ${message} (${sourceId}:${line})`);
   });
@@ -390,7 +419,7 @@ function buildApplicationMenu() {
             { type: "separator" },
             {
               label: "Rotate Theme",
-              accelerator: "CmdOrCtrl+M",
+              accelerator: "CmdOrCtrl+Alt+M",
               click: () => { if (win && !win.isDestroyed()) win.webContents.send("toggle-theme"); }
             }
           ]

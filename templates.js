@@ -602,11 +602,16 @@ function deleteCustomTemplate(id) {
   } catch (e) {}
 }
 
+function getTemplateById(id) {
+  return getAllTemplates().find(t => t.id === id) || null;
+}
+
 const LackTemplates = {
   DEFAULT_CATEGORIES,
   DEFAULT_TEMPLATES,
   getAllCategories,
   getAllTemplates,
+  getTemplateById,
   getCustomTemplates,
   saveCustomTemplate,
   deleteCustomTemplate

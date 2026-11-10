@@ -74,3 +74,54 @@ test('excludes ALL-CAPS words and words shorter than 3 characters', () => {
   assert.ok(words.includes('file'));
   assert.ok(words.includes('testo'));
 });
+
+test('never spellchecks commands, package arguments, or alphanumeric words with digits', () => {
+  const input = `
+\\documentclass[11pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{amsmath,amssymb}
+
+\\title{Document Title}
+\\author{Author Name}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\section{Introduction}
+Write your content here...
+
+\\section{Buongiorno}
+Testo in italiano con a4paper e utf8 nel testo.
+\\end{document}
+`;
+  const tokens = tokenizeLatexProse(input);
+  const words = tokens.map(t => t.word);
+
+  // Must NOT include LaTeX commands or arguments
+  assert.ok(!words.includes('documentclass'), 'No commands');
+  assert.ok(!words.includes('usepackage'), 'No commands');
+  assert.ok(!words.includes('article'), 'No docclass arg');
+  assert.ok(!words.includes('inputenc'), 'No package arg');
+  assert.ok(!words.includes('amsmath'), 'No package arg');
+  assert.ok(!words.includes('document'), 'No env arg');
+
+  // Must NOT include words with digits (nor split them!)
+  assert.ok(!words.includes('11pt'), 'No 11pt');
+  assert.ok(!words.includes('pt'), 'No split pt from 11pt');
+  assert.ok(!words.includes('a4paper'), 'No a4paper');
+  assert.ok(!words.includes('paper'), 'No split paper from a4paper');
+  assert.ok(!words.includes('utf8'), 'No utf8');
+  assert.ok(!words.includes('utf'), 'No split utf from utf8');
+
+  // MUST include actual prose words
+  assert.ok(words.includes('Document'), 'Includes Document');
+  assert.ok(words.includes('Title'), 'Includes Title');
+  assert.ok(words.includes('Author'), 'Includes Author');
+  assert.ok(words.includes('Name'), 'Includes Name');
+  assert.ok(words.includes('Introduction'), 'Includes Introduction');
+  assert.ok(words.includes('Write'), 'Includes Write');
+  assert.ok(words.includes('content'), 'Includes content');
+  assert.ok(words.includes('Buongiorno'), 'Includes Buongiorno');
+  assert.ok(words.includes('italiano'), 'Includes italiano');
+});

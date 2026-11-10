@@ -982,19 +982,33 @@
   var require_spell_worker = __commonJS({
     "src/editor/spell.worker.js"(exports, module) {
       var nspell = require_lib();
-      var spInstance = null;
-      var currentLang = null;
+      var spInstances = [];
+      var currentLang = "it+en";
       function handleMessage(data) {
         if (!data) return;
         switch (data.type) {
           case "init": {
             try {
-              const { lang, aff, dic, customWords } = data;
-              spInstance = nspell(aff, dic);
+              const { lang, dictionaries, customWords } = data;
               currentLang = lang;
+              spInstances = [];
+              if (Array.isArray(dictionaries) && dictionaries.length > 0) {
+                for (const d of dictionaries) {
+                  if (d && d.aff && d.dic) {
+                    const sp = nspell(d.aff, d.dic);
+                    spInstances.push(sp);
+                  }
+                }
+              } else if (data.aff && data.dic) {
+                const sp = nspell(data.aff, data.dic);
+                spInstances.push(sp);
+              }
               if (Array.isArray(customWords)) {
                 customWords.forEach((w) => {
-                  if (w && w.trim()) spInstance.add(w.trim());
+                  if (w && w.trim()) {
+                    const clean = w.trim();
+                    spInstances.forEach((sp) => sp.add(clean));
+                  }
                 });
               }
               respond({ type: "ready", lang });
@@ -1005,14 +1019,15 @@
           }
           case "check": {
             const { id, words } = data;
-            if (!spInstance) {
+            if (!spInstances || spInstances.length === 0) {
               respond({ type: "checkResult", id, misspelled: [] });
               return;
             }
             const misspelled = [];
             for (let i = 0; i < words.length; i++) {
               const item = words[i];
-              if (!spInstance.correct(item.word)) {
+              const isCorrect = spInstances.some((sp) => sp.correct(item.word));
+              if (!isCorrect) {
                 misspelled.push(item);
               }
             }
@@ -1021,18 +1036,28 @@
           }
           case "suggest": {
             const { id, word } = data;
-            if (!spInstance) {
+            if (!spInstances || spInstances.length === 0) {
               respond({ type: "suggestResult", id, word, suggestions: [] });
               return;
             }
-            const suggestions = spInstance.suggest(word) || [];
-            respond({ type: "suggestResult", id, word, suggestions });
+            const seen = /* @__PURE__ */ new Set();
+            const suggestions = [];
+            for (const sp of spInstances) {
+              const list = sp.suggest(word) || [];
+              for (const s of list) {
+                if (!seen.has(s)) {
+                  seen.add(s);
+                  suggestions.push(s);
+                }
+              }
+            }
+            respond({ type: "suggestResult", id, word, suggestions: suggestions.slice(0, 8) });
             break;
           }
           case "addWord": {
             const { word } = data;
-            if (spInstance && word) {
-              spInstance.add(word);
+            if (word) {
+              spInstances.forEach((sp) => sp.add(word));
             }
             respond({ type: "wordAdded", word });
             break;
