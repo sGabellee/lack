@@ -98,10 +98,28 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!.vscode/**",
+      "!test/**",
+      "!docs/**",
+      "!scripts/**",
+      "!**/*.map",
+      "!arXiv-*",
+      "!prova*.tex",
+      "!lack",
+      "!lack.c",
+      "!.lack-history/**",
+      "!lin-install.sh",
+      "!mac-install.sh",
+      "!win-install.bat",
+      "!PROJECT_RECAP.md"
+    ],
     "win": {
       "icon": "build/lack.ico",
       "target": [
-        "nsis"
+        "nsis",
+        "zip"
       ],
       "signAndEditExecutable": false
     },
@@ -114,13 +132,28 @@
     "mac": {
       "icon": "build/lack.icns",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ]
     },
     "linux": {
       "icon": "build/lack.png",
+      "category": "Utility;TextEditor;Development;Education;",
+      "maintainer": "Gaetano <gaetanocarbone2004@gmail.com>",
+      "desktop": {
+        "entry": {
+          "Name": "Lack",
+          "GenericName": "LaTeX Editor",
+          "Comment": "Lack Professional LaTeX Editor & Suite",
+          "MimeType": "application/pdf;text/x-tex;application/x-tex;",
+          "StartupWMClass": "lack",
+          "Keywords": "latex;tex;editor;overleaf;math;pdf;science;beamer;bibtex;"
+        }
+      },
       "target": [
         "AppImage",
+        "deb",
+        "tar.gz",
         "dir"
       ]
     },
