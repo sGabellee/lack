@@ -178,7 +178,24 @@ ipcMain.handle('project-read-link', async (_e, pdfPath) => {
 
 ipcMain.handle('project-registry-lookup', (_e, idOrTarget) => {
   if (!idOrTarget) return null;
-  return projectRegistry.getProject(idOrTarget) || projectRegistry.findByTarget(idOrTarget) || null;
+  return projectRegistry.getProject(idOrTarget) || projectRegistry.findProjectByTarget(idOrTarget) || null;
+});
+
+ipcMain.handle('project-registry-remove', (_e, projectId) => {
+  if (!projectId) return false;
+  projectRegistry.removeProjectEntry(projectId);
+  return true;
+});
+
+ipcMain.handle('project-registry-save', (_e, payload) => {
+  if (!payload || !payload.id) return false;
+  projectRegistry.saveProjectEntry(payload.id, {
+    storePath: payload.storePath,
+    name: payload.name,
+    lastPdfPath: payload.lastPdfPath,
+    lastOpened: payload.lastOpened || new Date().toISOString()
+  });
+  return true;
 });
 
 ipcMain.handle('project-extract-snapshot', async (_e, { pdfPath, targetDir }) => {
@@ -193,12 +210,130 @@ ipcMain.handle('project-export', async (_e, { storePath, exportDest, asZip }) =>
   return await projectManager.exportProject(storePath, exportDest, asZip);
 });
 
-ipcMain.handle('project-trash-item', async (_e, itemPath) => {
-  if (fs.existsSync(itemPath)) {
-    await shell.trashItem(itemPath);
-    return true;
+function getTrashDirs() {
+  const dataHome = process.env.XDG_DATA_HOME || path.join(app.getPath('home'), '.local', 'share');
+  const trashRoot = path.join(dataHome, 'Trash');
+  return {
+    trashRoot,
+    infoDir: path.join(trashRoot, 'info'),
+    filesDir: path.join(trashRoot, 'files')
+  };
+}
+
+function parseTrashInfoTarget(infoFilePath) {
+  try {
+    const content = fs.readFileSync(infoFilePath, 'utf8');
+    const match = content.match(/^Path=(.+)$/m);
+    if (!match) return null;
+    const raw = match[1].trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch (_) {
+      return raw;
+    }
+  } catch (_) {
+    return null;
   }
-  return false;
+}
+
+ipcMain.handle('project-trash-item', async (_e, itemPath) => {
+  if (!itemPath || !fs.existsSync(itemPath)) return false;
+  const resolvedPath = path.resolve(itemPath);
+  const { infoDir, filesDir } = getTrashDirs();
+  const beforeSet = new Set(fs.existsSync(infoDir) ? fs.readdirSync(infoDir) : []);
+
+  await shell.trashItem(resolvedPath);
+
+  let trashName = null;
+  let infoPath = null;
+  let trashedFilePath = null;
+  try {
+    if (fs.existsSync(infoDir)) {
+      const afterFiles = fs.readdirSync(infoDir).filter(f => f.endsWith('.trashinfo'));
+      const newFiles = afterFiles.filter(f => !beforeSet.has(f));
+      const candidates = newFiles.length > 0 ? newFiles : afterFiles;
+      let latestMtime = -1;
+      for (const fname of candidates) {
+        const fullInfo = path.join(infoDir, fname);
+        const target = parseTrashInfoTarget(fullInfo);
+        if (target && path.resolve(target) === resolvedPath) {
+          const stat = fs.statSync(fullInfo);
+          if (stat.mtimeMs >= latestMtime) {
+            latestMtime = stat.mtimeMs;
+            trashName = fname.slice(0, -'.trashinfo'.length);
+            infoPath = fullInfo;
+            trashedFilePath = path.join(filesDir, trashName);
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  return {
+    trashed: true,
+    originalPath: resolvedPath,
+    trashName,
+    infoPath,
+    trashedFilePath
+  };
+});
+
+ipcMain.handle('project-restore-trash', async (_e, record) => {
+  if (!record || !record.originalPath) return { restored: false, error: 'Invalid trash record' };
+  const originalPath = path.resolve(record.originalPath);
+  const { infoDir, filesDir } = getTrashDirs();
+
+  let trashName = record.trashName || null;
+  let infoPath = record.infoPath || (trashName ? path.join(infoDir, `${trashName}.trashinfo`) : null);
+  let trashedFilePath = record.trashedFilePath || (trashName ? path.join(filesDir, trashName) : null);
+
+  if (!trashedFilePath || !fs.existsSync(trashedFilePath)) {
+    // Fallback lookup by originalPath in FreeDesktop Trash info
+    if (fs.existsSync(infoDir)) {
+      const entries = fs.readdirSync(infoDir).filter(f => f.endsWith('.trashinfo'));
+      let latestMtime = -1;
+      for (const fname of entries) {
+        const fullInfo = path.join(infoDir, fname);
+        const target = parseTrashInfoTarget(fullInfo);
+        if (target && path.resolve(target) === originalPath) {
+          const stat = fs.statSync(fullInfo);
+          if (stat.mtimeMs >= latestMtime) {
+            latestMtime = stat.mtimeMs;
+            trashName = fname.slice(0, -'.trashinfo'.length);
+            infoPath = fullInfo;
+            trashedFilePath = path.join(filesDir, trashName);
+          }
+        }
+      }
+    }
+  }
+
+  if (!trashedFilePath || !fs.existsSync(trashedFilePath)) {
+    return { restored: false, error: 'Elemento non trovato nel cestino' };
+  }
+  if (fs.existsSync(originalPath)) {
+    return { restored: false, error: 'Esiste già un file con lo stesso nome nella destinazione' };
+  }
+
+  try {
+    fs.mkdirSync(path.dirname(originalPath), { recursive: true });
+    try {
+      fs.renameSync(trashedFilePath, originalPath);
+    } catch (err) {
+      if (err && err.code === 'EXDEV') {
+        fs.cpSync(trashedFilePath, originalPath, { recursive: true });
+        fs.rmSync(trashedFilePath, { recursive: true, force: true });
+      } else {
+        throw err;
+      }
+    }
+    if (infoPath && fs.existsSync(infoPath)) {
+      fs.rmSync(infoPath, { force: true });
+    }
+    return { restored: true, originalPath };
+  } catch (err) {
+    return { restored: false, error: err.message };
+  }
 });
 
 ipcMain.handle('project-reveal-item', (_e, itemPath) => {

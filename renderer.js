@@ -1140,21 +1140,102 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     saveActiveTabState();
 
-    if (!targetTab.filePath) {
+    const missingParentDir = !!(targetTab.filePath && !fs.existsSync(path.dirname(targetTab.filePath)));
+    const isLatexTab = isCompilableLatexFile(targetTab.filePath || targetTab.title || "documento.tex");
+    const needsNewPdfProject = isLatexTab && (!targetTab.filePath || missingParentDir);
+
+    if (needsNewPdfProject) {
+      if (missingParentDir) {
+        showNotification("La cartella originale non esiste più: scegli dove salvare il nuovo file PDF.", "warning");
+      }
+      const docsDir = path.join(os.homedir(), "Documents");
+      const defaultDir = (currentProjectDir && fs.existsSync(currentProjectDir))
+        ? currentProjectDir
+        : (currentProject && currentProject.targetPath && fs.existsSync(path.dirname(currentProject.targetPath))
+          ? path.dirname(currentProject.targetPath)
+          : (fs.existsSync(docsDir) ? docsDir : os.homedir()));
+      const sourceName = targetTab.title || (targetTab.filePath ? path.basename(targetTab.filePath) : "documento.tex");
+      const rawBase = /^untitled-\d+\.tex$/i.test(sourceName)
+        ? "documento"
+        : path.basename(sourceName, path.extname(sourceName));
+      const defaultPdfName = uniqueName(defaultDir, rawBase || "documento", ".pdf");
       const result = await dialog.showSaveDialog({
-        title: "Salva documento LaTeX",
-        defaultPath: targetTab.title,
-        filters: [{ name: "LaTeX Document", extensions: ["tex"] }]
+        title: "Scegli dove salvare il documento PDF",
+        defaultPath: path.join(defaultDir, defaultPdfName),
+        filters: [{ name: "Documento PDF", extensions: ["pdf"] }]
       });
       if (result.canceled || !result.filePath) return false;
+
+      let targetPdfPath = result.filePath;
+      if (path.extname(targetPdfPath).toLowerCase() !== ".pdf") {
+        targetPdfPath = `${targetPdfPath}.pdf`;
+      }
+
+      try {
+        const baseName = path.basename(targetPdfPath, ".pdf");
+        const created = await ipcRenderer.invoke('project-create', {
+          name: baseName,
+          targetPath: targetPdfPath,
+          templateContent: targetTab.content || ""
+        });
+        const mainTexPath = path.join(created.storePath, created.manifest.main);
+
+        targetTab.filePath = mainTexPath;
+        targetTab.title = created.manifest.main;
+        targetTab.savedContent = targetTab.content;
+        updateTabDirty(targetTab.id, false);
+        saveFileHistorySnapshot(targetTab.filePath, targetTab.content);
+        watchFileForChanges(targetTab.filePath);
+
+        if (autoCompileTimer) {
+          clearTimeout(autoCompileTimer);
+          autoCompileTimer = null;
+        }
+
+        await openLinkedProject({
+          projectId: created.id,
+          name: created.manifest.name,
+          storePath: created.storePath,
+          targetPath: targetPdfPath,
+          mainFile: created.manifest.main,
+          compileImmediate: false
+        });
+
+        renderTabs();
+        updateTitle();
+        await triggerCompile(false);
+        showNotification(`Progetto "${created.manifest.name}" creato: PDF in ${path.basename(targetPdfPath)}`, "info");
+        return true;
+      } catch (err) {
+        showNotification("Errore creazione progetto: " + err.message, "error");
+        return false;
+      }
+    }
+
+    if (!targetTab.filePath || missingParentDir) {
+      if (missingParentDir) {
+        showNotification("La cartella originale non esiste più: scegli dove salvare il file.", "warning");
+      }
+      const fallbackDir = (currentProjectDir && fs.existsSync(currentProjectDir))
+        ? currentProjectDir
+        : (currentProject && currentProject.targetPath && fs.existsSync(path.dirname(currentProject.targetPath))
+          ? path.dirname(currentProject.targetPath)
+          : null);
+      const defaultSavePath = fallbackDir ? path.join(fallbackDir, targetTab.title) : targetTab.title;
+      const result = await dialog.showSaveDialog({
+        title: missingParentDir ? "Salva file in una nuova posizione" : "Salva file",
+        defaultPath: defaultSavePath,
+        filters: [{ name: "Tutti i file", extensions: ["*"] }]
+      });
+      if (result.canceled || !result.filePath) return false;
+
       targetTab.filePath = result.filePath;
       targetTab.title = path.basename(result.filePath);
-      if (!currentProjectDir) {
+      if (!currentProjectDir || !fs.existsSync(currentProjectDir)) {
         currentProjectDir = path.dirname(result.filePath);
       }
-      if (!mainDocumentPath) {
-        setMainDocument(result.filePath);
-      }
+      renderTabs();
+      updateTitle();
     }
 
     try {
@@ -1243,18 +1324,32 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   async function saveFileAs() {
     const tab = getActiveTab();
-    if (!tab) return;
+    if (!tab) return false;
     saveActiveTabState();
+
+    const missingParent = !!(tab.filePath && !fs.existsSync(path.dirname(tab.filePath)));
+    if ((!tab.filePath || missingParent) && isCompilableLatexFile(tab.filePath || tab.title || "documento.tex")) {
+      return await saveFile(tab);
+    }
+
+    const preferredDefault = (tab.filePath && fs.existsSync(path.dirname(tab.filePath)))
+      ? tab.filePath
+      : (currentProjectDir && fs.existsSync(currentProjectDir) ? path.join(currentProjectDir, tab.title) : tab.title);
 
     const result = await dialog.showSaveDialog({
       title: "Salva come...",
-      defaultPath: tab.title,
-      filters: [{ name: "LaTeX Document", extensions: ["tex"] }]
+      defaultPath: preferredDefault,
+      filters: [
+        { name: "LaTeX Document", extensions: ["tex"] },
+        { name: "Tutti i file", extensions: ["*"] }
+      ]
     });
     if (result.canceled || !result.filePath) return;
 
     tab.filePath = result.filePath;
     tab.title = path.basename(result.filePath);
+    renderTabs();
+    updateTitle();
     try {
       const targetDir = path.dirname(tab.filePath);
       const tmpPath = path.join(targetDir, `.tmp-${process.pid}-${Date.now()}`);
@@ -1432,7 +1527,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     isCompiling = true;
     btnRecompile.classList.add("compiling");
 
-    let targetPath = mainDocumentPath || (tab ? tab.filePath : null);
+    let targetPath = (isLinkedProject && mainDocumentPath)
+      ? mainDocumentPath
+      : (tab && tab.filePath ? tab.filePath : (mainDocumentPath && fs.existsSync(mainDocumentPath) ? mainDocumentPath : null));
     let contentToPass = cm ? cm.getValue() : (tab ? tab.content : "");
 
     const workDir = isLinkedProject && currentProject ? currentProject.storePath : currentProjectDir;
@@ -1763,6 +1860,15 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   async function openLinkedProject(opts) {
     // opts: { projectId, name, storePath, targetPath, compileImmediate }
+    if (isLinkedProject && currentProject && currentProject.storePath &&
+        opts.storePath && path.resolve(currentProject.storePath) !== path.resolve(opts.storePath)) {
+      try { await ipcRenderer.invoke('project-release-lock', currentProject.storePath); } catch (_) {}
+      if (targetPdfWatcher) {
+        try { targetPdfWatcher.close(); } catch (_) {}
+        targetPdfWatcher = null;
+      }
+    }
+
     isLinkedProject = true;
     currentProject = {
       projectId: opts.projectId,
@@ -1781,6 +1887,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       console.warn('[LACK] Lock acquire note:', e);
     }
 
+    document.getElementById("explorer-panel")?.classList.remove("hidden");
     projectPane?.classList.remove("hidden");
     sidebarSplitter?.classList.remove("hidden");
     footerProjectChip?.classList.remove("hidden");
@@ -1797,9 +1904,6 @@ window.addEventListener("DOMContentLoaded", async () => {
       folderPathEl.classList.remove("hidden");
     }
     renderFolderPane(folderDir);
-
-    // Project pane = storePath
-    renderProjectPane(opts.storePath);
 
     // Determine main document from opts.mainFile, manifest, <name>.tex, or main.tex
     let mainFileName = opts.mainFile;
@@ -1825,6 +1929,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       openFileFromPath(mainTexPath);
     }
 
+    // Project pane = storePath (rendered after mainDocumentPath is resolved)
+    renderProjectPane(opts.storePath);
+
     if (opts.compileImmediate) {
       triggerCompile(false);
     } else if (opts.targetPath && fs.existsSync(opts.targetPath)) {
@@ -1835,12 +1942,20 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function closeLinkedProject() {
-    if (currentProject && currentProject.storePath) {
+    const closedStorePath = currentProject && currentProject.storePath ? path.resolve(currentProject.storePath) : null;
+    if (closedStorePath) {
       ipcRenderer.invoke('project-release-lock', currentProject.storePath);
     }
     if (targetPdfWatcher) {
       try { targetPdfWatcher.close(); } catch (_) {}
       targetPdfWatcher = null;
+    }
+    if (closedStorePath && mainDocumentPath) {
+      const rel = path.relative(closedStorePath, path.resolve(mainDocumentPath));
+      if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
+        mainDocumentPath = null;
+        if (footerMainDoc) footerMainDoc.textContent = "Principale: —";
+      }
     }
     isLinkedProject = false;
     currentProject = null;
@@ -2062,6 +2177,86 @@ window.addEventListener("DOMContentLoaded", async () => {
     showMenuFn();
   }
 
+  const explorerUndoStack = [];
+
+  async function undoLastExplorerAction() {
+    if (explorerUndoStack.length === 0) return false;
+    const action = explorerUndoStack.pop();
+
+    if (action.type === 'trash-linked-project') {
+      const restoredPdf = action.pdfTrashRec
+        ? await ipcRenderer.invoke('project-restore-trash', action.pdfTrashRec)
+        : { restored: false };
+      const restoredStore = action.storeTrashRec
+        ? await ipcRenderer.invoke('project-restore-trash', action.storeTrashRec)
+        : { restored: true };
+
+      if (!restoredPdf.restored) {
+        showNotification(`Impossibile ripristinare "${path.basename(action.projectInfo?.targetPath || 'PDF')}": ${restoredPdf.error || 'errore sconosciuto'}`, "error");
+        document.getElementById('explorer-panel')?.focus({ preventScroll: true });
+        return false;
+      }
+
+      if (action.storeTrashRec && !restoredStore.restored) {
+        showNotification(`PDF ripristinato, ma impossibile ripristinare i sorgenti: ${restoredStore.error || 'errore sconosciuto'}`, "warning");
+      }
+
+      if (action.projectInfo?.projectId && action.projectInfo?.storePath && fs.existsSync(action.projectInfo.storePath)) {
+        await ipcRenderer.invoke('project-registry-save', {
+          id: action.projectInfo.projectId,
+          storePath: action.projectInfo.storePath,
+          name: action.projectInfo.name,
+          lastPdfPath: action.projectInfo.targetPath
+        });
+      }
+
+      if (currentProjectDir) {
+        renderFolderPane(currentProjectDir);
+      }
+
+      if (action.projectInfo?.storePath && fs.existsSync(action.projectInfo.storePath)) {
+        await openLinkedProject({
+          projectId: action.projectInfo.projectId,
+          name: action.projectInfo.name,
+          storePath: action.projectInfo.storePath,
+          targetPath: action.projectInfo.targetPath,
+          compileImmediate: false
+        });
+      }
+
+      showNotification(`Progetto "${action.projectInfo?.name || 'LaTeX'}" ripristinato dal cestino.`, "info");
+      document.getElementById('explorer-panel')?.focus({ preventScroll: true });
+      return true;
+    }
+
+    if (action.type === 'trash-items') {
+      let restoredCount = 0;
+      const errors = [];
+      for (const rec of action.records) {
+        const res = await ipcRenderer.invoke('project-restore-trash', rec);
+        if (res && res.restored) {
+          restoredCount++;
+        } else if (res && res.error) {
+          errors.push(res.error);
+        }
+      }
+
+      if (isLinkedProject && currentProject) renderProjectPane(currentProject.storePath);
+      if (currentProjectDir) renderFolderPane(currentProjectDir);
+
+      if (restoredCount > 0) {
+        const label = action.description || `${restoredCount} element${restoredCount === 1 ? 'o' : 'i'}`;
+        showNotification(`Ripristinato dal cestino: ${label}`, "info");
+      } else if (errors.length > 0) {
+        showNotification(`Impossibile ripristinare: ${errors[0]}`, "error");
+      }
+      document.getElementById('explorer-panel')?.focus({ preventScroll: true });
+      return restoredCount > 0;
+    }
+
+    return false;
+  }
+
   async function deleteExplorerFiles(targets) {
     if (!targets) return;
     const pathList = (Array.isArray(targets) ? targets : [targets]).filter(Boolean);
@@ -2075,13 +2270,36 @@ window.addEventListener("DOMContentLoaded", async () => {
     const count = uniquePaths.length;
     if (count === 0) return;
 
+    const focusExplorerAfterDelete = () => {
+      try {
+        document.getElementById('explorer-panel')?.focus({ preventScroll: true });
+      } catch (_) {}
+    };
+
     if (count === 1) {
       const singlePath = uniquePaths[0];
-      const isTargetPdf = isLinkedProject && currentProject && currentProject.targetPath &&
-        (path.resolve(singlePath) === path.resolve(currentProject.targetPath));
+      let linkedProj = null;
+      let isActiveLinkedPdf = false;
+      if (isLinkedProject && currentProject && currentProject.targetPath &&
+          path.resolve(singlePath) === path.resolve(currentProject.targetPath)) {
+        linkedProj = currentProject;
+        isActiveLinkedPdf = true;
+      } else if (singlePath.toLowerCase().endsWith('.pdf')) {
+        try {
+          const link = await ipcRenderer.invoke('project-read-link', singlePath);
+          const regHit = await ipcRenderer.invoke('project-registry-lookup', (link && link.id) ? link.id : singlePath);
+          if (regHit && regHit.storePath && fs.existsSync(regHit.storePath)) {
+            linkedProj = {
+              projectId: regHit.projectId || link?.id,
+              name: regHit.name || link?.name || path.basename(singlePath, '.pdf'),
+              storePath: regHit.storePath,
+              targetPath: singlePath
+            };
+          }
+        } catch (_) {}
+      }
 
-      if (isTargetPdf) {
-        const linkedProj = currentProject;
+      if (linkedProj) {
         const choice = await showCustomConfirmDialog({
           title: "Eliminazione PDF collegato",
           message: `Stai spostando nel cestino il file PDF "${path.basename(singlePath)}" collegato al progetto "${linkedProj.name || 'LaTeX'}".\n\nVuoi mantenere i dati sorgente del progetto archiviati (in modo da poter ricreare o duplicare il PDF in qualsiasi momento), oppure eliminare anche tutti i dati del progetto?`,
@@ -2092,27 +2310,69 @@ window.addEventListener("DOMContentLoaded", async () => {
           ]
         });
 
-        if (!choice || choice === 'cancel') return;
+        if (!choice || choice === 'cancel') {
+          focusExplorerAfterDelete();
+          return;
+        }
 
         const openTab = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(singlePath));
         if (openTab) closeTab(openTab.id);
 
-        await ipcRenderer.invoke('project-trash-item', singlePath);
-
         if (choice === 'delete_all') {
-          if (linkedProj.storePath && fs.existsSync(linkedProj.storePath)) {
-            await ipcRenderer.invoke('project-trash-item', linkedProj.storePath);
+          const prevRegEntry = linkedProj.projectId
+            ? await ipcRenderer.invoke('project-registry-lookup', linkedProj.projectId)
+            : null;
+          if (isActiveLinkedPdf && linkedProj.storePath) {
+            await ipcRenderer.invoke('project-release-lock', linkedProj.storePath);
           }
-          await ipcRenderer.invoke('project-unlink', singlePath);
-          showNotification(`PDF e dati del progetto spostati nel cestino.`, "info");
+
+          const pdfTrashRec = await ipcRenderer.invoke('project-trash-item', singlePath);
+          const storeTrashRec = (linkedProj.storePath && fs.existsSync(linkedProj.storePath))
+            ? await ipcRenderer.invoke('project-trash-item', linkedProj.storePath)
+            : null;
+
+          if (linkedProj.projectId) {
+            await ipcRenderer.invoke('project-registry-remove', linkedProj.projectId);
+          }
+
+          if (pdfTrashRec && pdfTrashRec.trashed) {
+            explorerUndoStack.push({
+              type: 'trash-linked-project',
+              choice: 'delete_all',
+              pdfTrashRec,
+              storeTrashRec,
+              projectInfo: {
+                projectId: linkedProj.projectId,
+                name: linkedProj.name || path.basename(singlePath, '.pdf'),
+                storePath: prevRegEntry?.storePath || linkedProj.storePath,
+                targetPath: singlePath
+              }
+            });
+          }
+          showNotification(`PDF e dati del progetto spostati nel cestino (Ctrl+Z per annullare).`, "info");
         } else {
-          await ipcRenderer.invoke('project-unlink', singlePath);
-          showNotification(`PDF "${path.basename(singlePath)}" spostato nel cestino. I sorgenti sono conservati nello store.`, "info");
+          const pdfTrashRec = await ipcRenderer.invoke('project-trash-item', singlePath);
+          if (pdfTrashRec && pdfTrashRec.trashed) {
+            explorerUndoStack.push({
+              type: 'trash-linked-project',
+              choice: 'keep_sources',
+              pdfTrashRec,
+              storeTrashRec: null,
+              projectInfo: {
+                projectId: linkedProj.projectId,
+                name: linkedProj.name || path.basename(singlePath, '.pdf'),
+                storePath: linkedProj.storePath,
+                targetPath: singlePath
+              }
+            });
+          }
+          showNotification(`PDF "${path.basename(singlePath)}" spostato nel cestino. I sorgenti sono conservati nello store (Ctrl+Z per annullare).`, "info");
         }
 
-        closeLinkedProject();
+        if (isActiveLinkedPdf) closeLinkedProject();
         clearExplorerSelection();
         if (currentProjectDir) renderFolderPane(currentProjectDir);
+        focusExplorerAfterDelete();
         return;
       }
 
@@ -2128,17 +2388,27 @@ window.addEventListener("DOMContentLoaded", async () => {
         ]
       });
 
-      if (answer !== 0) return;
+      if (answer !== 0) {
+        focusExplorerAfterDelete();
+        return;
+      }
 
       try {
-        await ipcRenderer.invoke('project-trash-item', singlePath);
+        const trashRec = await ipcRenderer.invoke('project-trash-item', singlePath);
+        if (trashRec && trashRec.trashed) {
+          explorerUndoStack.push({
+            type: 'trash-items',
+            records: [trashRec],
+            description: fileName
+          });
+        }
         const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(singlePath));
         for (const t of openTabs) {
           t.dirty = false;
           closeTab(t.id);
         }
         clearExplorerSelection();
-        showNotification(`"${fileName}" spostato nel cestino`, "info");
+        showNotification(`"${fileName}" spostato nel cestino (Ctrl+Z per annullare).`, "info");
       } catch (err) {
         showNotification("Errore eliminazione: " + err.message, "error");
       }
@@ -2154,12 +2424,19 @@ window.addEventListener("DOMContentLoaded", async () => {
         ]
       });
 
-      if (answer !== 0) return;
+      if (answer !== 0) {
+        focusExplorerAfterDelete();
+        return;
+      }
 
       let deletedCount = 0;
+      const records = [];
       for (const fp of uniquePaths) {
         try {
-          await ipcRenderer.invoke('project-trash-item', fp);
+          const trashRec = await ipcRenderer.invoke('project-trash-item', fp);
+          if (trashRec && trashRec.trashed) {
+            records.push(trashRec);
+          }
           const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(fp));
           for (const t of openTabs) {
             t.dirty = false;
@@ -2170,8 +2447,15 @@ window.addEventListener("DOMContentLoaded", async () => {
           console.warn("[LACK] Failed to trash item:", fp, err);
         }
       }
+      if (records.length > 0) {
+        explorerUndoStack.push({
+          type: 'trash-items',
+          records,
+          description: `${deletedCount} element${deletedCount === 1 ? 'o' : 'i'}`
+        });
+      }
       clearExplorerSelection();
-      showNotification(`${deletedCount} element${deletedCount === 1 ? 'o spostato' : 'i spostati'} nel cestino`, "info");
+      showNotification(`${deletedCount} element${deletedCount === 1 ? 'o spostato' : 'i spostati'} nel cestino${records.length > 0 ? ' (Ctrl+Z per annullare)' : ''}`, "info");
     }
 
     if (isLinkedProject && currentProject) {
@@ -2180,6 +2464,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (currentProjectDir) {
       renderFolderPane(currentProjectDir);
     }
+    focusExplorerAfterDelete();
   }
 
   function buildFolderTreeRecursive(dir, parentElement) {
@@ -2404,6 +2689,23 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     entries = filterProjectEntries(entries);
 
+    const isProjectStoreRoot = isLinkedProject && currentProject && currentProject.storePath &&
+      (path.resolve(dir) === path.resolve(currentProject.storePath));
+    let excludedCompiledPdfNames = null;
+    if (isProjectStoreRoot) {
+      excludedCompiledPdfNames = new Set();
+      if (currentProject.targetPath) {
+        excludedCompiledPdfNames.add(path.basename(currentProject.targetPath).toLowerCase());
+      }
+      if (mainDocumentPath) {
+        const mainExt = path.extname(mainDocumentPath);
+        const mainBase = path.basename(mainDocumentPath, mainExt);
+        if (mainBase) {
+          excludedCompiledPdfNames.add(`${mainBase}.pdf`.toLowerCase());
+        }
+      }
+    }
+
     entries.forEach(entry => {
       const fullPath = path.join(dir, entry.name);
       let isSymlink = false;
@@ -2419,6 +2721,12 @@ window.addEventListener("DOMContentLoaded", async () => {
           else isDir = fs.statSync(fullPath).isDirectory();
         }
       } catch (_) {
+        return;
+      }
+
+      // Compiled project output PDFs belong in CARTELLA, never inside PROGETTO
+      if (excludedCompiledPdfNames && !isDir && !isSymlink &&
+          excludedCompiledPdfNames.has(entry.name.toLowerCase())) {
         return;
       }
 
@@ -2737,6 +3045,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.closeAllTabs = closeAllTabs;
   window.showTabContextMenu = showTabContextMenu;
   window.deleteExplorerFiles = deleteExplorerFiles;
+  window.undoLastExplorerAction = undoLastExplorerAction;
   window.activateExplorerFile = activateExplorerFile;
   window.triggerCompile = triggerCompile;
   window.closeLinkedProject = closeLinkedProject;
@@ -2976,6 +3285,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       let count = 0;
       for (const src of pathsToImport) {
         if (!src || !fs.existsSync(src)) continue;
+        if (currentProject.targetPath && path.resolve(src) === path.resolve(currentProject.targetPath)) {
+          showNotification("Il PDF compilato appartiene alla cartella di destinazione, non al progetto sorgente.", "info");
+          continue;
+        }
         const isDir = fs.statSync(src).isDirectory();
         const ext = isDir ? "" : path.extname(src);
         const base = isDir ? path.basename(src) : path.basename(src, ext);
@@ -3331,27 +3644,34 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("btn-new-proj-browse-target")?.addEventListener("click", async () => {
+    const defaultDir = (currentProjectDir && fs.existsSync(currentProjectDir)) ? currentProjectDir : null;
+    const curTarget = inputNewProjTarget?.value.trim();
+    const defaultSave = curTarget || (defaultDir ? path.join(defaultDir, uniqueName(defaultDir, "documento", ".pdf")) : "documento.pdf");
     const res = await dialog.showSaveDialog({
       title: "Seleziona destinazione file PDF",
-      defaultPath: "documento.pdf",
+      defaultPath: defaultSave,
       filters: [{ name: "Documento PDF", extensions: ["pdf"] }]
     });
     if (!res.canceled && res.filePath) {
-      if (inputNewProjTarget) inputNewProjTarget.value = res.filePath;
+      const normalizedPdf = path.extname(res.filePath).toLowerCase() === ".pdf" ? res.filePath : `${res.filePath}.pdf`;
+      if (inputNewProjTarget) inputNewProjTarget.value = normalizedPdf;
       if (inputNewProjName && (!inputNewProjName.value || inputNewProjName.value === "Nuovo Progetto")) {
-        inputNewProjName.value = path.basename(res.filePath, ".pdf");
+        inputNewProjName.value = path.basename(normalizedPdf, ".pdf");
       }
     }
   });
 
   document.getElementById("btn-submit-new-proj")?.addEventListener("click", async () => {
     const name = inputNewProjName?.value.trim() || "Nuovo Progetto";
-    const targetPath = inputNewProjTarget?.value.trim();
+    let targetPath = inputNewProjTarget?.value.trim();
     const template = selectNewProjTemplate?.value || "standard";
 
     if (!targetPath) {
       showNotification("Seleziona una destinazione valida per il file PDF.", "warning");
       return;
+    }
+    if (path.extname(targetPath).toLowerCase() !== ".pdf") {
+      targetPath = `${targetPath}.pdf`;
     }
 
     try {
@@ -4111,6 +4431,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  document.getElementById('explorer-panel')?.addEventListener('click', (e) => {
+    if (!e.target.closest('input, textarea, select, button, .tree-item')) {
+      document.getElementById('explorer-panel')?.focus({ preventScroll: true });
+    }
+  });
+
   document.addEventListener('keydown', (e) => {
     const appConfirmModal = document.getElementById('app-confirm-modal');
     if (appConfirmModal && !appConfirmModal.classList.contains('hidden')) {
@@ -4126,6 +4452,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         closeCustomConfirmDialog(currentCancelValue);
         return;
       }
+      return;
     }
 
     if (e.key === 'Escape') {
@@ -4134,13 +4461,26 @@ window.addEventListener("DOMContentLoaded", async () => {
       document.getElementById('new-file-popup')?.classList.add('hidden');
     }
 
-    const activeEl = document.activeElement;
-    const tag = activeEl ? activeEl.tagName : '';
-    if (['TEXTAREA', 'INPUT', 'BUTTON', 'SELECT'].includes(tag) || activeEl?.isContentEditable) {
+    if (document.querySelector('.modal:not(.hidden)')) {
       return;
     }
 
-    if (document.querySelector('.modal:not(.hidden)')) {
+    const activeEl = document.activeElement;
+    const tag = activeEl ? activeEl.tagName : '';
+
+    // Explorer Undo shortcut (Ctrl+Z / Cmd+Z) when focus is not inside a text editor or input
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+      const inEditor = activeEl?.closest?.('.cm-editor') || e.target?.closest?.('.cm-editor');
+      const inTextControl = ['TEXTAREA', 'INPUT', 'SELECT'].includes(tag) || activeEl?.isContentEditable;
+      if (!inEditor && !inTextControl && explorerUndoStack.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        undoLastExplorerAction();
+        return;
+      }
+    }
+
+    if (['TEXTAREA', 'INPUT', 'BUTTON', 'SELECT'].includes(tag) || activeEl?.isContentEditable) {
       return;
     }
 
@@ -4205,7 +4545,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         case 'open-settings': settingsModal.classList.remove('hidden'); break;
         case 'close-tab': if (activeTabId) closeTab(activeTabId); break;
         case 'quit-app': ipcRenderer.send('window-close'); break;
-        case 'undo': document.execCommand('undo'); break;
+        case 'undo':
+          if (!document.activeElement?.closest?.('.cm-editor') && explorerUndoStack.length > 0) {
+            await undoLastExplorerAction();
+          } else {
+            document.execCommand('undo');
+          }
+          break;
         case 'redo': document.execCommand('redo'); break;
         case 'cut': document.execCommand('cut'); break;
         case 'copy': document.execCommand('copy'); break;
@@ -4633,7 +4979,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (activeTabId) closeTab(activeTabId);
   });
   ipcRenderer.on("load-tex", (_e, filePath, content) => {
-    openFileFromPath(filePath) || createTab(path.basename(filePath), content, filePath);
+    const existing = filePath ? tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(filePath)) : null;
+    if (existing) {
+      switchTab(existing.id);
+    } else if (filePath && fs.existsSync(filePath)) {
+      openFileFromPath(filePath);
+    } else {
+      createTab(path.basename(filePath || "untitled.tex"), content || "", filePath || null);
+    }
   });
   ipcRenderer.on("open-folder", (_e, folderPath) => openFolder(folderPath));
   ipcRenderer.on("open-linked-project", (_e, payload) => {
@@ -4647,12 +5000,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   ipcRenderer.on("prompt-convert-tex-to-project", async (_e, { texPath }) => {
     if (!texPath || !fs.existsSync(texPath)) return;
+    const resolvedTex = path.resolve(texPath);
     const baseName = path.basename(texPath, ".tex");
     const folderDir = path.dirname(texPath);
 
     const answer = await showCustomConfirmDialog({
       title: "Converti in Progetto LaTeX",
-      message: `Vuoi convertire "${path.basename(texPath)}" in un progetto Lack collegato?\n\nQuesto creerà il documento PDF "${baseName}.pdf" nella cartella corrente e gestirà i sorgenti e gli asset nel gestore progetti Lack.`,
+      message: `Vuoi convertire "${path.basename(texPath)}" in un progetto Lack collegato?\n\nIl file sorgente verrà spostato nello store dei progetti Lack e nella cartella corrente resterà solo il documento PDF "${baseName}.pdf".`,
       buttons: [
         { text: "No, mantieni file singolo", value: "no", isCancel: true },
         { text: "Sì, converti in Progetto", value: "yes", isPrimary: true }
@@ -4661,30 +5015,62 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (answer === "yes") {
       try {
-        const content = fs.readFileSync(texPath, "utf8");
+        saveActiveTabState();
+        const matchingTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === resolvedTex);
+        const content = matchingTabs.length > 0
+          ? matchingTabs[0].content
+          : fs.readFileSync(texPath, "utf8");
+
         const targetPdfPath = path.join(folderDir, `${baseName}.pdf`);
         const created = await ipcRenderer.invoke("project-create", {
           name: baseName,
           targetPath: targetPdfPath,
-          template: "blank"
+          templateContent: content
         });
 
-        // Write original content to <name>.tex in storePath
-        const mainTexInStore = path.join(created.storePath, `${baseName}.tex`);
-        await fs.promises.writeFile(mainTexInStore, content, "utf8");
+        const mainTexInStore = path.join(created.storePath, created.manifest.main);
 
-        const manifest = created.manifest;
-        manifest.main = `${baseName}.tex`;
-        await ipcRenderer.invoke("project-save-manifest", created.storePath, manifest);
+        // Stop watching the original .tex before moving it out of folderDir
+        for (const [watchPath, watcher] of Array.from(activeFileWatchers.entries())) {
+          if (path.resolve(watchPath) === resolvedTex) {
+            try { watcher.close(); } catch (_) {}
+            activeFileWatchers.delete(watchPath);
+          }
+        }
 
-        showNotification(`File "${path.basename(texPath)}" convertito in progetto collegato!`, "info");
+        // Remove original .tex from folderDir so only the compiled PDF remains in CARTELLA
+        if (fs.existsSync(mainTexInStore) && fs.existsSync(texPath)) {
+          await fs.promises.unlink(texPath);
+        }
+
+        // Migrate existing open tab in-place to the moved store .tex file (close any duplicate tabs)
+        if (matchingTabs.length > 0) {
+          const primaryTab = matchingTabs[0];
+          primaryTab.filePath = mainTexInStore;
+          primaryTab.title = created.manifest.main;
+          primaryTab.content = content;
+          primaryTab.savedContent = content;
+          updateTabDirty(primaryTab.id, false);
+          saveFileHistorySnapshot(mainTexInStore, content);
+          watchFileForChanges(mainTexInStore);
+
+          for (let i = 1; i < matchingTabs.length; i++) {
+            matchingTabs[i].dirty = false;
+            closeTab(matchingTabs[i].id);
+          }
+          renderTabs();
+        }
+
+        showNotification(`File "${path.basename(texPath)}" spostato nello store del progetto!`, "info");
         await openLinkedProject({
           projectId: created.id,
           name: created.manifest.name,
           storePath: created.storePath,
           targetPath: targetPdfPath,
-          compileImmediate: true
+          mainFile: created.manifest.main,
+          compileImmediate: false
         });
+        await triggerCompile(false);
       } catch (err) {
         showNotification("Errore conversione progetto: " + err.message, "error");
       }

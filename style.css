@@ -3842,6 +3842,10 @@ body.dark .markdown-body pre code {
   will-change: margin-left;
 }
 
+#explorer-panel:focus {
+  outline: none;
+}
+
 #explorer-panel.hidden {
   margin-left: calc(-1 * var(--explorer-width, 250px));
   /* Nascondiamo il bordo per non lasciare la riga visibile */

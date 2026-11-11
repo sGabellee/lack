@@ -243,6 +243,7 @@ async function extractSnapshot(pdfBytesOrPath, targetDir) {
  * Removes lack project metadata from a PDF.
  */
 async function unlinkPdf(pdfPath) {
+  if (!pdfPath || !fs.existsSync(pdfPath)) return false;
   const inputBytes = fs.readFileSync(pdfPath);
   const pdfDoc = await PDFDocument.load(inputBytes, { updateMetadata: false, ignoreEncryption: true });
   const info = pdfDoc.getInfoDict();

@@ -55,7 +55,7 @@ class ProjectManager {
     fs.mkdirSync(path.join(storePath, '.lack', 'history'), { recursive: true });
 
     const mainFileName = `${baseName}.tex`;
-    const defaultContent = templateContent ||
+    const defaultContent = (typeof templateContent === 'string') ? templateContent :
       `\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath,amssymb}\n\n\\title{${projectName}}\n\\author{Author}\n\\date{\\today}\n\n\\begin{document}\n\\maketitle\n\n\\section{Introduction}\nWrite your content here...\n\n\\end{document}\n`;
 
     fs.writeFileSync(path.join(storePath, mainFileName), defaultContent, 'utf8');
