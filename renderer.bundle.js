@@ -881,7 +881,7 @@ var require_dist2 = __commonJS({
         return new _ChangeDesc(sections);
       }
     };
-    var ChangeSet2 = class _ChangeSet extends ChangeDesc2 {
+    var ChangeSet3 = class _ChangeSet extends ChangeDesc2 {
       constructor(sections, inserted) {
         super(sections);
         this.inserted = inserted;
@@ -1201,7 +1201,7 @@ var require_dist2 = __commonJS({
           inserted = a.i;
           a.forward(a.len - left);
         } else if (a.done && b.done) {
-          return insert3 ? ChangeSet2.createSet(sections, insert3) : ChangeDesc2.create(sections);
+          return insert3 ? ChangeSet3.createSet(sections, insert3) : ChangeDesc2.create(sections);
         } else {
           throw new Error("Mismatched change set lengths");
         }
@@ -1213,7 +1213,7 @@ var require_dist2 = __commonJS({
       let a = new SectionIter2(setA), b = new SectionIter2(setB);
       for (let open = false; ; ) {
         if (a.done && b.done) {
-          return insert3 ? ChangeSet2.createSet(sections, insert3) : ChangeDesc2.create(sections);
+          return insert3 ? ChangeSet3.createSet(sections, insert3) : ChangeDesc2.create(sections);
         } else if (a.ins == 0) {
           addSection2(sections, a.len, 0, open);
           a.next();
@@ -2223,7 +2223,7 @@ var require_dist2 = __commonJS({
       let mapForA, mapForB, changes;
       if (sequential) {
         mapForA = b.changes;
-        mapForB = ChangeSet2.empty(b.changes.length);
+        mapForB = ChangeSet3.empty(b.changes.length);
         changes = a.changes.compose(b.changes);
       } else {
         mapForA = b.changes.map(a.changes);
@@ -2243,7 +2243,7 @@ var require_dist2 = __commonJS({
       if (spec.userEvent)
         annotations = annotations.concat(Transaction2.userEvent.of(spec.userEvent));
       return {
-        changes: spec.changes instanceof ChangeSet2 ? spec.changes : ChangeSet2.of(spec.changes || [], docSize, state.facet(lineSeparator2)),
+        changes: spec.changes instanceof ChangeSet3 ? spec.changes : ChangeSet3.of(spec.changes || [], docSize, state.facet(lineSeparator2)),
         selection: sel && (sel instanceof EditorSelection2 ? sel : EditorSelection2.single(sel.anchor, sel.head)),
         effects: asArray2(spec.effects),
         annotations,
@@ -2279,7 +2279,7 @@ var require_dist2 = __commonJS({
         let changes, back;
         if (result === false) {
           back = tr.changes.invertedDesc;
-          changes = ChangeSet2.empty(state.doc.length);
+          changes = ChangeSet3.empty(state.doc.length);
         } else {
           let filtered = tr.changes.filter(result);
           changes = filtered.changes;
@@ -2470,9 +2470,9 @@ var require_dist2 = __commonJS({
       separator into account.
       */
       changes(spec = []) {
-        if (spec instanceof ChangeSet2)
+        if (spec instanceof ChangeSet3)
           return spec;
-        return ChangeSet2.of(spec, this.doc.length, this.facet(_EditorState.lineSeparator));
+        return ChangeSet3.of(spec, this.doc.length, this.facet(_EditorState.lineSeparator));
       }
       /**
       Using the state's [line
@@ -3540,7 +3540,7 @@ var require_dist2 = __commonJS({
     exports2.Annotation = Annotation2;
     exports2.AnnotationType = AnnotationType2;
     exports2.ChangeDesc = ChangeDesc2;
-    exports2.ChangeSet = ChangeSet2;
+    exports2.ChangeSet = ChangeSet3;
     exports2.Compartment = Compartment3;
     exports2.EditorSelection = EditorSelection2;
     exports2.EditorState = EditorState3;
@@ -4061,7 +4061,7 @@ var require_dist4 = __commonJS({
       BlockType2[BlockType2["WidgetAfter"] = 2] = "WidgetAfter";
       BlockType2[BlockType2["WidgetRange"] = 3] = "WidgetRange";
     })(exports2.BlockType || (exports2.BlockType = {}));
-    var Decoration3 = class extends state.RangeValue {
+    var Decoration2 = class extends state.RangeValue {
       constructor(startSide, endSide, widget, spec) {
         super();
         this.startSide = startSide;
@@ -4134,8 +4134,8 @@ var require_dist4 = __commonJS({
         return this.widget ? this.widget.estimatedHeight > -1 : false;
       }
     };
-    Decoration3.none = state.RangeSet.empty;
-    var MarkDecoration2 = class _MarkDecoration extends Decoration3 {
+    Decoration2.none = state.RangeSet.empty;
+    var MarkDecoration2 = class _MarkDecoration extends Decoration2 {
       constructor(spec) {
         let { start, end } = getInclusive2(spec);
         super(start ? -1 : 5e8, end ? 1 : -6e8, null, spec);
@@ -4152,7 +4152,7 @@ var require_dist4 = __commonJS({
       }
     };
     MarkDecoration2.prototype.point = false;
-    var LineDecoration2 = class _LineDecoration extends Decoration3 {
+    var LineDecoration2 = class _LineDecoration extends Decoration2 {
       constructor(spec) {
         super(-2e8, -2e8, null, spec);
       }
@@ -4167,7 +4167,7 @@ var require_dist4 = __commonJS({
     };
     LineDecoration2.prototype.mapMode = state.MapMode.TrackBefore;
     LineDecoration2.prototype.point = true;
-    var PointDecoration2 = class _PointDecoration extends Decoration3 {
+    var PointDecoration2 = class _PointDecoration extends Decoration2 {
       constructor(spec, startSide, endSide, block, widget, isReplace) {
         super(startSide, endSide, widget, spec);
         this.block = block;
@@ -5056,7 +5056,7 @@ var require_dist4 = __commonJS({
         });
       }
     });
-    var ViewPlugin3 = class _ViewPlugin {
+    var ViewPlugin2 = class _ViewPlugin {
       constructor(id, create4, domEventHandlers, domEventObservers, buildExtensions) {
         this.id = id;
         this.create = create4;
@@ -5082,7 +5082,7 @@ var require_dist4 = __commonJS({
           if (deco)
             ext.push(decorations2.of((view) => {
               let pluginInst = view.plugin(plugin2);
-              return pluginInst ? deco(pluginInst) : Decoration3.none;
+              return pluginInst ? deco(pluginInst) : Decoration2.none;
             }));
           if (provide)
             ext.push(provide(plugin2));
@@ -6584,7 +6584,7 @@ var require_dist4 = __commonJS({
         this.dynamicDecorationMap = [false];
         this.domChanged = null;
         this.hasComposition = null;
-        this.editContextFormatting = Decoration3.none;
+        this.editContextFormatting = Decoration2.none;
         this.lastCompositionAfterCursor = false;
         this.minWidth = 0;
         this.minWidthFrom = 0;
@@ -7014,7 +7014,7 @@ var require_dist4 = __commonJS({
           let end = next ? next.from - 1 : this.view.state.doc.length;
           if (end > pos) {
             let height = (vs.lineBlockAt(end).bottom - vs.lineBlockAt(pos).top) / this.view.scaleY;
-            deco.push(Decoration3.replace({
+            deco.push(Decoration2.replace({
               widget: new BlockGapWidget2(height),
               block: true,
               inclusive: true,
@@ -7025,7 +7025,7 @@ var require_dist4 = __commonJS({
             break;
           pos = next.to + 1;
         }
-        return Decoration3.set(deco);
+        return Decoration2.set(deco);
       }
       updateDeco() {
         let i2 = 1;
@@ -9043,7 +9043,7 @@ var require_dist4 = __commonJS({
       return val;
     }
     HeightMap2.prototype.size = 1;
-    var SpaceDeco2 = Decoration3.replace({});
+    var SpaceDeco2 = Decoration2.replace({});
     var HeightMapBlock2 = class extends HeightMap2 {
       constructor(length, height, deco) {
         super(length, height);
@@ -9569,7 +9569,7 @@ var require_dist4 = __commonJS({
         return true;
       }
       draw(viewState, wrapping) {
-        return Decoration3.replace({
+        return Decoration2.replace({
           widget: new LineGapWidget2(this.displaySize * (wrapping ? viewState.scaleY : viewState.scaleX), wrapping)
         }).range(this.from, this.to);
       }
@@ -9634,7 +9634,7 @@ var require_dist4 = __commonJS({
         }
         this.updateViewportLines();
         this.lineGaps = this.ensureLineGaps([]);
-        this.lineGapDeco = Decoration3.set(this.lineGaps.map((gap) => gap.draw(this, false)));
+        this.lineGapDeco = Decoration2.set(this.lineGaps.map((gap) => gap.draw(this, false)));
         this.scrollParent = view.scrollDOM;
         this.computeVisibleRanges();
       }
@@ -9966,7 +9966,7 @@ var require_dist4 = __commonJS({
       updateLineGaps(gaps) {
         if (!LineGap2.same(gaps, this.lineGaps)) {
           this.lineGaps = gaps;
-          this.lineGapDeco = Decoration3.set(gaps.map((gap) => gap.draw(this, this.heightOracle.lineWrapping)));
+          this.lineGapDeco = Decoration2.set(gaps.map((gap) => gap.draw(this, this.heightOracle.lineWrapping)));
         }
       }
       computeVisibleRanges(changes) {
@@ -10975,11 +10975,11 @@ var require_dist4 = __commonJS({
               let from = this.toEditorPos(format.rangeStart), to = this.toEditorPos(format.rangeEnd);
               if (from < to) {
                 let style = `text-decoration: underline ${/^[a-z]/.test(lineStyle) ? lineStyle + " " : lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""}${/thin/i.test(thickness) ? 1 : 2}px`;
-                deco.push(Decoration3.mark({ attributes: { style } }).range(from, to));
+                deco.push(Decoration2.mark({ attributes: { style } }).range(from, to));
               }
             }
           }
-          view.dispatch({ effects: setEditContextFormatting2.of(Decoration3.set(deco)) });
+          view.dispatch({ effects: setEditContextFormatting2.of(Decoration2.set(deco)) });
         };
         this.handlers.compositionstart = () => {
           if (view.inputState.composing < 0) {
@@ -11986,7 +11986,7 @@ var require_dist4 = __commonJS({
       its parent nodes is scrolled.
       */
       static domEventHandlers(handlers3) {
-        return ViewPlugin3.define(() => ({}), { eventHandlers: handlers3 });
+        return ViewPlugin2.define(() => ({}), { eventHandlers: handlers3 });
       }
       /**
       Create an extension that registers DOM event observers. Contrary
@@ -11997,7 +11997,7 @@ var require_dist4 = __commonJS({
       call `preventDefault`.
       */
       static domEventObservers(observers3) {
-        return ViewPlugin3.define(() => ({}), { eventObservers: observers3 });
+        return ViewPlugin2.define(() => ({}), { eventObservers: observers3 });
       }
       /**
       Create a theme extension. The first argument can be a
@@ -12533,7 +12533,7 @@ var require_dist4 = __commonJS({
     var layerOrder = state.Facet.define();
     function layer(config) {
       return [
-        ViewPlugin3.define((v) => new LayerView(v, config)),
+        ViewPlugin2.define((v) => new LayerView(v, config)),
         layerOrder.of(config)
       ];
     }
@@ -12654,7 +12654,7 @@ var require_dist4 = __commonJS({
         return tr.effects.reduce((pos2, e) => e.is(setDropCursorPos) ? e.value : pos2, pos);
       }
     });
-    var drawDropCursor = ViewPlugin3.fromClass(class {
+    var drawDropCursor = ViewPlugin2.fromClass(class {
       constructor(view) {
         this.view = view;
         this.cursor = null;
@@ -12895,10 +12895,10 @@ var require_dist4 = __commonJS({
     }
     var _plugin = null;
     function specialCharPlugin() {
-      return _plugin || (_plugin = ViewPlugin3.fromClass(class {
+      return _plugin || (_plugin = ViewPlugin2.fromClass(class {
         constructor(view) {
           this.view = view;
-          this.decorations = Decoration3.none;
+          this.decorations = Decoration2.none;
           this.decorationCache = /* @__PURE__ */ Object.create(null);
           this.decorator = this.makeDecorator(view.state.facet(specialCharConfig));
           this.decorations = this.decorator.createDeco(view);
@@ -12912,11 +12912,11 @@ var require_dist4 = __commonJS({
               if (code2 == 9) {
                 let line = doc4.lineAt(pos);
                 let size2 = view.state.tabSize, col = state.countColumn(line.text, size2, pos - line.from);
-                return Decoration3.replace({
+                return Decoration2.replace({
                   widget: new TabWidget((size2 - col % size2) * this.view.defaultCharacterWidth / this.view.scaleX)
                 });
               }
-              return this.decorationCache[code2] || (this.decorationCache[code2] = Decoration3.replace({ widget: new SpecialCharWidget(conf, code2) }));
+              return this.decorationCache[code2] || (this.decorationCache[code2] = Decoration2.replace({ widget: new SpecialCharWidget(conf, code2) }));
             },
             boundary: conf.replaceTabs ? void 0 : /[^]/
           });
@@ -12987,7 +12987,7 @@ var require_dist4 = __commonJS({
         return false;
       }
     };
-    var plugin = ViewPlugin3.fromClass(class {
+    var plugin = ViewPlugin2.fromClass(class {
       constructor() {
         this.height = 1e3;
         this.attrs = { style: "padding-bottom: 1000px" };
@@ -13010,8 +13010,8 @@ var require_dist4 = __commonJS({
     function highlightActiveLine2() {
       return activeLineHighlighter;
     }
-    var lineDeco = Decoration3.line({ class: "cm-activeLine" });
-    var activeLineHighlighter = ViewPlugin3.fromClass(class {
+    var lineDeco = Decoration2.line({ class: "cm-activeLine" });
+    var activeLineHighlighter = ViewPlugin2.fromClass(class {
       constructor(view) {
         this.decorations = this.getDeco(view);
       }
@@ -13028,7 +13028,7 @@ var require_dist4 = __commonJS({
             lastLineStart = line.from;
           }
         }
-        return Decoration3.set(deco);
+        return Decoration2.set(deco);
       }
     }, {
       decorations: (v) => v.decorations
@@ -13062,13 +13062,13 @@ var require_dist4 = __commonJS({
       }
     };
     function placeholder(content) {
-      let plugin2 = ViewPlugin3.fromClass(class {
+      let plugin2 = ViewPlugin2.fromClass(class {
         constructor(view) {
           this.view = view;
-          this.placeholder = content ? Decoration3.set([Decoration3.widget({ widget: new Placeholder(content), side: 1 }).range(0)]) : Decoration3.none;
+          this.placeholder = content ? Decoration2.set([Decoration2.widget({ widget: new Placeholder(content), side: 1 }).range(0)]) : Decoration2.none;
         }
         get decorations() {
-          return this.view.state.doc.length ? Decoration3.none : this.placeholder;
+          return this.view.state.doc.length ? Decoration2.none : this.placeholder;
         }
       }, { decorations: (v) => v.decorations });
       return typeof content == "string" ? [
@@ -13152,7 +13152,7 @@ var require_dist4 = __commonJS({
     var showCrosshair = { style: "cursor: crosshair" };
     function crosshairCursor(options = {}) {
       let [code2, getter] = keys2[options.key || "Alt"];
-      let plugin2 = ViewPlugin3.fromClass(class {
+      let plugin2 = ViewPlugin2.fromClass(class {
         constructor(view) {
           this.view = view;
           this.isDown = false;
@@ -13272,7 +13272,7 @@ var require_dist4 = __commonJS({
       }
     });
     var knownHeight = /* @__PURE__ */ new WeakMap();
-    var tooltipPlugin = ViewPlugin3.fromClass(class {
+    var tooltipPlugin = ViewPlugin2.fromClass(class {
       constructor(view) {
         this.view = view;
         this.above = [];
@@ -13859,7 +13859,7 @@ var require_dist4 = __commonJS({
         },
         provide: (f) => showHoverTooltip.from(f)
       });
-      const plugin2 = ViewPlugin3.define((view) => new HoverPlugin(
+      const plugin2 = ViewPlugin2.define((view) => new HoverPlugin(
         view,
         source,
         hoverState,
@@ -13927,7 +13927,7 @@ var require_dist4 = __commonJS({
       let index = plugin2 ? plugin2.specs.indexOf(panel) : -1;
       return index > -1 ? plugin2.panels[index] : null;
     }
-    var panelPlugin = ViewPlugin3.fromClass(class {
+    var panelPlugin = ViewPlugin2.fromClass(class {
       constructor(view) {
         this.input = view.state.facet(showPanel);
         this.specs = this.input.filter((s) => s);
@@ -14226,7 +14226,7 @@ var require_dist4 = __commonJS({
         result.push(unfixGutters.of(true));
       return result;
     }
-    var gutterView = ViewPlugin3.fromClass(class {
+    var gutterView = ViewPlugin2.fromClass(class {
       constructor(view) {
         this.view = view;
         this.domAfter = null;
@@ -14647,7 +14647,7 @@ var require_dist4 = __commonJS({
       return activeLineGutterHighlighter;
     }
     function matcher(decorator) {
-      return ViewPlugin3.define((view) => ({
+      return ViewPlugin2.define((view) => ({
         decorations: decorator.createDeco(view),
         update(u) {
           this.decorations = decorator.updateDeco(u, this.decorations);
@@ -14656,8 +14656,8 @@ var require_dist4 = __commonJS({
         decorations: (v) => v.decorations
       });
     }
-    var tabDeco = Decoration3.mark({ class: "cm-highlightTab" });
-    var spaceDeco = Decoration3.mark({ class: "cm-highlightSpace" });
+    var tabDeco = Decoration2.mark({ class: "cm-highlightTab" });
+    var spaceDeco = Decoration2.mark({ class: "cm-highlightSpace" });
     var whitespaceHighlighter = matcher(new MatchDecorator({
       regexp: /\t| /g,
       decoration: (match2) => match2[0] == "	" ? tabDeco : spaceDeco,
@@ -14668,7 +14668,7 @@ var require_dist4 = __commonJS({
     }
     var trailingHighlighter = matcher(new MatchDecorator({
       regexp: /\s+$/g,
-      decoration: Decoration3.mark({ class: "cm-trailingSpace" })
+      decoration: Decoration2.mark({ class: "cm-trailingSpace" })
     }));
     function highlightTrailingWhitespace() {
       return trailingHighlighter;
@@ -14687,12 +14687,12 @@ var require_dist4 = __commonJS({
     exports2.BidiSpan = BidiSpan2;
     exports2.BlockInfo = BlockInfo2;
     exports2.BlockWrapper = BlockWrapper2;
-    exports2.Decoration = Decoration3;
+    exports2.Decoration = Decoration2;
     exports2.EditorView = EditorView3;
     exports2.GutterMarker = GutterMarker2;
     exports2.MatchDecorator = MatchDecorator;
     exports2.RectangleMarker = RectangleMarker;
-    exports2.ViewPlugin = ViewPlugin3;
+    exports2.ViewPlugin = ViewPlugin2;
     exports2.ViewUpdate = ViewUpdate2;
     exports2.WidgetType = WidgetType2;
     exports2.__test = __test;
@@ -55271,10 +55271,18 @@ var require_linter_logic = __commonJS({
 // src/editor/linter.js
 var require_linter = __commonJS({
   "src/editor/linter.js"(exports2, module2) {
+    var { StateField: StateField2, StateEffect: StateEffect2, Annotation: Annotation2 } = require_dist2();
+    var { Decoration: Decoration2, EditorView: EditorView3 } = require_dist4();
     var { linter } = require_dist12();
     var { lintLatexDocument } = require_linter_logic();
     var path = require("path");
-    function doesIssueMatchFile2(iss, activeFilePath) {
+    var tabSwitchAnnotation2 = Annotation2.define();
+    var setCompilerIssuesEffect2 = StateEffect2.define();
+    var setExtraHighlightEffect2 = StateEffect2.define();
+    var errorLineDeco = Decoration2.line({
+      class: "cm-lint-error-line"
+    });
+    function doesIssueMatchFile(iss, activeFilePath) {
       if (!iss || !iss.file && !iss.rawFile || !activeFilePath) return true;
       const norm = (p) => path.basename(String(p)).replace(/\.tex$/i, "").toLowerCase();
       const activeBase = norm(activeFilePath);
@@ -55282,82 +55290,277 @@ var require_linter = __commonJS({
       if (!activeBase || !issueBase) return true;
       return activeBase === issueBase;
     }
-    function latexLinterExtension2(manager = null) {
-      return linter((view) => {
-        const text2 = view.state.doc.toString();
-        const preambleText = manager && typeof manager.getMainPreamble === "function" ? manager.getMainPreamble() || "" : "";
-        const staticDiagnostics = lintLatexDocument(text2, { preambleText });
-        const result = staticDiagnostics.map((d) => {
-          const item = {
-            from: Math.max(0, Math.min(d.from, text2.length)),
-            to: Math.max(0, Math.min(d.to, text2.length)),
-            severity: d.severity || "warning",
-            message: d.message
-          };
-          if (d.actions && d.actions.length > 0) {
-            item.actions = d.actions.map((act) => ({
-              name: act.name,
-              apply(v, from, to) {
-                v.dispatch({
-                  changes: {
-                    from: act.from !== void 0 ? act.from : from,
-                    to: act.to !== void 0 ? act.to : to,
-                    insert: act.insert
-                  }
-                });
-              }
-            }));
+    function resolveCompilerIssueRange(doc3, iss) {
+      if (!doc3 || !iss || iss.type !== "error" && iss.type !== "warning") return null;
+      const lineNum = Number(iss.line);
+      if (!lineNum || lineNum < 1 || lineNum > doc3.lines) return null;
+      const line = doc3.line(lineNum);
+      const lineText = line.text;
+      let from = line.from;
+      let to = line.to;
+      let origToken = null;
+      if (iss.command) {
+        const cleanCmd = iss.command.startsWith("\\") ? iss.command : `\\${iss.command}`;
+        const idx = lineText.indexOf(cleanCmd);
+        if (idx !== -1) {
+          from = line.from + idx;
+          to = from + cleanCmd.length;
+          origToken = cleanCmd;
+        }
+      } else {
+        const cmdMatch = lineText.match(/\\[a-zA-Z@]+/);
+        if (cmdMatch) {
+          from = line.from + cmdMatch.index;
+          to = from + cmdMatch[0].length;
+          origToken = cmdMatch[0];
+        } else {
+          const trimmed = lineText.trim();
+          if (trimmed.length > 0) {
+            const start = lineText.indexOf(trimmed);
+            from = line.from + start;
+            to = from + trimmed.length;
+            origToken = trimmed;
           }
-          return item;
-        });
-        if (manager && manager.compilerIssues && manager.compilerIssues.length > 0) {
-          const activeFilePath = manager.activeFilePath;
-          const docLines = view.state.doc.lines;
-          for (const iss of manager.compilerIssues) {
-            if (iss.type !== "error" && iss.type !== "warning") continue;
-            if (!doesIssueMatchFile2(iss, activeFilePath)) continue;
-            const lineNum = iss.line;
-            if (!lineNum || lineNum < 1 || lineNum > docLines) continue;
-            const line = view.state.doc.line(lineNum);
-            const lineText = line.text;
-            let from = line.from;
-            let to = line.to;
-            if (iss.command) {
-              const cleanCmd = iss.command.startsWith("\\") ? iss.command : `\\${iss.command}`;
-              const idx = lineText.indexOf(cleanCmd);
-              if (idx !== -1) {
-                from = line.from + idx;
-                to = from + cleanCmd.length;
-              }
-            } else {
-              const cmdMatch = lineText.match(/\\[a-zA-Z@]+/);
-              if (cmdMatch) {
-                from = line.from + cmdMatch.index;
-                to = from + cmdMatch[0].length;
-              } else {
-                const trimmed = lineText.trim();
-                if (trimmed.length > 0) {
-                  const start = lineText.indexOf(trimmed);
-                  from = line.from + start;
-                  to = from + trimmed.length;
-                }
-              }
-            }
-            const isDup = result.some((d) => d.from === from && d.to === to);
-            if (!isDup) {
-              result.push({
-                from: Math.max(0, Math.min(from, text2.length)),
-                to: Math.max(0, Math.min(to, text2.length)),
-                severity: iss.type === "warning" ? "warning" : "error",
-                message: `[LaTeX] ${iss.message}`
-              });
+        }
+      }
+      from = Math.max(0, Math.min(from, doc3.length));
+      to = Math.max(from, Math.min(to, doc3.length));
+      return {
+        from,
+        to,
+        line: line.number,
+        nonEmpty: to > from,
+        origToken
+      };
+    }
+    function mapTrackedEntry(entry, changes, newDoc, isUndo = false) {
+      const docLen = newDoc.length;
+      if (entry.deleted) {
+        const undoStart = Math.max(0, Math.min(changes.mapPos(entry.anchor, -1), docLen));
+        const undoEnd = Math.max(undoStart, Math.min(changes.mapPos(entry.anchor, 1), docLen));
+        if (isUndo && entry.origToken && undoEnd > undoStart) {
+          const firstLine = newDoc.lineAt(undoStart).number;
+          const lastLine = newDoc.lineAt(undoEnd).number;
+          for (let ln = firstLine; ln <= lastLine; ln++) {
+            const line = newDoc.line(ln);
+            const idx = line.text.indexOf(entry.origToken);
+            if (idx !== -1) {
+              const from = line.from + idx;
+              const to = Math.min(from + entry.origToken.length, docLen);
+              return {
+                ...entry,
+                from,
+                to,
+                line: line.number,
+                deleted: false,
+                anchor: from
+              };
             }
           }
         }
-        return result;
-      }, { delay: 250 });
+        return { ...entry, from: undoStart, to: undoStart, anchor: undoStart };
+      }
+      const mappedFrom = Math.max(0, Math.min(changes.mapPos(entry.from, 1), docLen));
+      const mappedTo = Math.max(0, Math.min(changes.mapPos(entry.to, -1), docLen));
+      if (entry.nonEmpty && mappedFrom >= mappedTo) {
+        const anchor = Math.max(0, Math.min(changes.mapPos(entry.from, -1), docLen));
+        return {
+          ...entry,
+          from: anchor,
+          to: anchor,
+          deleted: true,
+          anchor
+        };
+      }
+      const clampedTo = Math.max(mappedFrom, mappedTo);
+      const lineNum = newDoc.lineAt(mappedFrom).number;
+      return {
+        ...entry,
+        from: mappedFrom,
+        to: clampedTo,
+        line: lineNum,
+        deleted: false,
+        anchor: mappedFrom
+      };
     }
-    module2.exports = { latexLinterExtension: latexLinterExtension2, doesIssueMatchFile: doesIssueMatchFile2 };
+    function buildTrackedEntries2(doc3, issues, activeFilePath = null, options = {}) {
+      const { preChanges = null, targetDoc = doc3, deletedSet = null } = options;
+      if (!doc3 || !Array.isArray(issues) || issues.length === 0) return [];
+      const entries = [];
+      for (const iss of issues) {
+        if (!iss || iss.type !== "error" && iss.type !== "warning") continue;
+        if (!doesIssueMatchFile(iss, activeFilePath)) continue;
+        if (deletedSet && deletedSet.has(iss)) continue;
+        const range = resolveCompilerIssueRange(doc3, iss);
+        if (!range) continue;
+        let entry = {
+          issue: iss,
+          from: range.from,
+          to: range.to,
+          line: range.line,
+          nonEmpty: range.nonEmpty,
+          origToken: range.origToken,
+          deleted: false,
+          anchor: range.from
+        };
+        if (preChanges) {
+          entry = mapTrackedEntry(entry, preChanges, targetDoc, false);
+        }
+        if (!entry.deleted) {
+          iss.line = entry.line;
+        }
+        entries.push(entry);
+      }
+      return entries;
+    }
+    function buildErrorLineDecorations(doc3, entries, extraRanges) {
+      const lineStarts = /* @__PURE__ */ new Set();
+      const docLen = doc3.length;
+      for (const entry of entries) {
+        if (entry.deleted || !entry.issue || entry.issue.type !== "error") continue;
+        const pos = Math.max(0, Math.min(entry.from, docLen));
+        lineStarts.add(doc3.lineAt(pos).from);
+      }
+      for (const r of extraRanges) {
+        if (r.deleted) continue;
+        const pos = Math.max(0, Math.min(r.from, docLen));
+        lineStarts.add(doc3.lineAt(pos).from);
+      }
+      if (lineStarts.size === 0) return Decoration2.none;
+      const sortedStarts = [...lineStarts].sort((a, b) => a - b);
+      return Decoration2.set(sortedStarts.map((pos) => errorLineDeco.range(pos)), true);
+    }
+    var compilerIssueStateField2 = StateField2.define({
+      create() {
+        return {
+          entries: [],
+          extraRanges: [],
+          lineDecos: Decoration2.none
+        };
+      },
+      update(value, tr) {
+        let entries = value.entries;
+        let extraRanges = value.extraRanges;
+        let changed = false;
+        if (tr.docChanged) {
+          if (tr.annotation(tabSwitchAnnotation2)) {
+            if (entries.length > 0 || extraRanges.length > 0) {
+              entries = [];
+              extraRanges = [];
+              changed = true;
+            }
+          } else {
+            const isUndo = typeof tr.isUserEvent === "function" && tr.isUserEvent("undo");
+            if (entries.length > 0) {
+              entries = entries.map((entry) => mapTrackedEntry(entry, tr.changes, tr.newDoc, isUndo));
+              changed = true;
+            }
+            if (extraRanges.length > 0) {
+              extraRanges = extraRanges.map((r) => mapTrackedEntry(r, tr.changes, tr.newDoc, isUndo)).filter((r) => !r.deleted);
+              changed = true;
+            }
+          }
+        }
+        for (const effect of tr.effects) {
+          if (effect.is(setCompilerIssuesEffect2)) {
+            entries = Array.isArray(effect.value) ? effect.value : [];
+            changed = true;
+          } else if (effect.is(setExtraHighlightEffect2)) {
+            extraRanges = Array.isArray(effect.value) ? effect.value : [];
+            changed = true;
+          }
+        }
+        if (!changed) return value;
+        return {
+          entries,
+          extraRanges,
+          lineDecos: buildErrorLineDecorations(tr.newDoc, entries, extraRanges)
+        };
+      },
+      provide: (f) => EditorView3.decorations.from(f, (val) => val.lineDecos)
+    });
+    function getCompilerDiagnosticsFromState(state, activeFilePath = null) {
+      const fieldState = state.field(compilerIssueStateField2, false);
+      if (!fieldState || !fieldState.entries || fieldState.entries.length === 0) {
+        return [];
+      }
+      const docLen = state.doc.length;
+      const diags = [];
+      for (const entry of fieldState.entries) {
+        if (entry.deleted || !entry.issue) continue;
+        const iss = entry.issue;
+        if (iss.type !== "error" && iss.type !== "warning") continue;
+        if (!doesIssueMatchFile(iss, activeFilePath)) continue;
+        const from = Math.max(0, Math.min(entry.from, docLen));
+        const to = Math.max(from, Math.min(entry.to, docLen));
+        diags.push({
+          from,
+          to,
+          severity: iss.type === "warning" ? "warning" : "error",
+          message: `[LaTeX] ${iss.message}`
+        });
+      }
+      return diags;
+    }
+    function latexLinterExtension2(manager = null) {
+      return [
+        compilerIssueStateField2,
+        linter((view) => {
+          const text2 = view.state.doc.toString();
+          const preambleText = manager && typeof manager.getMainPreamble === "function" ? manager.getMainPreamble() || "" : "";
+          const staticDiagnostics = lintLatexDocument(text2, { preambleText });
+          const result = staticDiagnostics.map((d) => {
+            const item = {
+              from: Math.max(0, Math.min(d.from, text2.length)),
+              to: Math.max(0, Math.min(d.to, text2.length)),
+              severity: d.severity || "warning",
+              message: d.message
+            };
+            if (d.actions && d.actions.length > 0) {
+              item.actions = d.actions.map((act) => ({
+                name: act.name,
+                apply(v, from, to) {
+                  v.dispatch({
+                    changes: {
+                      from: act.from !== void 0 ? act.from : from,
+                      to: act.to !== void 0 ? act.to : to,
+                      insert: act.insert
+                    }
+                  });
+                }
+              }));
+            }
+            return item;
+          });
+          const activeFilePath = manager ? manager.activeFilePath : null;
+          const compilerDiags = getCompilerDiagnosticsFromState(view.state, activeFilePath);
+          for (const d of compilerDiags) {
+            const isDup = result.some((existing) => existing.from === d.from && existing.to === d.to);
+            if (!isDup) {
+              result.push(d);
+            }
+          }
+          return result;
+        }, {
+          delay: 250,
+          needsRefresh: (update) => update.transactions.some(
+            (tr) => tr.effects.some((e) => e.is(setCompilerIssuesEffect2))
+          )
+        })
+      ];
+    }
+    module2.exports = {
+      latexLinterExtension: latexLinterExtension2,
+      doesIssueMatchFile,
+      compilerIssueStateField: compilerIssueStateField2,
+      setCompilerIssuesEffect: setCompilerIssuesEffect2,
+      setExtraHighlightEffect: setExtraHighlightEffect2,
+      tabSwitchAnnotation: tabSwitchAnnotation2,
+      resolveCompilerIssueRange,
+      mapTrackedEntry,
+      buildTrackedEntries: buildTrackedEntries2,
+      getCompilerDiagnosticsFromState
+    };
   }
 });
 
@@ -56532,12 +56735,12 @@ var require_spell_worker = __commonJS({
 // src/editor/spellcheck.js
 var require_spellcheck = __commonJS({
   "src/editor/spellcheck.js"(exports2, module2) {
-    var { ViewPlugin: ViewPlugin3, Decoration: Decoration3 } = require_dist4();
+    var { ViewPlugin: ViewPlugin2, Decoration: Decoration2 } = require_dist4();
     var { RangeSetBuilder: RangeSetBuilder2 } = require_dist2();
     var { tokenizeLatexProse } = require_spell_tokenizer();
     var path = require("path");
     var fs = require("fs");
-    var spellErrorMark = Decoration3.mark({
+    var spellErrorMark = Decoration2.mark({
       class: "cm-spell-error",
       attributes: { "data-spell-error": "true" }
     });
@@ -56707,10 +56910,10 @@ var require_spellcheck = __commonJS({
       });
     }
     function createSpellCheckPlugin2() {
-      return ViewPlugin3.fromClass(
+      return ViewPlugin2.fromClass(
         class {
           constructor(view) {
-            this.decorations = Decoration3.none;
+            this.decorations = Decoration2.none;
             this.view = view;
             this.debounceTimer = null;
             this.scheduleCheck(view);
@@ -56733,7 +56936,7 @@ var require_spellcheck = __commonJS({
           }
           async runCheck(view) {
             if (currentLang === "none") {
-              this.decorations = Decoration3.none;
+              this.decorations = Decoration2.none;
               view.requestMeasure();
               return;
             }
@@ -56767,16 +56970,14 @@ var require_spellcheck = __commonJS({
 });
 
 // src/editor/index.js
-var { EditorState: EditorState2, Compartment: Compartment2, Prec: Prec2 } = require_dist2();
+var { EditorState: EditorState2, Compartment: Compartment2, Prec: Prec2, ChangeSet: ChangeSet2 } = require_dist2();
 var {
   EditorView: EditorView2,
   keymap,
   lineNumbers,
   highlightActiveLine,
   highlightActiveLineGutter,
-  drawSelection,
-  ViewPlugin: ViewPlugin2,
-  Decoration: Decoration2
+  drawSelection
 } = require_dist4();
 var {
   defaultKeymap,
@@ -56810,7 +57011,14 @@ var {
   createRenameSyncFilter
 } = require_autopair();
 var { createLatexCompletionSource } = require_autocomplete();
-var { latexLinterExtension, doesIssueMatchFile } = require_linter();
+var {
+  latexLinterExtension,
+  compilerIssueStateField,
+  setCompilerIssuesEffect,
+  setExtraHighlightEffect,
+  tabSwitchAnnotation,
+  buildTrackedEntries
+} = require_linter();
 var {
   createSpellCheckPlugin,
   setLanguage: setSpellLanguageInternal,
@@ -56903,43 +57111,16 @@ function getLatexOutline(rawText) {
   }
   return outline;
 }
-var errorLineDeco = Decoration2.line({
-  class: "cm-lint-error-line"
-});
-var errorHighlightField = ViewPlugin2.fromClass(
-  class {
-    constructor() {
-      this.decorations = Decoration2.none;
-    }
-    setLines(view, lineNums) {
-      if (!lineNums || lineNums.length === 0) {
-        this.decorations = Decoration2.none;
-      } else {
-        const decos = [];
-        const lines = view.state.doc.lines;
-        const valid = [...new Set(lineNums.filter((n) => n >= 1 && n <= lines))].sort((a, b) => a - b);
-        for (const n of valid) {
-          const line = view.state.doc.line(n);
-          decos.push(errorLineDeco.range(line.from));
-        }
-        this.decorations = Decoration2.set(decos);
-      }
-      view.requestMeasure();
-    }
-    setLine(view, lineNum) {
-      this.setLines(view, lineNum ? [lineNum] : []);
-    }
-  },
-  {
-    decorations: (v) => v.decorations
-  }
-);
 var CodeMirrorManager = class {
   constructor(containerEl, options = {}) {
     this.containerEl = containerEl;
     this.options = options;
     this.compilerIssues = [];
     this.activeFilePath = null;
+    this._lastCompilerIssuesRef = null;
+    this.deletedIssues = /* @__PURE__ */ new WeakSet();
+    this._compileSnapshotSeq = 0;
+    this._activeCompileSnapshots = /* @__PURE__ */ new Set();
     this.wrappingCompartment = new Compartment2();
     this.vimCompartment = new Compartment2();
     this.themeCompartment = new Compartment2();
@@ -57067,7 +57248,6 @@ var CodeMirrorManager = class {
         }),
         latexLinterExtension(this),
         createSpellCheckPlugin(),
-        errorHighlightField,
         Prec2.high(keymap.of(customKeymaps)),
         keymap.of([
           ...closeBracketsKeymap,
@@ -57078,8 +57258,23 @@ var CodeMirrorManager = class {
           ...lintKeymap
         ]),
         EditorView2.updateListener.of((update) => {
-          if (update.docChanged && typeof self2.onDocChangeCallback === "function") {
-            self2.onDocChangeCallback(update.state.doc.toString());
+          if (update.docChanged) {
+            const isTabSwap = update.transactions.some((tr) => tr.annotation(tabSwitchAnnotation));
+            for (const snap of self2._activeCompileSnapshots) {
+              if (isTabSwap) {
+                snap.invalidated = true;
+              } else if (!snap.invalidated) {
+                try {
+                  snap.changes = snap.changes.compose(update.changes);
+                } catch (_) {
+                  snap.invalidated = true;
+                }
+              }
+            }
+            self2._syncTrackedIssuesFromState(update.state, isTabSwap);
+            if (typeof self2.onDocChangeCallback === "function") {
+              self2.onDocChangeCallback(update.state.doc.toString());
+            }
           }
           if ((update.docChanged || update.selectionSet) && typeof self2.onCursorChangeCallback === "function") {
             const head = update.state.selection.main.head;
@@ -57101,7 +57296,8 @@ var CodeMirrorManager = class {
   setValue(newText) {
     if (newText === this.getValue()) return;
     this.view.dispatch({
-      changes: { from: 0, to: this.view.state.doc.length, insert: newText }
+      changes: { from: 0, to: this.view.state.doc.length, insert: newText },
+      annotations: tabSwitchAnnotation.of(true)
     });
   }
   getSelection() {
@@ -57216,52 +57412,121 @@ var CodeMirrorManager = class {
     }
     return "";
   }
-  setCompilerIssues(issues = [], activeFilePath = null) {
-    this.compilerIssues = Array.isArray(issues) ? issues : [];
-    this.activeFilePath = activeFilePath;
-    if (this.view) {
-      try {
-        forceLinting(this.view);
-      } catch (_) {
-      }
-      const errorLines = this.compilerIssues.filter((i2) => i2.type === "error" && i2.line && doesIssueMatchFile(i2, activeFilePath)).map((i2) => i2.line);
-      if (errorLines.length > 0) {
-        this.highlightErrorLines(errorLines);
+  /** Capture the current document snapshot before an async LaTeX compile starts. */
+  beginCompileSnapshot(filePath = null) {
+    if (!this.view) return null;
+    const snapshot = {
+      id: ++this._compileSnapshotSeq,
+      filePath: filePath || null,
+      compiledDoc: this.view.state.doc,
+      changes: ChangeSet2.empty(this.view.state.doc.length),
+      invalidated: false
+    };
+    this._activeCompileSnapshots.add(snapshot);
+    return snapshot;
+  }
+  _syncTrackedIssuesFromState(state, skipIssueSync = false) {
+    if (skipIssueSync || !state) return;
+    const fieldState = state.field(compilerIssueStateField, false);
+    if (!fieldState || !fieldState.entries) return;
+    for (const entry of fieldState.entries) {
+      if (!entry.issue) continue;
+      if (entry.deleted) {
+        this.deletedIssues.add(entry.issue);
       } else {
-        this.clearErrorHighlight();
+        entry.issue.line = entry.line;
+        this.deletedIssues.delete(entry.issue);
       }
+    }
+  }
+  getTrackedCompilerIssues() {
+    if (!this.view) return [];
+    const fieldState = this.view.state.field(compilerIssueStateField, false);
+    return fieldState ? fieldState.entries : [];
+  }
+  setCompilerIssues(issues = [], activeFilePath = null, compileSnapshot = null) {
+    if (compileSnapshot) {
+      this._activeCompileSnapshots.delete(compileSnapshot);
+    }
+    const nextIssues = Array.isArray(issues) ? issues : [];
+    if (nextIssues !== this._lastCompilerIssuesRef) {
+      this.deletedIssues = /* @__PURE__ */ new WeakSet();
+      this._lastCompilerIssuesRef = nextIssues.length > 0 ? nextIssues : null;
+    }
+    this.compilerIssues = nextIssues;
+    this.activeFilePath = activeFilePath;
+    if (!this.view) return;
+    const currentDoc = this.view.state.doc;
+    const canReplaySnapshot = Boolean(
+      compileSnapshot && !compileSnapshot.invalidated && compileSnapshot.compiledDoc && (compileSnapshot.filePath || "") === (activeFilePath || "")
+    );
+    const sourceDoc = canReplaySnapshot ? compileSnapshot.compiledDoc : currentDoc;
+    const preChanges = canReplaySnapshot ? compileSnapshot.changes : null;
+    const entries = buildTrackedEntries(sourceDoc, nextIssues, activeFilePath, {
+      preChanges,
+      targetDoc: currentDoc,
+      deletedSet: this.deletedIssues
+    });
+    this.view.dispatch({
+      effects: [
+        setCompilerIssuesEffect.of(entries),
+        setExtraHighlightEffect.of([])
+      ]
+    });
+    try {
+      forceLinting(this.view);
+    } catch (_) {
     }
   }
   clearCompilerIssues() {
     this.compilerIssues = [];
-    this.clearErrorHighlight();
-    if (this.view) {
-      try {
-        forceLinting(this.view);
-      } catch (_) {
-      }
+    this._lastCompilerIssuesRef = null;
+    this.deletedIssues = /* @__PURE__ */ new WeakSet();
+    this._activeCompileSnapshots.clear();
+    if (!this.view) return;
+    this.view.dispatch({
+      effects: [
+        setCompilerIssuesEffect.of([]),
+        setExtraHighlightEffect.of([])
+      ]
+    });
+    try {
+      forceLinting(this.view);
+    } catch (_) {
     }
   }
   highlightErrorLines(lineNums) {
-    const plugin = this.view.plugin(errorHighlightField);
-    if (plugin) {
-      plugin.setLines(this.view, lineNums);
+    if (!this.view) return;
+    if (!lineNums || lineNums.length === 0) {
+      this.view.dispatch({ effects: setExtraHighlightEffect.of([]) });
+      return;
     }
+    const doc3 = this.view.state.doc;
+    const totalLines = doc3.lines;
+    const valid = [...new Set(lineNums.filter((n) => n >= 1 && n <= totalLines))].sort((a, b) => a - b);
+    const ranges = valid.map((n) => {
+      const line = doc3.line(n);
+      return {
+        from: line.from,
+        to: line.to,
+        line: line.number,
+        nonEmpty: line.to > line.from,
+        origToken: null,
+        deleted: false,
+        anchor: line.from
+      };
+    });
+    this.view.dispatch({ effects: setExtraHighlightEffect.of(ranges) });
   }
   highlightErrorLine(lineNum) {
-    const plugin = this.view.plugin(errorHighlightField);
-    if (plugin) {
-      plugin.setLine(this.view, lineNum);
-      if (lineNum) {
-        this.jumpToLine(lineNum);
-      }
+    this.highlightErrorLines(lineNum ? [lineNum] : []);
+    if (lineNum && this.view) {
+      this.jumpToLine(lineNum);
     }
   }
   clearErrorHighlight() {
-    const plugin = this.view.plugin(errorHighlightField);
-    if (plugin) {
-      plugin.setLine(this.view, null);
-    }
+    if (!this.view) return;
+    this.view.dispatch({ effects: setExtraHighlightEffect.of([]) });
   }
   setLineWrapping(enabled) {
     this.view.dispatch({

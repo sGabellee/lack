@@ -43,7 +43,14 @@ const {
   isCompilableLatexFile,
   filterProjectEntries,
   validateItemName,
-  uniqueName
+  uniqueName,
+  isTexFilePath,
+  isPathInsideDir,
+  resolveMainRelativePath,
+  canSetAsMainDocument,
+  resolveClassicCompileTarget,
+  resolveExportPdfDefaultName,
+  listStoreTexFiles
 } = require("./src/projects/ui-controller.js");
 
 // ====== UTILS ======
@@ -251,6 +258,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   let untitledCounter = 0;
   let currentProjectDir = null;
   let mainDocumentPath = null;
+  let mainDocumentExplicit = false;
   let currentCompiledPdfPath = null;
   let latestIssues = [];
   let currentZoomLevel = 1.0;
@@ -972,7 +980,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     tabs.push(newTab);
     switchTab(id);
 
-    if (filePath && !mainDocumentPath && filePath.endsWith(".tex")) {
+    if (filePath && !mainDocumentPath && isTexFilePath(filePath)) {
       setMainDocument(filePath);
     }
     if (filePath) {
@@ -1100,9 +1108,61 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function removeExistingContextMenus() {
+    document.getElementById("tab-context-menu")?.remove();
+    document.getElementById("tree-context-menu")?.remove();
+  }
+
+  function positionContextMenu(menu, clientX, clientY) {
+    if (!menu) return;
+    menu.style.left = `${clientX}px`;
+    menu.style.top = `${clientY}px`;
+    const rect = menu.getBoundingClientRect();
+    const left = Math.max(10, Math.min(clientX, window.innerWidth - rect.width - 10));
+    const top = Math.max(10, Math.min(clientY, window.innerHeight - rect.height - 10));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }
+
+  function positionContextSubmenu(triggerEl, submenuEl) {
+    if (!triggerEl || !submenuEl) return;
+    const itemRect = triggerEl.getBoundingClientRect();
+    submenuEl.style.left = "100%";
+    submenuEl.style.right = "auto";
+    submenuEl.style.top = "-4px";
+    submenuEl.style.bottom = "auto";
+    const subRect = submenuEl.getBoundingClientRect();
+    if (subRect.right > window.innerWidth - 10) {
+      submenuEl.style.left = "auto";
+      submenuEl.style.right = "100%";
+    }
+    if (subRect.bottom > window.innerHeight - 10) {
+      const overflow = subRect.bottom - (window.innerHeight - 10);
+      submenuEl.style.top = `${Math.max(-itemRect.top + 10, -4 - overflow)}px`;
+    }
+  }
+
+  function renderMainDocMenuItemHtml({ filePath, isDir = false, itemId, activeItemId }) {
+    if (!filePath || isDir || !isTexFilePath(filePath)) return "";
+    const isMain = Boolean(mainDocumentPath && path.resolve(filePath) === path.resolve(mainDocumentPath));
+    const eligible = canSetAsMainDocument({
+      filePath,
+      isDir,
+      isMain,
+      isLinkedProject,
+      storePath: currentProject?.storePath || null
+    });
+    if (eligible) {
+      return `<div class="context-menu-item" id="${itemId}"><span>Imposta come documento principale</span></div>`;
+    }
+    if (isMain) {
+      return `<div class="context-menu-item disabled" id="${activeItemId}"><span>Documento principale attuale</span><span class="context-menu-check">✓</span></div>`;
+    }
+    return "";
+  }
+
   function showTabContextMenu(e, tab) {
-    const existing = document.getElementById("tab-context-menu");
-    if (existing) existing.remove();
+    removeExistingContextMenus();
 
     const menu = document.createElement("div");
     menu.id = "tab-context-menu";
@@ -1123,6 +1183,13 @@ window.addEventListener("DOMContentLoaded", async () => {
           : path.basename(tab.filePath)
     ) : "";
 
+    const setMainHtml = renderMainDocMenuItemHtml({
+      filePath: tab.filePath,
+      isDir: false,
+      itemId: "tab-ctx-set-main",
+      activeItemId: "tab-ctx-main-active"
+    });
+
     menu.innerHTML = `
       <div class="context-menu-item" id="tab-ctx-close">
         <span>${escapeHtml(i18n.t("tab_ctx_close") || "Chiudi")}</span>
@@ -1140,6 +1207,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       <div class="context-menu-item" id="tab-ctx-close-all">
         <span>${escapeHtml(i18n.t("tab_ctx_close_all") || "Chiudi tutti")}</span>
       </div>
+      ${setMainHtml ? `<div class="context-menu-divider"></div>${setMainHtml}` : ""}
       <div class="context-menu-divider"></div>
       <div class="context-menu-item ${hasPath ? '' : 'disabled'}" id="tab-ctx-copy-path">
         <span>${escapeHtml(i18n.t("tab_ctx_copy_path") || "Copia percorso")}</span>
@@ -1153,13 +1221,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     `;
 
     document.body.appendChild(menu);
-
-    const menuWidth = 230;
-    const menuHeight = 270;
-    const left = Math.max(10, Math.min(e.clientX, window.innerWidth - menuWidth - 10));
-    const top = Math.max(10, Math.min(e.clientY, window.innerHeight - menuHeight - 10));
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
+    positionContextMenu(menu, e.clientX, e.clientY);
 
     menu.querySelector("#tab-ctx-close")?.addEventListener("click", () => {
       menu.remove();
@@ -1190,6 +1252,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     menu.querySelector("#tab-ctx-close-all")?.addEventListener("click", () => {
       menu.remove();
       closeAllTabs();
+    });
+
+    menu.querySelector("#tab-ctx-set-main")?.addEventListener("click", async () => {
+      menu.remove();
+      await applyMainDocumentSelection(tab.filePath);
     });
 
     if (hasPath) {
@@ -1549,15 +1616,79 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ====== MAIN DOCUMENT & COMPILATION ======
-  function setMainDocument(filePath) {
-    mainDocumentPath = filePath;
-    if (isLinkedProject && currentProject && filePath) {
-      currentProject.mainBase = path.basename(filePath, path.extname(filePath));
-    } else if (!isLinkedProject) {
-      currentProjectDir = path.dirname(filePath);
+  async function persistProjectMainManifest(filePath) {
+    if (!isLinkedProject || !currentProject || !currentProject.storePath || !filePath) return;
+    const relMain = resolveMainRelativePath(currentProject.storePath, filePath);
+    if (!relMain) return;
+    try {
+      const manifest = await ipcRenderer.invoke('project-load-manifest', currentProject.storePath);
+      if (manifest) {
+        manifest.main = relMain;
+        await ipcRenderer.invoke('project-save-manifest', currentProject.storePath, manifest);
+      }
+    } catch (_) {}
+  }
+
+  function refreshEditorCompilerState() {
+    cachedSyncTex = null;
+    cachedPreamble = { filePath: null, mtimeMs: -1, text: '' };
+    const activeTab = getActiveTab();
+    if (cm && typeof cm.setCompilerIssues === 'function') {
+      cm.setCompilerIssues(latestIssues, activeTab ? activeTab.filePath : null);
     }
-    footerMainDoc.textContent = `Principale: ${path.basename(filePath)}`;
-    showNotification(`Documento principale impostato: ${path.basename(filePath)}`, "info");
+  }
+
+  function setMainDocument(filePath, options = {}) {
+    const {
+      explicit = false,
+      silent = false,
+      persistManifest = false
+    } = options;
+    if (!filePath) return;
+
+    const resolvedPath = path.resolve(filePath);
+    mainDocumentPath = resolvedPath;
+    if (explicit) {
+      mainDocumentExplicit = true;
+    }
+
+    if (isLinkedProject && currentProject) {
+      currentProject.mainBase = path.basename(resolvedPath, path.extname(resolvedPath));
+    } else if (!isLinkedProject) {
+      if (!currentProjectDir || !isPathInsideDir(resolvedPath, currentProjectDir)) {
+        currentProjectDir = path.dirname(resolvedPath);
+      }
+    }
+
+    if (footerMainDoc) {
+      footerMainDoc.textContent = `Principale: ${path.basename(resolvedPath)}`;
+      footerMainDoc.title = resolvedPath;
+    }
+
+    refreshEditorCompilerState();
+
+    if (persistManifest) {
+      persistProjectMainManifest(resolvedPath);
+    }
+    if (!silent) {
+      showNotification(`Documento principale impostato: ${path.basename(resolvedPath)}`, "info");
+    }
+  }
+
+  async function applyMainDocumentSelection(filePath) {
+    if (!filePath) return;
+    const resolvedPath = path.resolve(filePath);
+    setMainDocument(resolvedPath, { explicit: true, persistManifest: false, silent: false });
+    await persistProjectMainManifest(resolvedPath);
+    if (isLinkedProject && currentProject && currentProject.storePath) {
+      renderProjectPane(currentProject.storePath);
+    }
+    if (currentProjectDir) {
+      renderFolderPane(currentProjectDir);
+    }
+    if (typeof renderTabs === "function") {
+      renderTabs();
+    }
   }
 
   function updateEngineFooter() {
@@ -1623,7 +1754,12 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     let targetPath = (isLinkedProject && mainDocumentPath)
       ? mainDocumentPath
-      : (tab && tab.filePath ? tab.filePath : (mainDocumentPath && fs.existsSync(mainDocumentPath) ? mainDocumentPath : null));
+      : resolveClassicCompileTarget({
+          activeTab: tab,
+          mainDocumentPath,
+          currentProjectDir,
+          mainDocumentExplicit
+        });
 
     let contentToPass = "";
     if (!targetPath || (tab && tab.filePath && path.resolve(tab.filePath) === path.resolve(targetPath))) {
@@ -1675,6 +1811,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     };
 
     const mainFallbackName = targetPath ? path.basename(targetPath) : 'main.tex';
+    const compileSnapshot = cm ? cm.beginCompileSnapshot(tab ? tab.filePath : null) : null;
 
     try {
       const res = await ipcRenderer.invoke('compile-latex', compileOpts);
@@ -1682,15 +1819,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       btnRecompile.classList.remove("compiling");
 
       latestIssues = res.issues || [];
-      renderLogIssues(latestIssues, res.log, mainFallbackName);
-
+      const activeAfterTab = getActiveTab();
       if (cm) {
         if (latestIssues.length > 0) {
-          cm.setCompilerIssues(latestIssues, tab ? tab.filePath : null);
+          cm.setCompilerIssues(latestIssues, activeAfterTab ? activeAfterTab.filePath : null, compileSnapshot);
         } else {
+          if (compileSnapshot) cm._activeCompileSnapshots?.delete(compileSnapshot);
           cm.clearCompilerIssues();
         }
       }
+      renderLogIssues(latestIssues, res.log, mainFallbackName);
 
       if (res.success && res.pdfPath && fs.existsSync(res.pdfPath)) {
         currentCompiledPdfPath = res.pdfPath;
@@ -1916,7 +2054,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const defaultName = path.basename(currentCompiledPdfPath);
+    const defaultName = resolveExportPdfDefaultName({
+      isLinkedProject,
+      targetPath: currentProject ? currentProject.targetPath : null,
+      currentCompiledPdfPath
+    });
     const res = await dialog.showSaveDialog({
       title: "Salva/Esporta PDF",
       defaultPath: defaultName,
@@ -1984,11 +2126,18 @@ window.addEventListener("DOMContentLoaded", async () => {
       folderPathEl.classList.remove("hidden");
     }
 
+    mainDocumentExplicit = false;
     // Check for main.tex in folder
     const defaultMain = path.join(folderPath, "main.tex");
     if (fs.existsSync(defaultMain)) {
       setMainDocument(defaultMain);
       openFileFromPath(defaultMain);
+    } else if (mainDocumentPath && !isPathInsideDir(mainDocumentPath, folderPath)) {
+      mainDocumentPath = null;
+      if (footerMainDoc) {
+        footerMainDoc.textContent = "Principale: —";
+        footerMainDoc.title = "";
+      }
     }
 
     renderFolderPane(folderPath);
@@ -2064,6 +2213,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     }
     const mainTexPath = path.isAbsolute(mainFileName) ? mainFileName : path.join(opts.storePath, mainFileName);
+    mainDocumentExplicit = false;
     if (fs.existsSync(mainTexPath)) {
       setMainDocument(mainTexPath);
       openFileFromPath(mainTexPath);
@@ -2094,7 +2244,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       const rel = path.relative(closedStorePath, path.resolve(mainDocumentPath));
       if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
         mainDocumentPath = null;
-        if (footerMainDoc) footerMainDoc.textContent = "Principale: —";
+        mainDocumentExplicit = false;
+        if (footerMainDoc) {
+          footerMainDoc.textContent = "Principale: —";
+          footerMainDoc.title = "";
+        }
       }
     }
     isLinkedProject = false;
@@ -2667,13 +2821,16 @@ window.addEventListener("DOMContentLoaded", async () => {
         li.appendChild(childUl);
         buildFolderTreeRecursive(fullPath, childUl);
       } else {
+        const isMainClassic = !isLinkedProject && mainDocumentPath && (path.resolve(fullPath) === path.resolve(mainDocumentPath));
         const linkBadge = isTargetPdf ? `<span class="tree-link-badge" title="PDF collegato al progetto corrente"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 3px; vertical-align: -1px;"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>Collegato</span>` : ``;
+        const mainBadge = isMainClassic ? `<span class="tree-link-badge" style="background:#80007f;" title="Documento principale">Principale</span>` : ``;
 
         itemDiv.className = `tree-item ${isTargetPdf ? 'target-pdf-item' : ''}`;
         itemDiv.innerHTML = `
           <svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 14H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
           <span class="tree-label">${escapeHtml(entry.name)}</span>
           ${linkBadge}
+          ${mainBadge}
         `;
 
         itemDiv.addEventListener("click", (e) => {
@@ -2691,24 +2848,54 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function renderLinkedPdfMainSubmenuHtml() {
+    if (!isLinkedProject || !currentProject?.storePath) return "";
+    const storeTexFiles = listStoreTexFiles(currentProject.storePath, fs);
+    const resolvedMain = mainDocumentPath ? path.resolve(mainDocumentPath) : null;
+    const rows = storeTexFiles.length > 0
+      ? storeTexFiles.map(f => {
+          const isCurrent = Boolean(resolvedMain && path.resolve(f.fullPath) === resolvedMain);
+          return `<div class="context-menu-item ${isCurrent ? 'disabled is-current-main' : ''}" data-tex-path="${escapeHtml(f.fullPath)}"><span class="context-menu-check">${isCurrent ? '✓' : ''}</span><span>${escapeHtml(f.relPath)}</span></div>`;
+        }).join("")
+      : `<div class="context-menu-item disabled"><span>Nessun file .tex nello store</span></div>`;
+
+    return `
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item has-submenu" id="ctx-pdf-set-main">
+        <span>File principale (.tex)</span>
+        <span class="context-menu-submenu-arrow">▸</span>
+        <div class="tree-context-submenu" id="ctx-pdf-main-submenu">${rows}</div>
+      </div>
+    `;
+  }
+
   function showFolderItemContextMenu(e, itemDiv, fullPath, isTargetPdf) {
-    const existing = document.getElementById("tree-context-menu");
-    if (existing) existing.remove();
+    removeExistingContextMenus();
 
     const menu = document.createElement("div");
     menu.id = "tree-context-menu";
     menu.className = "tree-context-menu";
-    menu.style.left = `${e.clientX}px`;
-    menu.style.top = `${e.clientY}px`;
+
+    let isDir = false;
+    try { isDir = fs.statSync(fullPath).isDirectory(); } catch (_) {}
+
+    const setMainHtml = renderMainDocMenuItemHtml({
+      filePath: fullPath,
+      isDir,
+      itemId: "ctx-set-main",
+      activeItemId: "ctx-main-active"
+    });
 
     let html = `
       <div class="context-menu-item" id="ctx-open">Apri</div>
       <div class="context-menu-item" id="ctx-duplicate">Duplica</div>
       <div class="context-menu-item" id="ctx-rename">Rinomina</div>
+      ${setMainHtml}
       <div class="context-menu-item" id="ctx-reveal">Mostra nel file manager</div>
       <div class="context-menu-item" id="ctx-copy-path">Copia percorso</div>
     `;
     if (isTargetPdf) {
+      html += renderLinkedPdfMainSubmenuHtml();
       html += `
         <div class="context-menu-divider"></div>
         <div class="context-menu-item text-danger" id="ctx-unlink">Scollega progetto</div>
@@ -2721,6 +2908,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     menu.innerHTML = html;
     document.body.appendChild(menu);
+    positionContextMenu(menu, e.clientX, e.clientY);
 
     menu.querySelector("#ctx-open").onclick = () => {
       menu.remove();
@@ -2730,12 +2918,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     menu.querySelector("#ctx-duplicate").onclick = () => {
       menu.remove();
       try {
-        const isDir = fs.statSync(fullPath).isDirectory();
-        const ext = isDir ? "" : path.extname(fullPath);
-        const base = isDir ? path.basename(fullPath) : path.basename(fullPath, ext);
+        const dupIsDir = fs.statSync(fullPath).isDirectory();
+        const ext = dupIsDir ? "" : path.extname(fullPath);
+        const base = dupIsDir ? path.basename(fullPath) : path.basename(fullPath, ext);
         const copyName = uniqueName(path.dirname(fullPath), base, ext);
         const copyPath = path.join(path.dirname(fullPath), copyName);
-        if (isDir) {
+        if (dupIsDir) {
           fs.cpSync(fullPath, copyPath, { recursive: true });
         } else {
           fs.copyFileSync(fullPath, copyPath);
@@ -2752,6 +2940,12 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (currentProjectDir) renderFolderPane(currentProjectDir);
       });
     };
+    if (menu.querySelector("#ctx-set-main")) {
+      menu.querySelector("#ctx-set-main").onclick = async () => {
+        menu.remove();
+        await applyMainDocumentSelection(fullPath);
+      };
+    }
     menu.querySelector("#ctx-reveal").onclick = () => {
       menu.remove();
       ipcRenderer.invoke('project-reveal-item', fullPath);
@@ -2761,6 +2955,35 @@ window.addEventListener("DOMContentLoaded", async () => {
       clipboard.writeText(fullPath);
       showNotification("Percorso copiato negli appunti", "info");
     };
+
+    const pdfMainTrigger = menu.querySelector("#ctx-pdf-set-main");
+    const pdfMainSubmenu = menu.querySelector("#ctx-pdf-main-submenu");
+    if (pdfMainTrigger && pdfMainSubmenu) {
+      pdfMainTrigger.addEventListener("mouseenter", () => {
+        pdfMainTrigger.classList.add("submenu-open");
+        positionContextSubmenu(pdfMainTrigger, pdfMainSubmenu);
+      });
+      pdfMainTrigger.addEventListener("mouseleave", () => {
+        pdfMainTrigger.classList.remove("submenu-open");
+      });
+      pdfMainTrigger.addEventListener("click", (evt) => {
+        if (evt.target.closest("#ctx-pdf-main-submenu")) return;
+        evt.stopPropagation();
+        pdfMainTrigger.classList.toggle("submenu-open");
+        if (pdfMainTrigger.classList.contains("submenu-open")) {
+          positionContextSubmenu(pdfMainTrigger, pdfMainSubmenu);
+        }
+      });
+      pdfMainSubmenu.querySelectorAll("[data-tex-path]").forEach((optEl) => {
+        optEl.addEventListener("click", async (evt) => {
+          evt.stopPropagation();
+          if (optEl.classList.contains("disabled")) return;
+          const selectedTex = optEl.dataset.texPath;
+          menu.remove();
+          await applyMainDocumentSelection(selectedTex);
+        });
+      });
+    }
 
     if (isTargetPdf) {
       menu.querySelector("#ctx-unlink").onclick = async () => {
@@ -2936,24 +3159,25 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function showProjectItemContextMenu(e, itemDiv, fullPath, name, isDir, isMain) {
-    const existing = document.getElementById("tree-context-menu");
-    if (existing) existing.remove();
+    removeExistingContextMenus();
 
     const menu = document.createElement("div");
     menu.id = "tree-context-menu";
     menu.className = "tree-context-menu";
-    menu.style.left = `${e.clientX}px`;
-    menu.style.top = `${e.clientY}px`;
+
+    const setMainHtml = renderMainDocMenuItemHtml({
+      filePath: fullPath,
+      isDir,
+      itemId: "ctx-proj-set-main",
+      activeItemId: "ctx-proj-main-active"
+    });
 
     let html = `
       <div class="context-menu-item" id="ctx-proj-open">Apri</div>
       <div class="context-menu-item" id="ctx-proj-rename">Rinomina (F2)</div>
       <div class="context-menu-item" id="ctx-proj-duplicate">Duplica</div>
+      ${setMainHtml}
     `;
-
-    if (!isDir && fullPath.endsWith(".tex") && !isMain) {
-      html += `<div class="context-menu-item" id="ctx-proj-set-main">Imposta come documento principale</div>`;
-    }
 
     html += `
       <div class="context-menu-divider"></div>
@@ -2963,6 +3187,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     menu.innerHTML = html;
     document.body.appendChild(menu);
+    positionContextMenu(menu, e.clientX, e.clientY);
 
     menu.querySelector("#ctx-proj-open").onclick = () => {
       menu.remove();
@@ -2996,14 +3221,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (menu.querySelector("#ctx-proj-set-main")) {
       menu.querySelector("#ctx-proj-set-main").onclick = async () => {
         menu.remove();
-        setMainDocument(fullPath);
-        try {
-          const manifest = await ipcRenderer.invoke('project-load-manifest', currentProject.storePath);
-          manifest.main = path.relative(currentProject.storePath, fullPath);
-          await ipcRenderer.invoke('project-save-manifest', currentProject.storePath, manifest);
-        } catch (_) {}
-        showNotification(`"${name}" impostato come documento principale`, "info");
-        renderProjectPane(currentProject.storePath);
+        await applyMainDocumentSelection(fullPath);
       };
     }
 
@@ -3122,16 +3340,50 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       const newPath = path.join(dir, finalName);
       try {
+        const resolvedOldPath = path.resolve(filePath);
+        const resolvedMainBefore = mainDocumentPath ? path.resolve(mainDocumentPath) : null;
         fs.renameSync(filePath, newPath);
-        const tab = tabs.find(t => t.filePath === filePath);
-        if (tab) {
-          tab.filePath = newPath;
-          tab.title = finalName;
+
+        let tabsChanged = false;
+        for (const t of tabs) {
+          if (!t.filePath) continue;
+          const resolvedTabPath = path.resolve(t.filePath);
+          if (resolvedTabPath === resolvedOldPath) {
+            t.filePath = newPath;
+            t.title = finalName;
+            tabsChanged = true;
+          } else if (isDirectory && isPathInsideDir(resolvedTabPath, resolvedOldPath)) {
+            t.filePath = path.join(newPath, path.relative(resolvedOldPath, resolvedTabPath));
+            tabsChanged = true;
+          }
+        }
+        if (tabsChanged) {
           renderTabs();
+          updateTitle();
         }
-        if (mainDocumentPath === filePath) {
-          setMainDocument(newPath);
+
+        for (const [watchPath, watcher] of Array.from(activeFileWatchers.entries())) {
+          const resolvedWatch = path.resolve(watchPath);
+          if (resolvedWatch === resolvedOldPath) {
+            try { watcher.close(); } catch (_) {}
+            activeFileWatchers.delete(watchPath);
+            watchFileForChanges(newPath);
+          } else if (isDirectory && isPathInsideDir(resolvedWatch, resolvedOldPath)) {
+            try { watcher.close(); } catch (_) {}
+            activeFileWatchers.delete(watchPath);
+            watchFileForChanges(path.join(newPath, path.relative(resolvedOldPath, resolvedWatch)));
+          }
         }
+
+        if (resolvedMainBefore && resolvedMainBefore === resolvedOldPath) {
+          setMainDocument(newPath, { explicit: mainDocumentExplicit, persistManifest: false, silent: true });
+          await persistProjectMainManifest(newPath);
+        } else if (isDirectory && resolvedMainBefore && isPathInsideDir(resolvedMainBefore, resolvedOldPath)) {
+          const updatedMain = path.join(newPath, path.relative(resolvedOldPath, resolvedMainBefore));
+          setMainDocument(updatedMain, { explicit: mainDocumentExplicit, persistManifest: false, silent: true });
+          await persistProjectMainManifest(updatedMain);
+        }
+
         showNotification(`Rinominato in "${finalName}"`, "info");
         refreshFn();
       } catch (err) {

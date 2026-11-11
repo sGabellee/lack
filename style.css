@@ -8156,6 +8156,54 @@ body.dark .pdf-synctex-highlight {
   color: #ffffff;
 }
 
+.tree-context-menu .context-menu-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.tree-context-menu .context-menu-item.has-submenu {
+  position: relative;
+  justify-content: space-between;
+}
+
+.tree-context-menu .context-menu-submenu-arrow {
+  margin-left: 12px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.tree-context-menu .context-menu-check {
+  display: inline-block;
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+  font-weight: 700;
+}
+
+.tree-context-submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  z-index: 10000;
+  background: var(--editor-bg, #262626);
+  border: 1px solid var(--explorer-border, #3a3a3a);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  min-width: 190px;
+  max-width: 300px;
+  max-height: 280px;
+  overflow-y: auto;
+  color: var(--fg, #e0e0e0);
+}
+
+.tree-context-menu .context-menu-item.has-submenu:hover > .tree-context-submenu,
+.tree-context-menu .context-menu-item.has-submenu.submenu-open > .tree-context-submenu {
+  display: block;
+}
+
 .tree-context-menu .context-menu-item.text-danger {
   color: #ef4444;
 }

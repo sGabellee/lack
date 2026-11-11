@@ -1,13 +1,11 @@
-const { EditorState, Compartment, Prec } = require('@codemirror/state');
+const { EditorState, Compartment, Prec, ChangeSet } = require('@codemirror/state');
 const {
   EditorView,
   keymap,
   lineNumbers,
   highlightActiveLine,
   highlightActiveLineGutter,
-  drawSelection,
-  ViewPlugin,
-  Decoration
+  drawSelection
 } = require('@codemirror/view');
 const {
   defaultKeymap,
@@ -42,7 +40,14 @@ const {
   createRenameSyncFilter
 } = require('./autopair');
 const { createLatexCompletionSource } = require('./autocomplete');
-const { latexLinterExtension, doesIssueMatchFile } = require('./linter');
+const {
+  latexLinterExtension,
+  compilerIssueStateField,
+  setCompilerIssuesEffect,
+  setExtraHighlightEffect,
+  tabSwitchAnnotation,
+  buildTrackedEntries
+} = require('./linter');
 const {
   createSpellCheckPlugin,
   setLanguage: setSpellLanguageInternal,
@@ -165,46 +170,16 @@ function getLatexOutline(rawText) {
   return outline;
 }
 
-// Error line highlight decoration
-const errorLineDeco = Decoration.line({
-  class: 'cm-lint-error-line'
-});
-
-const errorHighlightField = ViewPlugin.fromClass(
-  class {
-    constructor() {
-      this.decorations = Decoration.none;
-    }
-    setLines(view, lineNums) {
-      if (!lineNums || lineNums.length === 0) {
-        this.decorations = Decoration.none;
-      } else {
-        const decos = [];
-        const lines = view.state.doc.lines;
-        const valid = [...new Set(lineNums.filter(n => n >= 1 && n <= lines))].sort((a, b) => a - b);
-        for (const n of valid) {
-          const line = view.state.doc.line(n);
-          decos.push(errorLineDeco.range(line.from));
-        }
-        this.decorations = Decoration.set(decos);
-      }
-      view.requestMeasure();
-    }
-    setLine(view, lineNum) {
-      this.setLines(view, lineNum ? [lineNum] : []);
-    }
-  },
-  {
-    decorations: (v) => v.decorations
-  }
-);
-
 class CodeMirrorManager {
   constructor(containerEl, options = {}) {
     this.containerEl = containerEl;
     this.options = options;
     this.compilerIssues = [];
     this.activeFilePath = null;
+    this._lastCompilerIssuesRef = null;
+    this.deletedIssues = new WeakSet();
+    this._compileSnapshotSeq = 0;
+    this._activeCompileSnapshots = new Set();
 
     this.wrappingCompartment = new Compartment();
     this.vimCompartment = new Compartment();
@@ -340,7 +315,6 @@ class CodeMirrorManager {
         }),
         latexLinterExtension(this),
         createSpellCheckPlugin(),
-        errorHighlightField,
         Prec.high(keymap.of(customKeymaps)),
         keymap.of([
           ...closeBracketsKeymap,
@@ -351,8 +325,23 @@ class CodeMirrorManager {
           ...lintKeymap
         ]),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged && typeof self.onDocChangeCallback === 'function') {
-            self.onDocChangeCallback(update.state.doc.toString());
+          if (update.docChanged) {
+            const isTabSwap = update.transactions.some((tr) => tr.annotation(tabSwitchAnnotation));
+            for (const snap of self._activeCompileSnapshots) {
+              if (isTabSwap) {
+                snap.invalidated = true;
+              } else if (!snap.invalidated) {
+                try {
+                  snap.changes = snap.changes.compose(update.changes);
+                } catch (_) {
+                  snap.invalidated = true;
+                }
+              }
+            }
+            self._syncTrackedIssuesFromState(update.state, isTabSwap);
+            if (typeof self.onDocChangeCallback === 'function') {
+              self.onDocChangeCallback(update.state.doc.toString());
+            }
           }
           if (
             (update.docChanged || update.selectionSet) &&
@@ -380,7 +369,8 @@ class CodeMirrorManager {
   setValue(newText) {
     if (newText === this.getValue()) return;
     this.view.dispatch({
-      changes: { from: 0, to: this.view.state.doc.length, insert: newText }
+      changes: { from: 0, to: this.view.state.doc.length, insert: newText },
+      annotations: tabSwitchAnnotation.of(true)
     });
   }
 
@@ -522,52 +512,130 @@ class CodeMirrorManager {
     return '';
   }
 
-  setCompilerIssues(issues = [], activeFilePath = null) {
-    this.compilerIssues = Array.isArray(issues) ? issues : [];
-    this.activeFilePath = activeFilePath;
-    if (this.view) {
-      try { forceLinting(this.view); } catch (_) {}
-      const errorLines = this.compilerIssues
-        .filter(i => i.type === 'error' && i.line && doesIssueMatchFile(i, activeFilePath))
-        .map(i => i.line);
-      if (errorLines.length > 0) {
-        this.highlightErrorLines(errorLines);
+  /** Capture the current document snapshot before an async LaTeX compile starts. */
+  beginCompileSnapshot(filePath = null) {
+    if (!this.view) return null;
+    const snapshot = {
+      id: ++this._compileSnapshotSeq,
+      filePath: filePath || null,
+      compiledDoc: this.view.state.doc,
+      changes: ChangeSet.empty(this.view.state.doc.length),
+      invalidated: false
+    };
+    this._activeCompileSnapshots.add(snapshot);
+    return snapshot;
+  }
+
+  _syncTrackedIssuesFromState(state, skipIssueSync = false) {
+    if (skipIssueSync || !state) return;
+    const fieldState = state.field(compilerIssueStateField, false);
+    if (!fieldState || !fieldState.entries) return;
+    for (const entry of fieldState.entries) {
+      if (!entry.issue) continue;
+      if (entry.deleted) {
+        this.deletedIssues.add(entry.issue);
       } else {
-        this.clearErrorHighlight();
+        entry.issue.line = entry.line;
+        this.deletedIssues.delete(entry.issue);
       }
     }
+  }
+
+  getTrackedCompilerIssues() {
+    if (!this.view) return [];
+    const fieldState = this.view.state.field(compilerIssueStateField, false);
+    return fieldState ? fieldState.entries : [];
+  }
+
+  setCompilerIssues(issues = [], activeFilePath = null, compileSnapshot = null) {
+    if (compileSnapshot) {
+      this._activeCompileSnapshots.delete(compileSnapshot);
+    }
+
+    const nextIssues = Array.isArray(issues) ? issues : [];
+    if (nextIssues !== this._lastCompilerIssuesRef) {
+      this.deletedIssues = new WeakSet();
+      this._lastCompilerIssuesRef = nextIssues.length > 0 ? nextIssues : null;
+    }
+
+    this.compilerIssues = nextIssues;
+    this.activeFilePath = activeFilePath;
+    if (!this.view) return;
+
+    const currentDoc = this.view.state.doc;
+    const canReplaySnapshot = Boolean(
+      compileSnapshot &&
+      !compileSnapshot.invalidated &&
+      compileSnapshot.compiledDoc &&
+      (compileSnapshot.filePath || '') === (activeFilePath || '')
+    );
+
+    const sourceDoc = canReplaySnapshot ? compileSnapshot.compiledDoc : currentDoc;
+    const preChanges = canReplaySnapshot ? compileSnapshot.changes : null;
+    const entries = buildTrackedEntries(sourceDoc, nextIssues, activeFilePath, {
+      preChanges,
+      targetDoc: currentDoc,
+      deletedSet: this.deletedIssues
+    });
+
+    this.view.dispatch({
+      effects: [
+        setCompilerIssuesEffect.of(entries),
+        setExtraHighlightEffect.of([])
+      ]
+    });
+    try { forceLinting(this.view); } catch (_) {}
   }
 
   clearCompilerIssues() {
     this.compilerIssues = [];
-    this.clearErrorHighlight();
-    if (this.view) {
-      try { forceLinting(this.view); } catch (_) {}
-    }
+    this._lastCompilerIssuesRef = null;
+    this.deletedIssues = new WeakSet();
+    this._activeCompileSnapshots.clear();
+    if (!this.view) return;
+    this.view.dispatch({
+      effects: [
+        setCompilerIssuesEffect.of([]),
+        setExtraHighlightEffect.of([])
+      ]
+    });
+    try { forceLinting(this.view); } catch (_) {}
   }
 
   highlightErrorLines(lineNums) {
-    const plugin = this.view.plugin(errorHighlightField);
-    if (plugin) {
-      plugin.setLines(this.view, lineNums);
+    if (!this.view) return;
+    if (!lineNums || lineNums.length === 0) {
+      this.view.dispatch({ effects: setExtraHighlightEffect.of([]) });
+      return;
     }
+    const doc = this.view.state.doc;
+    const totalLines = doc.lines;
+    const valid = [...new Set(lineNums.filter((n) => n >= 1 && n <= totalLines))].sort((a, b) => a - b);
+    const ranges = valid.map((n) => {
+      const line = doc.line(n);
+      return {
+        from: line.from,
+        to: line.to,
+        line: line.number,
+        nonEmpty: line.to > line.from,
+        origToken: null,
+        deleted: false,
+        anchor: line.from
+      };
+    });
+    this.view.dispatch({ effects: setExtraHighlightEffect.of(ranges) });
   }
 
   highlightErrorLine(lineNum) {
-    const plugin = this.view.plugin(errorHighlightField);
-    if (plugin) {
-      plugin.setLine(this.view, lineNum);
-      if (lineNum) {
-        this.jumpToLine(lineNum);
-      }
+    this.highlightErrorLines(lineNum ? [lineNum] : []);
+    if (lineNum && this.view) {
+      this.jumpToLine(lineNum);
     }
   }
 
   clearErrorHighlight() {
-    const plugin = this.view.plugin(errorHighlightField);
-    if (plugin) {
-      plugin.setLine(this.view, null);
-    }
+    if (!this.view) return;
+    this.view.dispatch({ effects: setExtraHighlightEffect.of([]) });
   }
 
   setLineWrapping(enabled) {

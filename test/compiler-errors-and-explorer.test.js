@@ -228,3 +228,133 @@ test('delete confirmation dialogs do not include confusing non-permanent-delete 
   const rendererSrc = fs.readFileSync(path.join(__dirname, '../renderer.js'), 'utf8');
   assert.ok(!rendererSrc.includes('Nessun file viene eliminato definitivamente'));
 });
+
+test('tracked compiler diagnostics and line highlights follow line insertions, deletions, undo, and mid-compile edits', () => {
+  const { EditorState } = require('@codemirror/state');
+  const { history, undo, isolateHistory } = require('@codemirror/commands');
+  const {
+    compilerIssueStateField,
+    setCompilerIssuesEffect,
+    setExtraHighlightEffect,
+    tabSwitchAnnotation,
+    buildTrackedEntries,
+    getCompilerDiagnosticsFromState
+  } = require('../src/editor/linter');
+
+  const initialDoc = [
+    '\\documentclass{article}',
+    '\\begin{document}',
+    '',
+    '\\input{utils/front.tex}',
+    '\\newpage',
+    '\\end{document}'
+  ].join('\n');
+
+  let state = EditorState.create({
+    doc: initialDoc,
+    extensions: [history(), compilerIssueStateField]
+  });
+
+  const issue = {
+    type: 'error',
+    file: 'report.tex',
+    line: 4,
+    message: "! LaTeX Error: File 'utils/front.tex' not found."
+  };
+
+  const initialEntries = buildTrackedEntries(state.doc, [issue], '/proj/report.tex');
+  state = state.update({ effects: setCompilerIssuesEffect.of(initialEntries) }).state;
+
+  const decoLines = (st) => {
+    const lines = [];
+    const decos = st.field(compilerIssueStateField).lineDecos;
+    decos.between(0, st.doc.length, (from) => {
+      lines.push(st.doc.lineAt(from).number);
+    });
+    return lines;
+  };
+
+  assert.deepStrictEqual(decoLines(state), [4]);
+  let diags = getCompilerDiagnosticsFromState(state, '/proj/report.tex');
+  assert.strictEqual(diags.length, 1);
+  assert.strictEqual(state.doc.sliceString(diags[0].from, diags[0].to), '\\input');
+
+  // 1. Delete blank line 3 above the error -> error must shift up from line 4 to line 3 immediately
+  const line3 = state.doc.line(3);
+  state = state.update({
+    changes: { from: line3.from - 1, to: line3.to, insert: '' }
+  }).state;
+
+  assert.deepStrictEqual(decoLines(state), [3]);
+  diags = getCompilerDiagnosticsFromState(state, '/proj/report.tex');
+  assert.strictEqual(diags.length, 1);
+  assert.strictEqual(state.doc.lineAt(diags[0].from).number, 3);
+  assert.strictEqual(state.doc.sliceString(diags[0].from, diags[0].to), '\\input');
+
+  // 2. Insert two newlines at the start of line 3 -> error must move down from line 3 to line 5
+  const shiftedLine3 = state.doc.line(3);
+  state = state.update({
+    changes: { from: shiftedLine3.from, to: shiftedLine3.from, insert: '\n\n' }
+  }).state;
+
+  assert.deepStrictEqual(decoLines(state), [5]);
+  diags = getCompilerDiagnosticsFromState(state, '/proj/report.tex');
+  assert.strictEqual(state.doc.lineAt(diags[0].from).number, 5);
+
+  // 3. Delete the offending line itself -> error highlight and diagnostic disappear immediately
+  const errLine = state.doc.line(5);
+  state = state.update({
+    changes: { from: errLine.from - 1, to: errLine.to, insert: '' },
+    annotations: isolateHistory.of('full')
+  }).state;
+
+  assert.deepStrictEqual(decoLines(state), []);
+  assert.strictEqual(getCompilerDiagnosticsFromState(state, '/proj/report.tex').length, 0);
+
+  // 4. Undo deleting the offending line via real CodeMirror history() -> tracked error and highlight come back on line 5
+  undo({ state, dispatch: (trSpec) => { state = state.update(trSpec).state; } });
+
+  assert.deepStrictEqual(decoLines(state), [5]);
+  diags = getCompilerDiagnosticsFromState(state, '/proj/report.tex');
+  assert.strictEqual(diags.length, 1);
+  assert.strictEqual(state.doc.sliceString(diags[0].from, diags[0].to), '\\input');
+
+  // 5. Extra highlight range also moves with line deletions above it
+  state = state.update({
+    effects: setExtraHighlightEffect.of([{
+      from: state.doc.line(6).from,
+      to: state.doc.line(6).to,
+      line: 6,
+      nonEmpty: true,
+      origToken: null,
+      deleted: false,
+      anchor: state.doc.line(6).from
+    }])
+  }).state;
+  assert.deepStrictEqual(decoLines(state), [5, 6]);
+  state = state.update({
+    changes: { from: state.doc.line(3).from - 1, to: state.doc.line(3).to, insert: '' }
+  }).state;
+  assert.deepStrictEqual(decoLines(state), [4, 5]);
+
+  // 6. Tab switch swaps doc without mapping old spans into line 1
+  const switchedState = state.update({
+    changes: { from: 0, to: state.doc.length, insert: '% other file' },
+    annotations: tabSwitchAnnotation.of(true)
+  }).state;
+  assert.deepStrictEqual(decoLines(switchedState), []);
+
+  // 7. Mid-compile snapshot edit replay maps compiled line 4 to line 3 cleanly
+  const preCompileState = EditorState.create({ doc: initialDoc });
+  const trDuringCompile = preCompileState.update({
+    changes: { from: preCompileState.doc.line(3).from - 1, to: preCompileState.doc.line(3).to, insert: '' }
+  });
+  const midCompileIssue = { type: 'error', file: 'report.tex', line: 4, message: 'err' };
+  const mappedEntries = buildTrackedEntries(preCompileState.doc, [midCompileIssue], '/proj/report.tex', {
+    preChanges: trDuringCompile.changes,
+    targetDoc: trDuringCompile.state.doc
+  });
+  assert.strictEqual(mappedEntries.length, 1);
+  assert.strictEqual(mappedEntries[0].line, 3);
+  assert.strictEqual(midCompileIssue.line, 3);
+});

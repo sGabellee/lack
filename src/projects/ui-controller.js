@@ -38,6 +38,107 @@ function isCompilableLatexFile(filePath) {
   return /\.(tex|bib|sty|cls|bst|dtx|ins)$/i.test(filePath);
 }
 
+function isTexFilePath(filePath) {
+  return Boolean(filePath && String(filePath).toLowerCase().endsWith('.tex'));
+}
+
+function isPathInsideDir(targetPath, rootDir) {
+  if (!targetPath || !rootDir) return false;
+  const rel = path.relative(path.resolve(rootDir), path.resolve(targetPath));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+function resolveMainRelativePath(storePath, filePath) {
+  if (!storePath || !filePath || !isPathInsideDir(filePath, storePath)) return null;
+  return path.relative(path.resolve(storePath), path.resolve(filePath)).replace(/\\/g, '/');
+}
+
+function canSetAsMainDocument({
+  filePath,
+  isDir = false,
+  isMain = false,
+  isLinkedProject = false,
+  storePath = null
+} = {}) {
+  if (isDir || isMain || !isTexFilePath(filePath)) return false;
+  if (isLinkedProject) {
+    return isPathInsideDir(filePath, storePath);
+  }
+  return true;
+}
+
+function resolveClassicCompileTarget({
+  activeTab = null,
+  mainDocumentPath = null,
+  currentProjectDir = null,
+  mainDocumentExplicit = false,
+  fileExists = fs.existsSync
+} = {}) {
+  if (mainDocumentPath && fileExists(mainDocumentPath)) {
+    if (mainDocumentExplicit) {
+      return mainDocumentPath;
+    }
+    if (!activeTab || !activeTab.filePath) {
+      return mainDocumentPath;
+    }
+    const rootDir = currentProjectDir || path.dirname(mainDocumentPath);
+    const sameProjectTree = isPathInsideDir(activeTab.filePath, rootDir) && isPathInsideDir(mainDocumentPath, rootDir);
+    const hasDocClass = /\\documentclass(?:\[[^\]]*\])?\{/.test(activeTab.content || '');
+    if (sameProjectTree && !hasDocClass) {
+      return mainDocumentPath;
+    }
+  }
+  if (activeTab && activeTab.filePath) return activeTab.filePath;
+  if (mainDocumentPath && fileExists(mainDocumentPath)) return mainDocumentPath;
+  return null;
+}
+
+function resolveExportPdfDefaultName({
+  isLinkedProject = false,
+  targetPath = null,
+  currentCompiledPdfPath = null
+} = {}) {
+  if (isLinkedProject && targetPath) {
+    return path.basename(targetPath);
+  }
+  return currentCompiledPdfPath ? path.basename(currentCompiledPdfPath) : 'document.pdf';
+}
+
+function listStoreTexFiles(storePath, fsModule = null) {
+  const fsys = fsModule || fs;
+  if (!storePath || !fsys.existsSync(storePath)) return [];
+  const results = [];
+
+  function walk(dir) {
+    let entries = [];
+    try {
+      entries = fsys.readdirSync(dir, { withFileTypes: true });
+    } catch (_) {
+      return;
+    }
+    const filtered = filterProjectEntries(entries);
+    for (const entry of filtered) {
+      const fullPath = path.join(dir, entry.name);
+      let isDir = typeof entry.isDirectory === 'function' ? entry.isDirectory() : Boolean(entry.isDirectory);
+      try {
+        if (!isDir && typeof entry.isSymbolicLink === 'function' && entry.isSymbolicLink() && fsys.existsSync(fullPath)) {
+          isDir = fsys.statSync(fullPath).isDirectory();
+        }
+      } catch (_) {}
+
+      if (isDir) {
+        walk(fullPath);
+      } else if (isTexFilePath(entry.name)) {
+        const relPath = resolveMainRelativePath(storePath, fullPath) || entry.name;
+        results.push({ name: entry.name, relPath, fullPath });
+      }
+    }
+  }
+
+  walk(storePath);
+  return results;
+}
+
 function filterProjectEntries(entries) {
   return entries
     .filter(entry => {
@@ -122,6 +223,13 @@ module.exports = {
   formatBytes,
   calculateDirSize,
   isCompilableLatexFile,
+  isTexFilePath,
+  isPathInsideDir,
+  resolveMainRelativePath,
+  canSetAsMainDocument,
+  resolveClassicCompileTarget,
+  resolveExportPdfDefaultName,
+  listStoreTexFiles,
   filterProjectEntries,
   validateItemName,
   uniqueName
