@@ -356,10 +356,37 @@ window.addEventListener("DOMContentLoaded", async () => {
   updateEngineFooter();
 
   // ====== INITIALIZE CODEMIRROR 6 ======
+  let cachedPreamble = { filePath: null, mtimeMs: -1, text: '' };
+  function getProjectMainPreamble() {
+    if (!mainDocumentPath || !fs.existsSync(mainDocumentPath)) return '';
+    const activeTab = getActiveTab();
+    if (activeTab && activeTab.filePath && path.resolve(activeTab.filePath) === path.resolve(mainDocumentPath)) {
+      return '';
+    }
+    const openMainTab = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(mainDocumentPath));
+    if (openMainTab && typeof openMainTab.content === 'string') {
+      return openMainTab.content;
+    }
+    try {
+      const st = fs.statSync(mainDocumentPath);
+      if (cachedPreamble.filePath !== mainDocumentPath || cachedPreamble.mtimeMs !== st.mtimeMs) {
+        cachedPreamble = {
+          filePath: mainDocumentPath,
+          mtimeMs: st.mtimeMs,
+          text: fs.readFileSync(mainDocumentPath, 'utf8')
+        };
+      }
+      return cachedPreamble.text;
+    } catch (_) {
+      return '';
+    }
+  }
+
   const projectContext = {
     getBibKeys: () => getProjectBibKeys(),
     getImageFiles: () => getProjectImageFiles(),
-    getTexFiles: () => getProjectTexFiles()
+    getTexFiles: () => getProjectTexFiles(),
+    getMainPreamble: () => getProjectMainPreamble()
   };
 
   const cm = editorLib.createCodeMirrorEditor(editorMount, {
@@ -369,7 +396,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     onRotateTheme: () => cycleTheme(),
     getBibKeys: projectContext.getBibKeys,
     getImageFiles: projectContext.getImageFiles,
-    getTexFiles: projectContext.getTexFiles
+    getTexFiles: projectContext.getTexFiles,
+    getMainPreamble: projectContext.getMainPreamble
   });
   window.cm = cm;
   window.__lackCmInstance = cm;
@@ -445,9 +473,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   function getActiveSyncTexFile() {
     if (typeof isLinkedProject !== "undefined" && isLinkedProject && typeof currentProject !== "undefined" && currentProject && currentProject.storePath) {
       const storeBuild = path.join(currentProject.storePath, '.lack', 'build');
-      const gzPath = path.join(storeBuild, `${currentProject.mainBase || 'main'}.synctex.gz`);
+      const mainBase = currentProject.mainBase ||
+        (mainDocumentPath ? path.basename(mainDocumentPath, path.extname(mainDocumentPath)) : 'main');
+      const gzPath = path.join(storeBuild, `${mainBase}.synctex.gz`);
       if (fs.existsSync(gzPath)) return gzPath;
-      const plainPath = path.join(storeBuild, `${currentProject.mainBase || 'main'}.synctex`);
+      const plainPath = path.join(storeBuild, `${mainBase}.synctex`);
       if (fs.existsSync(plainPath)) return plainPath;
     }
     const pdfPath = typeof pdfViewer.getCurrentPdfPath === "function" ? pdfViewer.getCurrentPdfPath() : null;
@@ -473,33 +503,63 @@ window.addEventListener("DOMContentLoaded", async () => {
     return null;
   }
 
+  function normalizeSyncTexKey(filePath) {
+    if (!filePath) return '';
+    return path.basename(String(filePath)).replace(/\.tex$/i, '').toLowerCase();
+  }
+
   function parseSyncTexRaw(raw) {
     const lineMap = new Map();
+    const byFile = new Map();
+    const inputIdToKey = new Map();
     const lines = raw.split(/\r?\n/);
     let curPage = 1;
     const unit = 65536;
 
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
-      if (l.startsWith('{')) {
+      if (l.startsWith('Input:')) {
+        const inpMatch = /^Input:(\d+):(.+)$/.exec(l);
+        if (inpMatch) {
+          inputIdToKey.set(inpMatch[1], normalizeSyncTexKey(inpMatch[2].trim()));
+        }
+      } else if (l.startsWith('{')) {
         const p = parseInt(l.slice(1), 10);
         if (!isNaN(p)) curPage = p;
       } else {
         const m = /[([xkgv](\d+),(\d+):(\d+),(\d+)/.exec(l);
         if (m) {
+          const inputId = m[1];
           const lineNum = parseInt(m[2], 10);
           const xSp = parseInt(m[3], 10);
           const ySp = parseInt(m[4], 10);
+          const pos = { page: curPage, xPt: xSp / unit, yPt: ySp / unit };
           if (!lineMap.has(lineNum)) {
-            lineMap.set(lineNum, { page: curPage, xPt: xSp / unit, yPt: ySp / unit });
+            lineMap.set(lineNum, pos);
+          }
+          const fileKey = inputIdToKey.get(inputId);
+          if (fileKey) {
+            if (!byFile.has(fileKey)) byFile.set(fileKey, new Map());
+            const fileMap = byFile.get(fileKey);
+            if (!fileMap.has(lineNum)) fileMap.set(lineNum, pos);
           }
         }
       }
     }
-    return lineMap;
+    return { map: lineMap, byFile };
   }
 
-  function lookupSyncTexForward(lineNum) {
+  function lookupSyncTexLineInMap(targetMap, lineNum) {
+    if (!targetMap) return null;
+    if (targetMap.has(lineNum)) return targetMap.get(lineNum);
+    for (let offset = 1; offset <= 5; offset++) {
+      if (targetMap.has(lineNum - offset)) return targetMap.get(lineNum - offset);
+      if (targetMap.has(lineNum + offset)) return targetMap.get(lineNum + offset);
+    }
+    return null;
+  }
+
+  function lookupSyncTexForward(lineNum, activeFilePath = null) {
     const synctexFile = getActiveSyncTexFile();
     if (!synctexFile) return null;
     try {
@@ -512,19 +572,23 @@ window.addEventListener("DOMContentLoaded", async () => {
         } else {
           content = fs.readFileSync(synctexFile, 'utf8');
         }
+        const parsed = parseSyncTexRaw(content);
         cachedSyncTex = {
           file: synctexFile,
           mtime: stat.mtimeMs,
-          map: parseSyncTexRaw(content)
+          map: parsed.map,
+          byFile: parsed.byFile
         };
       }
 
-      if (cachedSyncTex && cachedSyncTex.map) {
-        if (cachedSyncTex.map.has(lineNum)) return cachedSyncTex.map.get(lineNum);
-        for (let offset = 1; offset <= 5; offset++) {
-          if (cachedSyncTex.map.has(lineNum - offset)) return cachedSyncTex.map.get(lineNum - offset);
-          if (cachedSyncTex.map.has(lineNum + offset)) return cachedSyncTex.map.get(lineNum + offset);
+      if (cachedSyncTex) {
+        if (activeFilePath && cachedSyncTex.byFile) {
+          const key = normalizeSyncTexKey(activeFilePath);
+          const fileMap = cachedSyncTex.byFile.get(key);
+          const hit = lookupSyncTexLineInMap(fileMap, lineNum);
+          if (hit) return hit;
         }
+        return lookupSyncTexLineInMap(cachedSyncTex.map, lineNum);
       }
     } catch (_) {}
     return null;
@@ -536,9 +600,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     const lineObj = cm.view.state.doc.lineAt(cursor);
     const lineNum = lineObj.number;
     const lineText = lineObj.text.trim();
+    const activeTab = getActiveTab();
 
-    // 1. Try SyncTeX data
-    const synctexResult = lookupSyncTexForward(lineNum);
+    // 1. Try SyncTeX data scoped to active file first
+    const synctexResult = lookupSyncTexForward(lineNum, activeTab ? activeTab.filePath : null);
     if (synctexResult) {
       await pdfViewer.goToSyncTexPosition(synctexResult.page, synctexResult.xPt, synctexResult.yPt);
       showNotification(`SyncTeX: Pagina ${synctexResult.page}`, "info");
@@ -650,67 +715,98 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("pdf-btn-refresh")?.addEventListener("click", () => triggerCompile());
 
   // ====== MULTI-FILE PROJECT CONTEXT RESOLVERS ======
-  function getProjectBibKeys() {
-    const keys = [];
-    if (!currentProjectDir || !fs.existsSync(currentProjectDir)) return keys;
+  function getActiveSourceRootDir() {
+    if (isLinkedProject && currentProject && currentProject.storePath && fs.existsSync(currentProject.storePath)) {
+      return currentProject.storePath;
+    }
+    if (currentProjectDir && fs.existsSync(currentProjectDir)) {
+      return currentProjectDir;
+    }
+    const activeTab = getActiveTab();
+    if (activeTab && activeTab.filePath) {
+      const d = path.dirname(activeTab.filePath);
+      if (fs.existsSync(d)) return d;
+    }
+    return null;
+  }
+
+  function scanSourceRootFiles(matcherFn) {
+    const results = [];
+    const rootDir = getActiveSourceRootDir();
+    if (!rootDir || !fs.existsSync(rootDir)) return results;
     try {
-      const files = fs.readdirSync(currentProjectDir);
-      for (const f of files) {
-        if (f.endsWith('.bib')) {
-          const content = fs.readFileSync(path.join(currentProjectDir, f), 'utf8');
-          const matches = content.match(/@\w+\s*\{\s*([^,\s]+)/g);
-          if (matches) {
-            matches.forEach(m => {
-              const k = m.replace(/@\w+\s*\{\s*/, '').trim();
-              if (k) keys.push(k);
-            });
+      const scan = (dir, prefix = '') => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const ent of entries) {
+          if (ent.name.startsWith('.') || ent.name === 'node_modules' || ent.name === 'build') continue;
+          const rel = prefix ? `${prefix}/${ent.name}` : ent.name;
+          const full = path.join(dir, ent.name);
+          let isDir = ent.isDirectory();
+          if (ent.isSymbolicLink()) {
+            try { isDir = fs.statSync(full).isDirectory(); } catch (_) { continue; }
+          }
+          if (isDir) {
+            scan(full, rel);
+          } else if (matcherFn(ent.name, full, rel)) {
+            results.push({ rel, full });
           }
         }
-      }
-    } catch (e) {}
+      };
+      scan(rootDir);
+    } catch (_) {}
+    return results;
+  }
+
+  function getProjectBibKeys() {
+    const keys = [];
+    const bibFiles = scanSourceRootFiles((name) => name.toLowerCase().endsWith('.bib'));
+    for (const { full } of bibFiles) {
+      try {
+        const content = fs.readFileSync(full, 'utf8');
+        const matches = content.match(/@\w+\s*\{\s*([^,\s]+)/g);
+        if (matches) {
+          matches.forEach(m => {
+            const k = m.replace(/@\w+\s*\{\s*/, '').trim();
+            if (k) keys.push(k);
+          });
+        }
+      } catch (_) {}
+    }
     return keys;
   }
 
   function getProjectImageFiles() {
-    const images = [];
-    if (!currentProjectDir || !fs.existsSync(currentProjectDir)) return images;
-    try {
-      const scan = (dir, prefix = '') => {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-        for (const ent of entries) {
-          if (ent.name.startsWith('.') || ent.name === 'node_modules' || ent.name === 'build') continue;
-          const rel = prefix ? `${prefix}/${ent.name}` : ent.name;
-          if (ent.isDirectory()) {
-            scan(path.join(dir, ent.name), rel);
-          } else if (/\.(png|jpe?g|pdf|eps|svg)$/i.test(ent.name)) {
-            images.push(rel);
-          }
-        }
-      };
-      scan(currentProjectDir);
-    } catch (e) {}
-    return images;
+    return scanSourceRootFiles((name) => /\.(png|jpe?g|pdf|eps|svg)$/i.test(name)).map(f => f.rel);
   }
 
   function getProjectTexFiles() {
-    const texFiles = [];
-    if (!currentProjectDir || !fs.existsSync(currentProjectDir)) return texFiles;
-    try {
-      const scan = (dir, prefix = '') => {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-        for (const ent of entries) {
-          if (ent.name.startsWith('.') || ent.name === 'node_modules' || ent.name === 'build') continue;
-          const rel = prefix ? `${prefix}/${ent.name}` : ent.name;
-          if (ent.isDirectory()) {
-            scan(path.join(dir, ent.name), rel);
-          } else if (ent.name.endsWith('.tex')) {
-            texFiles.push(rel);
-          }
+    return scanSourceRootFiles((name) => name.toLowerCase().endsWith('.tex')).map(f => f.rel);
+  }
+
+  function resolveProjectInputPath(rawTarget) {
+    if (!rawTarget) return null;
+    const cleanTarget = String(rawTarget).trim();
+    const candidates = path.extname(cleanTarget) ? [cleanTarget] : [cleanTarget, `${cleanTarget}.tex`];
+    const activeTab = getActiveTab();
+    const searchRoots = [];
+    const srcRoot = getActiveSourceRootDir();
+    if (srcRoot) searchRoots.push(srcRoot);
+    if (activeTab && activeTab.filePath) searchRoots.push(path.dirname(activeTab.filePath));
+    if (currentProjectDir) searchRoots.push(currentProjectDir);
+
+    for (const root of searchRoots) {
+      for (const rel of candidates) {
+        const resolved = path.resolve(root, rel);
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          return resolved;
         }
-      };
-      scan(currentProjectDir);
-    } catch (e) {}
-    return texFiles;
+      }
+    }
+
+    // Fallback: match by basename within active source root (useful when TeX log strips parent dir)
+    const wantedBase = path.basename(candidates[candidates.length - 1]).toLowerCase();
+    const hit = scanSourceRootFiles((name) => name.toLowerCase() === wantedBase);
+    return hit.length > 0 ? hit[0].full : null;
   }
 
   // Ctrl+Click multi-file navigation on \input{...} and \include{...}
@@ -725,18 +821,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         const matchStart = line.from + m.index;
         const matchEnd = matchStart + m[0].length;
         if (sel >= matchStart && sel <= matchEnd) {
-          let targetRel = m[1].trim();
-          if (!path.extname(targetRel)) targetRel += '.tex';
-          const activeTab = getActiveTab();
-          const baseDir = currentProjectDir || (activeTab && activeTab.filePath ? path.dirname(activeTab.filePath) : null);
-          if (baseDir) {
-            const resolved = path.resolve(baseDir, targetRel);
-            if (fs.existsSync(resolved)) {
-              openFileFromPath(resolved);
-              showNotification(`Aperto: ${path.basename(resolved)}`, "info");
-            } else {
-              showNotification(`File non trovato: ${targetRel}`, "warning");
-            }
+          const rawTarget = m[1].trim();
+          const resolved = resolveProjectInputPath(rawTarget);
+          if (resolved) {
+            openFileFromPath(resolved);
+            showNotification(`Aperto: ${path.basename(resolved)}`, "info");
+          } else {
+            showNotification(`File non trovato: ${rawTarget}`, "warning");
           }
           break;
         }
@@ -1460,7 +1551,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   // ====== MAIN DOCUMENT & COMPILATION ======
   function setMainDocument(filePath) {
     mainDocumentPath = filePath;
-    if (!isLinkedProject) {
+    if (isLinkedProject && currentProject && filePath) {
+      currentProject.mainBase = path.basename(filePath, path.extname(filePath));
+    } else if (!isLinkedProject) {
       currentProjectDir = path.dirname(filePath);
     }
     footerMainDoc.textContent = `Principale: ${path.basename(filePath)}`;
@@ -1526,14 +1619,48 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     isCompiling = true;
     btnRecompile.classList.add("compiling");
+    saveActiveTabState();
 
     let targetPath = (isLinkedProject && mainDocumentPath)
       ? mainDocumentPath
       : (tab && tab.filePath ? tab.filePath : (mainDocumentPath && fs.existsSync(mainDocumentPath) ? mainDocumentPath : null));
-    let contentToPass = cm ? cm.getValue() : (tab ? tab.content : "");
 
-    const workDir = isLinkedProject && currentProject ? currentProject.storePath : currentProjectDir;
+    let contentToPass = "";
+    if (!targetPath || (tab && tab.filePath && path.resolve(tab.filePath) === path.resolve(targetPath))) {
+      contentToPass = cm ? cm.getValue() : (tab ? tab.content : "");
+    } else {
+      const targetTab = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(targetPath));
+      if (targetTab && typeof targetTab.content === "string") {
+        contentToPass = targetTab.content;
+      } else if (fs.existsSync(targetPath)) {
+        try {
+          contentToPass = fs.readFileSync(targetPath, "utf8");
+        } catch (_) {
+          contentToPass = "";
+        }
+      }
+    }
+
+    const workDir = isLinkedProject && currentProject
+      ? currentProject.storePath
+      : (currentProjectDir || (targetPath ? path.dirname(targetPath) : null));
     const outputDir = isLinkedProject && currentProject ? path.join(currentProject.storePath, '.lack', 'build') : null;
+
+    // Stage any dirty open subfiles belonging to workDir so unsaved \input files compile live
+    const extraBuffers = [];
+    if (workDir) {
+      const resolvedWorkDir = path.resolve(workDir);
+      const resolvedTarget = targetPath ? path.resolve(targetPath) : null;
+      for (const t of tabs) {
+        if (!t.dirty || !t.filePath || typeof t.content !== "string") continue;
+        const resolvedTab = path.resolve(t.filePath);
+        if (resolvedTarget && resolvedTab === resolvedTarget) continue;
+        const rel = path.relative(resolvedWorkDir, resolvedTab);
+        if (rel && !rel.startsWith("..") && !path.isAbsolute(rel) && !rel.startsWith(`.lack${path.sep}`) && rel !== ".lack") {
+          extraBuffers.push({ relPath: rel, content: t.content });
+        }
+      }
+    }
 
     const compileOpts = {
       filePath: targetPath,
@@ -1543,8 +1670,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       engine: config.engine,
       customEnginePath: config.customEnginePath,
       cleanAux: config.cleanAux,
+      extraBuffers,
       isMemoryBuffer: true // Compile in-memory buffer without overwriting disk file
     };
+
+    const mainFallbackName = targetPath ? path.basename(targetPath) : 'main.tex';
 
     try {
       const res = await ipcRenderer.invoke('compile-latex', compileOpts);
@@ -1552,7 +1682,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       btnRecompile.classList.remove("compiling");
 
       latestIssues = res.issues || [];
-      renderLogIssues(latestIssues, res.log);
+      renderLogIssues(latestIssues, res.log, mainFallbackName);
 
       if (cm) {
         if (latestIssues.length > 0) {
@@ -1610,7 +1740,7 @@ window.addEventListener("DOMContentLoaded", async () => {
           pdfErrorPlaceholder.classList.remove("hidden");
           const primaryErr = (latestIssues || []).find(i => i.type === "error");
           if (primaryErr) {
-            if (pdfErrorFileline) pdfErrorFileline.textContent = `${primaryErr.file || 'main.tex'}:${primaryErr.line || 1}`;
+            if (pdfErrorFileline) pdfErrorFileline.textContent = `${primaryErr.file || mainFallbackName}:${primaryErr.line || 1}`;
             if (pdfErrorMsg) pdfErrorMsg.textContent = primaryErr.message || "Errore sconosciuto";
           } else {
             if (pdfErrorFileline) pdfErrorFileline.textContent = "Errore di compilazione";
@@ -1677,7 +1807,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ====== LOGS AND ISSUES DRAWER ======
-  function renderLogIssues(issues, rawLog) {
+  function renderLogIssues(issues, rawLog, defaultFileName = "main.tex") {
     logsIssuesList.innerHTML = "";
     logsRawText.textContent = rawLog || "";
 
@@ -1717,7 +1847,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       item.innerHTML = `
         <div class="log-issue-header">
           <span class="log-issue-badge ${isErr ? 'error' : 'warning'}">${badgeLabel}</span>
-          <span class="log-issue-file">${escapeHtml(iss.file || "main.tex")}:${iss.line}</span>
+          <span class="log-issue-file">${escapeHtml(iss.rawFile || iss.file || defaultFileName)}:${iss.line}</span>
         </div>
         <div class="log-issue-msg">${escapeHtml(iss.message)}</div>
         ${missingPackageBanner}
@@ -1730,6 +1860,14 @@ window.addEventListener("DOMContentLoaded", async () => {
       });
 
       item.addEventListener("click", () => {
+        const targetCandidate = iss.rawFile || iss.file;
+        const activeTab = getActiveTab();
+        if (targetCandidate) {
+          const resolvedIssueFile = resolveProjectInputPath(targetCandidate);
+          if (resolvedIssueFile && (!activeTab || !activeTab.filePath || path.resolve(activeTab.filePath) !== path.resolve(resolvedIssueFile))) {
+            openFileFromPath(resolvedIssueFile);
+          }
+        }
         if (iss.line && cm) {
           cm.jumpToLine(iss.line);
           cm.highlightErrorLine(iss.line);
@@ -1766,7 +1904,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   };
 
   async function cleanAuxiliaryFiles() {
-    const removed = latexCompiler.cleanAuxiliaryFiles(currentProjectDir, null);
+    const workDir = isLinkedProject && currentProject ? currentProject.storePath : currentProjectDir;
+    const buildDir = isLinkedProject && currentProject ? path.join(currentProject.storePath, '.lack', 'build') : null;
+    const removed = latexCompiler.cleanAuxiliaryFiles(workDir, buildDir);
     showNotification(`File ausiliari puliti: ${removed} file rimossi.`, "info");
   }
 
@@ -2381,7 +2521,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         type: 'warning',
         icon: 'warning',
         title: "Sposta nel cestino",
-        message: `Sei sicuro di voler spostare "${fileName}" nel cestino? Nessun file viene eliminato definitivamente.`,
+        message: `Sei sicuro di voler spostare "${fileName}" nel cestino?`,
         buttons: [
           { text: "Annulla", value: 1, isCancel: true },
           { text: "Sposta nel cestino", value: 0, isDanger: true, isPrimary: true }
@@ -2417,7 +2557,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         type: 'warning',
         icon: 'warning',
         title: "Sposta nel cestino",
-        message: `Sei sicuro di voler spostare ${count} elementi nel cestino? Nessun file viene eliminato definitivamente.`,
+        message: `Sei sicuro di voler spostare ${count} elementi nel cestino?`,
         buttons: [
           { text: "Annulla", value: 1, isCancel: true },
           { text: "Sposta nel cestino", value: 0, isDanger: true, isPrimary: true }
@@ -3594,11 +3734,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         card.querySelector(".btn-card-delete").onclick = async () => {
           const choice = await showCustomConfirmDialog({
             title: "Eliminazione Progetto",
-            message: `Stai eliminando il progetto "${proj.name}".\n\nVuoi mantenere i dati sorgente archiviati nello store (in modo da poter ricreare o duplicare il PDF in futuro), oppure eliminare definitivamente tutti i dati del progetto?`,
+            message: `Stai eliminando il progetto "${proj.name}".\n\nVuoi mantenere i dati sorgente archiviati nello store (in modo da poter ricreare o duplicare il PDF in futuro), oppure spostare nel cestino tutti i dati del progetto?`,
             buttons: [
               { text: "Annulla", value: 'cancel', isCancel: true },
               { text: "Mantieni dati sorgente", value: 'keep_sources', isPrimary: true },
-              { text: "Elimina tutti i dati", value: 'delete_all', isDanger: true }
+              { text: "Sposta tutto nel cestino", value: 'delete_all', isDanger: true }
             ]
           });
           if (choice === 'keep_sources') {

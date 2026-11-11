@@ -54670,7 +54670,14 @@ var require_linter_logic = __commonJS({
       if (!text2 || typeof text2 !== "string") return diagnostics;
       const db = getCommandsDb();
       const loadedPackages = extractLoadedPackages(text2);
-      const { localCommands, localEnvironments } = extractLocalDefinitions(text2, options.extraStyContent || "");
+      let extraStyContent = options.extraStyContent || "";
+      if (options.preambleText && typeof options.preambleText === "string") {
+        for (const pkg of extractLoadedPackages(options.preambleText)) {
+          loadedPackages.add(pkg);
+        }
+        extraStyContent += "\n" + options.preambleText;
+      }
+      const { localCommands, localEnvironments } = extractLocalDefinitions(text2, extraStyContent);
       const validCommands = new Set(localCommands);
       const validEnvironments = new Set(localEnvironments);
       const knownCommandNames = [];
@@ -54939,6 +54946,23 @@ var require_linter_logic = __commonJS({
       if (effectivePackages.has("amsthm")) effectivePackages.add("mathtools");
       if (effectivePackages.has("mathtools")) effectivePackages.add("amsmath");
       if (effectivePackages.has("amssymb")) effectivePackages.add("amsfonts");
+      if (effectivePackages.has("pgfplotstable")) effectivePackages.add("pgfplots");
+      if (effectivePackages.has("pgfplots") || effectivePackages.has("circuitikz") || effectivePackages.has("forest") || effectivePackages.has("tcolorbox") || effectivePackages.has("tikz-cd")) {
+        effectivePackages.add("tikz");
+      }
+      if (effectivePackages.has("tikz")) {
+        effectivePackages.add("xcolor");
+        effectivePackages.add("graphicx");
+      }
+      if (effectivePackages.has("beamer")) {
+        effectivePackages.add("tikz");
+        effectivePackages.add("xcolor");
+        effectivePackages.add("hyperref");
+        effectivePackages.add("graphicx");
+      }
+      if (effectivePackages.has("subcaption")) {
+        effectivePackages.add("caption");
+      }
       if (effectivePackages.has("amsart") || effectivePackages.has("amsbook") || effectivePackages.has("amsproc")) {
         effectivePackages.add("amsmath");
         effectivePackages.add("amssymb");
@@ -54964,6 +54988,55 @@ var require_linter_logic = __commonJS({
           validCommands.add(c);
           knownCommandNames.push(c);
         });
+      }
+      if (effectivePackages.has("siunitx")) {
+        [
+          "SI",
+          "si",
+          "sisetup",
+          "num",
+          "ang",
+          "qty",
+          "unit",
+          "qtyrange",
+          "numrange",
+          "SIrange",
+          "complexnum",
+          "complexqty",
+          "qtylist",
+          "numlist",
+          "tablenum",
+          "DeclareSIUnit",
+          "micro",
+          "percent",
+          "celsius",
+          "ohm",
+          "hertz",
+          "meter",
+          "metre",
+          "second",
+          "watt",
+          "joule",
+          "volt",
+          "ampere",
+          "kelvin",
+          "kilo",
+          "milli",
+          "nano",
+          "pico",
+          "mega",
+          "giga"
+        ].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+      }
+      if (effectivePackages.has("pgfplots")) {
+        ["pgfplotsset", "usepgfplotslibrary", "addplot", "addlegendentry", "legend", "pgfplotssetlayers", "pgfplotsinvokeforeach"].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+        ["axis", "semilogxaxis", "semilogyaxis", "loglogaxis", "groupplot"].forEach((e) => validEnvironments.add(e));
       }
       if (effectivePackages.has("tabularx")) {
         validEnvironments.add("tabularx");
@@ -55033,6 +55106,13 @@ var require_linter_logic = __commonJS({
         const from = cm.index;
         const to = from + cm[0].length;
         if (isMasked[from]) continue;
+        let prevBackslashes = 0;
+        let backIdx = from - 1;
+        while (backIdx >= 0 && text2[backIdx] === "\\") {
+          prevBackslashes++;
+          backIdx--;
+        }
+        if (prevBackslashes % 2 === 1) continue;
         const cmdName = cm[1];
         if (cmdName === "newcommand" || cmdName === "renewcommand" || cmdName === "providecommand" || cmdName === "def" || cmdName === "let" || cmdName === "newenvironment" || cmdName === "renewenvironment" || cmdName === "newcounter") {
           continue;
@@ -55194,10 +55274,19 @@ var require_linter = __commonJS({
     var { linter } = require_dist12();
     var { lintLatexDocument } = require_linter_logic();
     var path = require("path");
+    function doesIssueMatchFile2(iss, activeFilePath) {
+      if (!iss || !iss.file && !iss.rawFile || !activeFilePath) return true;
+      const norm = (p) => path.basename(String(p)).replace(/\.tex$/i, "").toLowerCase();
+      const activeBase = norm(activeFilePath);
+      const issueBase = norm(iss.rawFile || iss.file);
+      if (!activeBase || !issueBase) return true;
+      return activeBase === issueBase;
+    }
     function latexLinterExtension2(manager = null) {
       return linter((view) => {
         const text2 = view.state.doc.toString();
-        const staticDiagnostics = lintLatexDocument(text2);
+        const preambleText = manager && typeof manager.getMainPreamble === "function" ? manager.getMainPreamble() || "" : "";
+        const staticDiagnostics = lintLatexDocument(text2, { preambleText });
         const result = staticDiagnostics.map((d) => {
           const item = {
             from: Math.max(0, Math.min(d.from, text2.length)),
@@ -55223,11 +55312,10 @@ var require_linter = __commonJS({
         });
         if (manager && manager.compilerIssues && manager.compilerIssues.length > 0) {
           const activeFilePath = manager.activeFilePath;
-          const activeBase = activeFilePath ? path.basename(activeFilePath) : null;
           const docLines = view.state.doc.lines;
           for (const iss of manager.compilerIssues) {
             if (iss.type !== "error" && iss.type !== "warning") continue;
-            if (iss.file && activeBase && path.basename(iss.file) !== activeBase) continue;
+            if (!doesIssueMatchFile2(iss, activeFilePath)) continue;
             const lineNum = iss.line;
             if (!lineNum || lineNum < 1 || lineNum > docLines) continue;
             const line = view.state.doc.line(lineNum);
@@ -55269,7 +55357,7 @@ var require_linter = __commonJS({
         return result;
       }, { delay: 250 });
     }
-    module2.exports = { latexLinterExtension: latexLinterExtension2 };
+    module2.exports = { latexLinterExtension: latexLinterExtension2, doesIssueMatchFile: doesIssueMatchFile2 };
   }
 });
 
@@ -56722,7 +56810,7 @@ var {
   createRenameSyncFilter
 } = require_autopair();
 var { createLatexCompletionSource } = require_autocomplete();
-var { latexLinterExtension } = require_linter();
+var { latexLinterExtension, doesIssueMatchFile } = require_linter();
 var {
   createSpellCheckPlugin,
   setLanguage: setSpellLanguageInternal,
@@ -56863,7 +56951,8 @@ var CodeMirrorManager = class {
     this.projectContext = {
       getBibKeys: options.getBibKeys || (() => []),
       getImageFiles: options.getImageFiles || (() => []),
-      getTexFiles: options.getTexFiles || (() => [])
+      getTexFiles: options.getTexFiles || (() => []),
+      getMainPreamble: options.getMainPreamble || (() => "")
     };
     this.initEditor(options.initialValue || "");
   }
@@ -57121,6 +57210,12 @@ var CodeMirrorManager = class {
     });
     this.view.focus();
   }
+  getMainPreamble() {
+    if (this.projectContext && typeof this.projectContext.getMainPreamble === "function") {
+      return this.projectContext.getMainPreamble() || "";
+    }
+    return "";
+  }
   setCompilerIssues(issues = [], activeFilePath = null) {
     this.compilerIssues = Array.isArray(issues) ? issues : [];
     this.activeFilePath = activeFilePath;
@@ -57129,7 +57224,7 @@ var CodeMirrorManager = class {
         forceLinting(this.view);
       } catch (_) {
       }
-      const errorLines = this.compilerIssues.filter((i2) => i2.type === "error" && i2.line).map((i2) => i2.line);
+      const errorLines = this.compilerIssues.filter((i2) => i2.type === "error" && i2.line && doesIssueMatchFile(i2, activeFilePath)).map((i2) => i2.line);
       if (errorLines.length > 0) {
         this.highlightErrorLines(errorLines);
       } else {

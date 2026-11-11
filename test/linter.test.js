@@ -90,3 +90,31 @@ Testo con {parentesi aperta non chiusa.
   const braceDiag = diags.find(d => d.message.includes('Missing }'));
   assert.ok(braceDiag, 'Should flag unclosed brace');
 });
+
+test('recognizes pgfplots/siunitx packages and ignores text after \\\\ linebreaks', () => {
+  const input = `\\documentclass{article}
+\\usepackage{pgfplots}
+\\usepackage{siunitx}
+\\pgfplotsset{compat=1.17}
+\\sisetup{output-decimal-marker={.}}
+\\begin{document}
+{\\large \\textbf{Students} \\\\Alice Smith \\\\Bob Jones\\\\}
+Power: \\SI{27.6}{mW}, \\micro s, \\percent.
+\\end{document}`;
+
+  const diags = lintLatexDocument(input);
+  assert.strictEqual(diags.length, 0, 'Should produce 0 false diagnostics for pgfplots, siunitx, and \\\\ linebreaks');
+});
+
+test('subfiles inherit loaded packages and macros from preambleText', () => {
+  const mainDoc = `\\documentclass{article}
+\\usepackage{graphicx,booktabs,siunitx}
+\\newcommand{\\mybadge}{OK}`;
+  const subfile = `\\section{Results}
+\\includegraphics[width=5cm]{images/logo.png}
+\\begin{tabular}{cc}\\toprule A & \\SI{10}{ms} \\\\ \\bottomrule\\end{tabular}
+\\mybadge`;
+
+  const diags = lintLatexDocument(subfile, { preambleText: mainDoc });
+  assert.strictEqual(diags.length, 0, 'Subfile should inherit packages and macros from main preamble');
+});

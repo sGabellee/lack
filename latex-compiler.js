@@ -148,35 +148,86 @@ function getBestAvailableEngine(preferredEngine = null) {
   return "builtin";
 }
 
+function isTexLogFileToken(token) {
+  if (!token || /\s/.test(token)) return false;
+  return /\.(?:tex|sty|cls|aux|bib|fd|def|ldf|cfg|trsl|clo)$/i.test(token) || /[\\/]/.test(token);
+}
+
+function updateLogParenStack(line, parenStack) {
+  for (let idx = 0; idx < line.length; idx++) {
+    const ch = line[idx];
+    if (ch === '(') {
+      let end = idx + 1;
+      while (end < line.length && line[end] !== '(' && line[end] !== ')' && !/\s/.test(line[end])) {
+        end++;
+      }
+      const candidate = line.slice(idx + 1, end);
+      if (isTexLogFileToken(candidate)) {
+        parenStack.push({ isFile: true, file: candidate });
+      } else {
+        parenStack.push({ isFile: false });
+      }
+    } else if (ch === ')' && parenStack.length > 0) {
+      parenStack.pop();
+    }
+  }
+  for (let i = parenStack.length - 1; i >= 0; i--) {
+    if (parenStack[i].isFile) return parenStack[i].file;
+  }
+  return "";
+}
+
+function normalizeIssueKey(issue) {
+  const cleanMsg = String(issue.message || "")
+    .replace(/^!+\s*/, "")
+    .replace(/[`'"]/g, "'")
+    .replace(/\.+$/, "")
+    .trim()
+    .toLowerCase();
+  return `${issue.type}|${issue.line || 0}|${cleanMsg}`;
+}
+
 function parseLatexLog(logContent) {
   const issues = [];
+  const seenKeys = new Map();
   const lines = logContent.split(/\r?\n/);
 
   let currentFile = "";
-  const fileStack = [];
+  const parenStack = [];
+
+  function pushIssue(iss) {
+    const key = normalizeIssueKey(iss);
+    const existingIdx = seenKeys.get(key);
+    if (existingIdx !== undefined) {
+      const existing = issues[existingIdx];
+      // Prefer entry with more specific file path or command context
+      if (!existing.file && iss.file) {
+        issues[existingIdx] = iss;
+      } else if (!existing.command && iss.command) {
+        issues[existingIdx] = { ...existing, command: iss.command };
+      }
+      return;
+    }
+    seenKeys.set(key, issues.length);
+    issues.push(iss);
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Track active file from log parens e.g. (./chapters/intro.tex
-    const enterMatch = line.match(/\(([^()]+?\.(?:tex|sty|cls|aux|bib))\b/);
-    if (enterMatch) {
-      currentFile = enterMatch[1];
-      fileStack.push(currentFile);
-    }
-    if (line.includes(")") && fileStack.length > 0) {
-      fileStack.pop();
-      currentFile = fileStack[fileStack.length - 1] || "";
-    }
+    // Track balanced parens accurately across multi-open/close lines
+    currentFile = updateLogParenStack(line, parenStack);
 
-    // 1. File-line message format: e.g. "filename.tex:14: Error message" or "warning: filename.tex:93: Overfull \hbox"
-    const fileLineMatch = line.match(/^(?:(warning|error|info):\s*)?(.+?\.(?:tex|sty|cls|aux|bib)):(\d+):\s*(.*)$/i);
+    // 1. File-line message format: e.g. "filename.tex:14: Error message" or Tectonic "warning: sections/Ass1_1:57: ..."
+    const fileLineMatch =
+      line.match(/^(?:(warning|error|info):\s*)?(.+?\.(?:tex|sty|cls|aux|bib)):(\d+):\s*(.*)$/i) ||
+      line.match(/^(warning|error|info):\s*([^\s:()]+):(\d+):\s*(.*)$/i);
     if (fileLineMatch) {
       const prefixSev = (fileLineMatch[1] || "").toLowerCase();
       let rawFilePath = fileLineMatch[2].trim();
       rawFilePath = rawFilePath.replace(/^(?:warning|error|info):\s*/i, "");
       const lineNum = parseInt(fileLineMatch[3], 10);
-      const msg = fileLineMatch[4].trim();
+      const msg = fileLineMatch[4].trim().replace(/^!+\s*/, "");
 
       const isWarning = prefixSev === "warning" ||
         /^warning:\s*/i.test(msg) ||
@@ -186,9 +237,10 @@ function parseLatexLog(logContent) {
       const isBox = /\b(?:overfull|underfull)\s+\\[hv]box\b/i.test(msg);
 
       if (isWarning || isBox) {
-        issues.push({
+        pushIssue({
           type: isBox ? "box" : "warning",
           file: path.basename(rawFilePath),
+          rawFile: rawFilePath,
           line: lineNum,
           message: msg.replace(/^warning:\s*/i, ""),
           command: null,
@@ -217,9 +269,10 @@ function parseLatexLog(logContent) {
         }
       }
 
-      issues.push({
+      pushIssue({
         type: "error",
         file: path.basename(rawFilePath),
+        rawFile: rawFilePath,
         line: lineNum,
         message: msg.replace(/^error:\s*/i, ""),
         command: errorCmd,
@@ -230,7 +283,7 @@ function parseLatexLog(logContent) {
 
     // 2. Traditional TeX error starting with '!'
     if (line.startsWith("!")) {
-      const errorMsg = line.slice(1).trim();
+      const errorMsg = line.replace(/^!+\s*/, "").replace(/\.{2,}$/, ".").trim();
       let errorLine = null;
       let errorCmd = null;
 
@@ -254,9 +307,10 @@ function parseLatexLog(logContent) {
         missingPackage = pkgMatch[1];
       }
 
-      issues.push({
+      pushIssue({
         type: "error",
         file: currentFile ? path.basename(currentFile) : "",
+        rawFile: currentFile || "",
         line: errorLine || 1,
         message: errorMsg,
         command: errorCmd,
@@ -273,9 +327,10 @@ function parseLatexLog(logContent) {
       const lineMatch = line.match(/line (\d+)/i);
       if (lineMatch) warnLine = parseInt(lineMatch[1], 10);
 
-      issues.push({
+      pushIssue({
         type: "warning",
         file: currentFile ? path.basename(currentFile) : "",
+        rawFile: currentFile || "",
         line: warnLine || 1,
         message: warnMatch[1].trim(),
         raw: line
@@ -286,9 +341,10 @@ function parseLatexLog(logContent) {
     // 4. Overfull / Underfull hbox warnings
     const boxMatch = line.match(/(Overfull|Underfull) \\[hv]box \([^)]+\) in paragraph at lines (\d+)--(\d+)/);
     if (boxMatch) {
-      issues.push({
+      pushIssue({
         type: "box",
         file: currentFile ? path.basename(currentFile) : "",
+        rawFile: currentFile || "",
         line: parseInt(boxMatch[2], 10),
         message: `${boxMatch[1]} hbox: lines ${boxMatch[2]}--${boxMatch[3]}`,
         raw: line
@@ -309,6 +365,12 @@ function cleanAuxiliaryFiles(projectDir, outputDir) {
     try {
       const files = fs.readdirSync(dir);
       for (const file of files) {
+        if (file === "_stage") {
+          try {
+            fs.rmSync(path.join(dir, file), { recursive: true, force: true });
+          } catch (_) {}
+          continue;
+        }
         const ext = path.extname(file).toLowerCase();
         if (auxExtensions.includes(ext)) {
           try {
@@ -323,6 +385,53 @@ function cleanAuxiliaryFiles(projectDir, outputDir) {
   return removedCount;
 }
 
+function prepareSearchDirsAndStage({ workDir, targetFile, outDir, extraBuffers = [] }) {
+  const stageDir = path.join(outDir, "_stage");
+  try {
+    fs.rmSync(stageDir, { recursive: true, force: true });
+  } catch (_) {}
+
+  let hasStaged = false;
+  if (Array.isArray(extraBuffers) && extraBuffers.length > 0) {
+    fs.mkdirSync(stageDir, { recursive: true });
+    for (const buf of extraBuffers) {
+      if (!buf || !buf.relPath || typeof buf.content !== "string") continue;
+      const cleanRel = buf.relPath.replace(/^[\\/]+/, "");
+      const dest = path.resolve(stageDir, cleanRel);
+      const relCheck = path.relative(path.resolve(stageDir), dest);
+      if (!relCheck || relCheck.startsWith("..") || path.isAbsolute(relCheck)) continue;
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, buf.content, "utf8");
+      hasStaged = true;
+    }
+  }
+
+  const dirs = [];
+  const seen = new Set();
+  const addDir = (d) => {
+    if (!d) return;
+    const resolved = path.resolve(d);
+    if (!seen.has(resolved) && fs.existsSync(resolved)) {
+      seen.add(resolved);
+      dirs.push(resolved);
+    }
+  };
+
+  if (hasStaged) addDir(stageDir);
+  if (targetFile) addDir(path.dirname(targetFile));
+  addDir(workDir);
+  return dirs;
+}
+
+function appendTexSearchEnv(existingValue, searchDirs) {
+  if (!searchDirs || searchDirs.length === 0) return existingValue;
+  const prefix = searchDirs.join(path.delimiter);
+  if (!existingValue) {
+    return prefix + path.delimiter;
+  }
+  return `${prefix}${path.delimiter}${existingValue}`;
+}
+
 async function compileLatex(options = {}) {
   const {
     filePath,
@@ -331,6 +440,7 @@ async function compileLatex(options = {}) {
     engine = "pdflatex",
     outputDir = null,
     cleanAux = false,
+    extraBuffers = [],
     isMemoryBuffer = true // In-memory compilation: never overwrite user's disk file
   } = options;
 
@@ -379,6 +489,9 @@ async function compileLatex(options = {}) {
     try { fs.mkdirSync(outDir, { recursive: true }); } catch (e) {}
   }
 
+  // Ensure relative \input, \include, \includegraphics, .bib, and unsaved subfiles resolve from workDir
+  const searchDirs = prepareSearchDirsAndStage({ workDir, targetFile, outDir, extraBuffers });
+
   // If memory buffer: write to a dedicated build file in outDir or workDir so user's file is not overwritten
   let compileSourceFile = targetFile;
   const baseName = targetFile ? path.basename(targetFile, path.extname(targetFile)) : "document";
@@ -408,7 +521,8 @@ async function compileLatex(options = {}) {
     binPath = process.env.LACK_ENGINE_CMD;
     args = [outDir, compileSourceFile];
   } else if (engine === "tectonic") {
-    args = ["--synctex", "--outdir", outDir, compileSourceFile];
+    const searchArgs = searchDirs.flatMap(d => ["-Z", `search-path=${d}`]);
+    args = ["--synctex", ...searchArgs, "--outdir", outDir, compileSourceFile];
   } else if (engine === "latexmk") {
     args = ["-pdf", "-interaction=nonstopmode", "-synctex=1", "-file-line-error", `-outdir=${outDir}`, compileSourceFile];
   } else {
@@ -423,6 +537,11 @@ async function compileLatex(options = {}) {
     const env = { ...process.env };
     if (EXTRA_SEARCH_PATHS.length > 0) {
       env.PATH = `${EXTRA_SEARCH_PATHS.join(path.delimiter)}${path.delimiter}${env.PATH || ""}`;
+    }
+    if (searchDirs.length > 0) {
+      env.TEXINPUTS = appendTexSearchEnv(env.TEXINPUTS, searchDirs);
+      env.BIBINPUTS = appendTexSearchEnv(env.BIBINPUTS, searchDirs);
+      env.BSTINPUTS = appendTexSearchEnv(env.BSTINPUTS, searchDirs);
     }
 
     try {
@@ -468,7 +587,10 @@ async function compileLatex(options = {}) {
         } catch (e) {}
       }
 
-      const issues = parseLatexLog(fullLog);
+      const defaultFileBase = path.basename(compileSourceFile);
+      const issues = parseLatexLog(fullLog).map(iss => (
+        iss.file ? iss : { ...iss, file: defaultFileBase, rawFile: iss.rawFile || defaultFileBase }
+      ));
       let resultingPdf = null;
       if (fs.existsSync(expectedPdfPath)) {
         resultingPdf = expectedPdfPath;

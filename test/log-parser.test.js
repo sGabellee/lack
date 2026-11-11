@@ -44,3 +44,29 @@ Type X to quit or <RETURN> to proceed.
   assert.ok(issues.length >= 1);
   assert.ok(issues[0].message.includes("File 'cleverref.sty' not found"));
 });
+
+test('tracks multi-paren log lines accurately and deduplicates tectonic error summary', () => {
+  const sampleLog = `Running TeX ...
+error: report.tex:20: ! LaTeX Error: File 'utils/front.tex' not found.
+error: something bad happened inside XeTeX; its output follows:
+(report.tex
+(article.cls (size12.clo)) (nameref.sty (refcount.sty) (gettitlestring.sty))
+! ! LaTeX Error: File 'utils/front.tex' not found..
+l.20 \\input{utils/front.tex}
+`;
+  const issues = parseLatexLog(sampleLog);
+  assert.strictEqual(issues.length, 1);
+  assert.strictEqual(issues[0].file, 'report.tex');
+  assert.strictEqual(issues[0].line, 20);
+  assert.strictEqual(issues[0].type, 'error');
+});
+
+test('parses extensionless tectonic subfile warning preserving rawFile path', () => {
+  const sampleLog = `warning: sections/Ass1_1:57: Overfull \\hbox (0.75818pt too wide) in paragraph at lines 56--57`;
+  const issues = parseLatexLog(sampleLog);
+  assert.strictEqual(issues.length, 1);
+  assert.strictEqual(issues[0].file, 'Ass1_1');
+  assert.strictEqual(issues[0].rawFile, 'sections/Ass1_1');
+  assert.strictEqual(issues[0].line, 57);
+  assert.strictEqual(issues[0].type, 'box');
+});

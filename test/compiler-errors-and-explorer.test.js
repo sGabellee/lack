@@ -176,3 +176,55 @@ test('batch deletion removes deduplicated targets and closes matching tabs', () 
 
   assert.deepStrictEqual(closedTabs, ['t1', 't2']);
 });
+
+test('compileLatex propagates projectDir TEXINPUTS and stages dirty extraBuffers for build isolation', async () => {
+  const { compileLatex } = require('../latex-compiler');
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lack-compile-stage-'));
+  const workDir = path.join(tmpRoot, 'proj');
+  const outDir = path.join(workDir, '.lack', 'build');
+  fs.mkdirSync(path.join(workDir, 'sections'), { recursive: true });
+  fs.writeFileSync(path.join(workDir, 'report.tex'), '\\documentclass{article}\\begin{document}\\input{sections/Ass1_1}\\end{document}');
+  fs.writeFileSync(path.join(workDir, 'sections', 'Ass1_1.tex'), 'on-disk');
+
+  const probeEnvPath = path.join(tmpRoot, 'probe.json');
+  const stubPath = path.join(tmpRoot, 'stub-engine.js');
+  fs.writeFileSync(stubPath, `#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+const outDir = process.argv[2];
+const stagedPath = path.join(outDir, '_stage', 'sections', 'Ass1_1.tex');
+fs.writeFileSync(${JSON.stringify(probeEnvPath)}, JSON.stringify({
+  texinputs: process.env.TEXINPUTS || '',
+  stagedContent: fs.existsSync(stagedPath) ? fs.readFileSync(stagedPath, 'utf8') : null
+}));
+const src = process.argv[3];
+fs.writeFileSync(path.join(outDir, path.basename(src, '.tex') + '.pdf'), '%PDF-1.4\\n');
+`, { mode: 0o755 });
+
+  const prevCmd = process.env.LACK_ENGINE_CMD;
+  process.env.LACK_ENGINE_CMD = stubPath;
+  try {
+    const res = await compileLatex({
+      filePath: path.join(workDir, 'report.tex'),
+      content: '\\documentclass{article}\\begin{document}\\input{sections/Ass1_1}\\end{document}',
+      projectDir: workDir,
+      outputDir: outDir,
+      engine: 'tectonic',
+      extraBuffers: [{ relPath: 'sections/Ass1_1.tex', content: 'unsaved-live-buffer' }],
+      isMemoryBuffer: true
+    });
+    assert.strictEqual(res.success, true);
+    const probe = JSON.parse(fs.readFileSync(probeEnvPath, 'utf8'));
+    assert.ok(probe.texinputs.includes(workDir), 'TEXINPUTS must include project workDir');
+    assert.strictEqual(probe.stagedContent, 'unsaved-live-buffer');
+  } finally {
+    if (prevCmd === undefined) delete process.env.LACK_ENGINE_CMD;
+    else process.env.LACK_ENGINE_CMD = prevCmd;
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('delete confirmation dialogs do not include confusing non-permanent-delete disclaimer', () => {
+  const rendererSrc = fs.readFileSync(path.join(__dirname, '../renderer.js'), 'utf8');
+  assert.ok(!rendererSrc.includes('Nessun file viene eliminato definitivamente'));
+});

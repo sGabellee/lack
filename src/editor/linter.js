@@ -2,10 +2,22 @@ const { linter } = require('@codemirror/lint');
 const { lintLatexDocument } = require('./linter-logic');
 const path = require('path');
 
+function doesIssueMatchFile(iss, activeFilePath) {
+  if (!iss || (!iss.file && !iss.rawFile) || !activeFilePath) return true;
+  const norm = (p) => path.basename(String(p)).replace(/\.tex$/i, '').toLowerCase();
+  const activeBase = norm(activeFilePath);
+  const issueBase = norm(iss.rawFile || iss.file);
+  if (!activeBase || !issueBase) return true;
+  return activeBase === issueBase;
+}
+
 function latexLinterExtension(manager = null) {
   return linter((view) => {
     const text = view.state.doc.toString();
-    const staticDiagnostics = lintLatexDocument(text);
+    const preambleText = (manager && typeof manager.getMainPreamble === 'function')
+      ? (manager.getMainPreamble() || '')
+      : '';
+    const staticDiagnostics = lintLatexDocument(text, { preambleText });
     const result = staticDiagnostics.map((d) => {
       const item = {
         from: Math.max(0, Math.min(d.from, text.length)),
@@ -35,12 +47,11 @@ function latexLinterExtension(manager = null) {
     // Merge compiler issues if provided by manager
     if (manager && manager.compilerIssues && manager.compilerIssues.length > 0) {
       const activeFilePath = manager.activeFilePath;
-      const activeBase = activeFilePath ? path.basename(activeFilePath) : null;
       const docLines = view.state.doc.lines;
 
       for (const iss of manager.compilerIssues) {
         if (iss.type !== 'error' && iss.type !== 'warning') continue;
-        if (iss.file && activeBase && path.basename(iss.file) !== activeBase) continue;
+        if (!doesIssueMatchFile(iss, activeFilePath)) continue;
 
         const lineNum = iss.line;
         if (!lineNum || lineNum < 1 || lineNum > docLines) continue;
@@ -90,4 +101,4 @@ function latexLinterExtension(manager = null) {
   }, { delay: 250 });
 }
 
-module.exports = { latexLinterExtension };
+module.exports = { latexLinterExtension, doesIssueMatchFile };

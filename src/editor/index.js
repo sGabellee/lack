@@ -42,7 +42,7 @@ const {
   createRenameSyncFilter
 } = require('./autopair');
 const { createLatexCompletionSource } = require('./autocomplete');
-const { latexLinterExtension } = require('./linter');
+const { latexLinterExtension, doesIssueMatchFile } = require('./linter');
 const {
   createSpellCheckPlugin,
   setLanguage: setSpellLanguageInternal,
@@ -219,7 +219,8 @@ class CodeMirrorManager {
     this.projectContext = {
       getBibKeys: options.getBibKeys || (() => []),
       getImageFiles: options.getImageFiles || (() => []),
-      getTexFiles: options.getTexFiles || (() => [])
+      getTexFiles: options.getTexFiles || (() => []),
+      getMainPreamble: options.getMainPreamble || (() => '')
     };
 
     this.initEditor(options.initialValue || '');
@@ -514,13 +515,20 @@ class CodeMirrorManager {
     this.view.focus();
   }
 
+  getMainPreamble() {
+    if (this.projectContext && typeof this.projectContext.getMainPreamble === 'function') {
+      return this.projectContext.getMainPreamble() || '';
+    }
+    return '';
+  }
+
   setCompilerIssues(issues = [], activeFilePath = null) {
     this.compilerIssues = Array.isArray(issues) ? issues : [];
     this.activeFilePath = activeFilePath;
     if (this.view) {
       try { forceLinting(this.view); } catch (_) {}
       const errorLines = this.compilerIssues
-        .filter(i => i.type === 'error' && i.line)
+        .filter(i => i.type === 'error' && i.line && doesIssueMatchFile(i, activeFilePath))
         .map(i => i.line);
       if (errorLines.length > 0) {
         this.highlightErrorLines(errorLines);

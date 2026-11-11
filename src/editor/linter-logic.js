@@ -163,7 +163,14 @@ function lintLatexDocument(text, options = {}) {
 
   const db = getCommandsDb();
   const loadedPackages = extractLoadedPackages(text);
-  const { localCommands, localEnvironments } = extractLocalDefinitions(text, options.extraStyContent || '');
+  let extraStyContent = options.extraStyContent || '';
+  if (options.preambleText && typeof options.preambleText === 'string') {
+    for (const pkg of extractLoadedPackages(options.preambleText)) {
+      loadedPackages.add(pkg);
+    }
+    extraStyContent += '\n' + options.preambleText;
+  }
+  const { localCommands, localEnvironments } = extractLocalDefinitions(text, extraStyContent);
 
   // Build the set of valid commands and environments
   const validCommands = new Set(localCommands);
@@ -225,6 +232,29 @@ function lintLatexDocument(text, options = {}) {
   if (effectivePackages.has('amsthm')) effectivePackages.add('mathtools');
   if (effectivePackages.has('mathtools')) effectivePackages.add('amsmath');
   if (effectivePackages.has('amssymb')) effectivePackages.add('amsfonts');
+  if (effectivePackages.has('pgfplotstable')) effectivePackages.add('pgfplots');
+  if (
+    effectivePackages.has('pgfplots') ||
+    effectivePackages.has('circuitikz') ||
+    effectivePackages.has('forest') ||
+    effectivePackages.has('tcolorbox') ||
+    effectivePackages.has('tikz-cd')
+  ) {
+    effectivePackages.add('tikz');
+  }
+  if (effectivePackages.has('tikz')) {
+    effectivePackages.add('xcolor');
+    effectivePackages.add('graphicx');
+  }
+  if (effectivePackages.has('beamer')) {
+    effectivePackages.add('tikz');
+    effectivePackages.add('xcolor');
+    effectivePackages.add('hyperref');
+    effectivePackages.add('graphicx');
+  }
+  if (effectivePackages.has('subcaption')) {
+    effectivePackages.add('caption');
+  }
   if (effectivePackages.has('amsart') || effectivePackages.has('amsbook') || effectivePackages.has('amsproc')) {
     effectivePackages.add('amsmath');
     effectivePackages.add('amssymb');
@@ -254,6 +284,26 @@ function lintLatexDocument(text, options = {}) {
       validCommands.add(c);
       knownCommandNames.push(c);
     });
+  }
+
+  if (effectivePackages.has('siunitx')) {
+    [
+      'SI', 'si', 'sisetup', 'num', 'ang', 'qty', 'unit', 'qtyrange', 'numrange', 'SIrange',
+      'complexnum', 'complexqty', 'qtylist', 'numlist', 'tablenum', 'DeclareSIUnit',
+      'micro', 'percent', 'celsius', 'ohm', 'hertz', 'meter', 'metre', 'second',
+      'watt', 'joule', 'volt', 'ampere', 'kelvin', 'kilo', 'milli', 'nano', 'pico', 'mega', 'giga'
+    ].forEach(c => {
+      validCommands.add(c);
+      knownCommandNames.push(c);
+    });
+  }
+
+  if (effectivePackages.has('pgfplots')) {
+    ['pgfplotsset', 'usepgfplotslibrary', 'addplot', 'addlegendentry', 'legend', 'pgfplotssetlayers', 'pgfplotsinvokeforeach'].forEach(c => {
+      validCommands.add(c);
+      knownCommandNames.push(c);
+    });
+    ['axis', 'semilogxaxis', 'semilogyaxis', 'loglogaxis', 'groupplot'].forEach(e => validEnvironments.add(e));
   }
 
   if (effectivePackages.has('tabularx')) {
@@ -332,6 +382,15 @@ function lintLatexDocument(text, options = {}) {
     const from = cm.index;
     const to = from + cm[0].length;
     if (isMasked[from]) continue;
+
+    // Ignore plain words immediately following a TeX \\ linebreak (e.g. \\Name)
+    let prevBackslashes = 0;
+    let backIdx = from - 1;
+    while (backIdx >= 0 && text[backIdx] === '\\') {
+      prevBackslashes++;
+      backIdx--;
+    }
+    if (prevBackslashes % 2 === 1) continue;
 
     const cmdName = cm[1];
     // Skip definition commands themselves
