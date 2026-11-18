@@ -1,6 +1,8 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
+const isProd = process.env.NODE_ENV === 'production' || process.argv.includes('--production') || true;
+
 async function build() {
   try {
     // 1. Build Editor Bundle
@@ -11,10 +13,10 @@ async function build() {
       format: 'cjs',
       platform: 'node',
       target: 'es2022',
-      sourcemap: true,
-      minify: false,
+      sourcemap: !isProd,
+      minify: isProd,
       logLevel: 'info',
-      external: ['electron', '@electron/remote', 'yjs']
+      external: ['electron', '@electron/remote', 'yjs', 'y-webrtc', 'y-codemirror.next']
     });
     console.log('Successfully built renderer.bundle.js');
 
@@ -26,8 +28,8 @@ async function build() {
       format: 'iife',
       platform: 'browser',
       target: 'es2022',
-      sourcemap: true,
-      minify: false,
+      sourcemap: !isProd,
+      minify: isProd,
       logLevel: 'info'
     });
     console.log('Successfully built spell.worker.bundle.js');

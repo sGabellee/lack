@@ -219,6 +219,36 @@ function uniqueName(dir, base, ext = '', fsModule = null, platformOverride = nul
   }
 }
 
+/**
+ * Computes contiguous range of items between anchor and target based on flat visible order.
+ */
+function computeRange(flatRows = [], anchorPath = null, targetPath = null) {
+  if (!Array.isArray(flatRows) || flatRows.length === 0 || !targetPath) {
+    return targetPath ? [targetPath] : [];
+  }
+
+  const normTarget = path.resolve(targetPath);
+  const normRows = flatRows.map(r => path.resolve(r));
+  const targetIdx = normRows.indexOf(normTarget);
+  if (targetIdx === -1) {
+    return [targetPath];
+  }
+
+  if (!anchorPath) {
+    return [targetPath];
+  }
+
+  const normAnchor = path.resolve(anchorPath);
+  const anchorIdx = normRows.indexOf(normAnchor);
+  if (anchorIdx === -1) {
+    return [targetPath];
+  }
+
+  const start = Math.min(anchorIdx, targetIdx);
+  const end = Math.max(anchorIdx, targetIdx);
+  return flatRows.slice(start, end + 1);
+}
+
 module.exports = {
   formatBytes,
   calculateDirSize,
@@ -232,5 +262,6 @@ module.exports = {
   listStoreTexFiles,
   filterProjectEntries,
   validateItemName,
-  uniqueName
+  uniqueName,
+  computeRange
 };

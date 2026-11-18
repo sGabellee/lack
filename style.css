@@ -53,6 +53,9 @@ body, button, input, textarea, select {
   --explorer-active: #a4d8fb;
   --explorer-border: #e2e2e2;
   --explorer-width: 250px;
+  --purple-solid: #80007f;
+  --on-purple: #ffffff;
+  --purple-text: #80007f;
 }
 
 pre,
@@ -1168,6 +1171,8 @@ body.dark .empty-item-shortcut kbd {
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+  height: 100%;
+  min-height: 0;
 }
 
 #explorer-header {
@@ -4065,21 +4070,23 @@ body.dark .collab-modal-content {
   align-items: center;
   justify-content: center;
   font-size: 9.5px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
-  background-color: transparent;
-  color: #111111;
-  border: 1px solid rgba(0, 0, 0, 0.4);
+  background-color: var(--purple-solid, #80007f);
+  color: var(--on-purple, #ffffff) !important;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   line-height: 1.3;
 }
 
-body.dark .collab-beta-badge {
-  background-color: transparent;
-  color: #eeeeee;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+body.dark .collab-beta-badge,
+body.theme-dark .collab-beta-badge,
+body.theme-github .collab-beta-badge {
+  background-color: var(--purple-solid, #80007f);
+  color: var(--on-purple, #ffffff) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .collab-close-btn {
@@ -7670,7 +7677,7 @@ body.dark .pdf-synctex-highlight {
   display: flex;
   flex-direction: column;
   flex: 1;
-  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 

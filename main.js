@@ -9,6 +9,16 @@ const { ProjectRegistry } = require("./src/projects/registry.js");
 const { ProjectManager } = require("./src/projects/manager.js");
 const { readLink, extractSnapshot, unlinkPdf } = require("./src/projects/pdf-link.js");
 const { resolveOpenAction } = require("./src/main/cli.js");
+const { resolveLaunch } = require("./src/main/launch-resolver.js");
+const { windowChromeFor } = require("./src/main/window-chrome.js");
+const {
+  scanLatexFolder,
+  findLatexDependencies,
+  moveFileSafe,
+  recordMoveJournal,
+  undoMoveJournal,
+  resolveCollisionSafePdfTarget
+} = require("./src/projects/import.js");
 const { installTectonic } = require("./src/main/engine-installer.js");
 
 app.setName("Lack");
@@ -81,6 +91,15 @@ ipcMain.on('window-close', () => {
 
 ipcMain.on('window-close-confirmed', () => {
   if (win && !win.isDestroyed()) win.destroy();
+});
+
+ipcMain.on('set-window-controls-style', (_event, style) => {
+  const chrome = windowChromeFor(process.platform, style);
+  if (process.platform === 'darwin' && win && !win.isDestroyed()) {
+    try {
+      win.setWindowButtonVisibility(chrome.nativeButtonsVisible);
+    } catch (_) {}
+  }
 });
 
 ipcMain.on('update-theme-menu-label', (_event, isDark) => {
@@ -350,6 +369,81 @@ ipcMain.handle('project-release-lock', (_e, storePath) => {
   return true;
 });
 
+ipcMain.handle('project-is-folder-declined', (_e, folderPath) => {
+  return projectRegistry.isFolderDeclined(folderPath);
+});
+
+ipcMain.handle('project-decline-folder', (_e, folderPath) => {
+  projectRegistry.declineFolder(folderPath);
+  return true;
+});
+
+ipcMain.handle('project-scan-folder', (_e, folderPath) => {
+  return scanLatexFolder(folderPath);
+});
+
+ipcMain.handle('project-convert-folder', async (_e, { folderPath, mainFileName, projectTitle }) => {
+  const baseName = projectTitle || (mainFileName ? path.basename(mainFileName, '.tex') : path.basename(folderPath));
+  const journalDir = path.join(app.getPath('userData'), 'move-journal');
+
+  let isGitDirty = false;
+  try {
+    const { execSync } = require('child_process');
+    const status = execSync('git status --porcelain', { cwd: folderPath, stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 }).toString().trim();
+    if (status.length > 0) isGitDirty = true;
+  } catch (_) {}
+
+  const { targetPath, collided } = resolveCollisionSafePdfTarget(folderPath, baseName, null, readLink);
+
+  const { id, storePath, manifest } = projectManager.createProject({
+    name: baseName,
+    targetPath
+  });
+
+  const mainTexPath = path.join(folderPath, mainFileName);
+  const dependencies = findLatexDependencies(mainTexPath, folderPath);
+  const filesToMove = [mainTexPath, ...dependencies];
+
+  const operations = [];
+  for (const src of filesToMove) {
+    if (fs.existsSync(src)) {
+      const rel = path.relative(folderPath, src);
+      const dest = path.join(storePath, rel);
+      const op = moveFileSafe(src, dest);
+      operations.push(op);
+    }
+  }
+
+  const journalPath = recordMoveJournal(journalDir, {
+    projectId: id,
+    folderPath,
+    operations
+  });
+
+  manifest.main = mainFileName;
+  projectManager.saveManifest(storePath, manifest);
+
+  return {
+    id,
+    storePath,
+    targetPath,
+    name: manifest.name,
+    main: manifest.main,
+    collided,
+    isGitDirty,
+    journalPath
+  };
+});
+
+ipcMain.handle('project-undo-move', async (_e, journalPath) => {
+  try {
+    const reverted = undoMoveJournal(journalPath);
+    return { success: true, count: reverted.length };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 function handleResolvedAction(action, targetWin) {
   const currentWin = targetWin || win;
   if (!action) return;
@@ -413,6 +507,10 @@ function handleResolvedAction(action, targetWin) {
     if (currentWin && !currentWin.isDestroyed()) {
       dialog.showErrorBox("Errore Apertura Lack", action.message);
     }
+  } else if (action.action === 'start-screen') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      currentWin.webContents.send('show-start-screen');
+    }
   } else if (action.action === 'classic') {
     if (currentWin && !currentWin.isDestroyed()) {
       if (action.openFolderPath) {
@@ -424,6 +522,9 @@ function handleResolvedAction(action, targetWin) {
       }
       if (action.promptConvertTexToProject) {
         currentWin.webContents.send('prompt-convert-tex-to-project', { texPath: action.promptConvertTexToProject });
+      }
+      if (action.offerConversion && action.openFolderPath && !projectRegistry.isFolderDeclined(action.openFolderPath)) {
+        currentWin.webContents.send('prompt-convert-folder-to-project', { folderPath: action.openFolderPath });
       }
     }
   }

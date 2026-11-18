@@ -15,7 +15,8 @@ const {
   canSetAsMainDocument,
   resolveClassicCompileTarget,
   resolveExportPdfDefaultName,
-  listStoreTexFiles
+  listStoreTexFiles,
+  computeRange
 } = require('../src/projects/ui-controller.js');
 
 test('ui-controller: formatBytes', () => {
@@ -253,4 +254,38 @@ test('ui-controller: listStoreTexFiles discovers root and nested tex files clean
   } finally {
     fs.rmSync(tmpStore, { recursive: true, force: true });
   }
+});
+
+test('ui-controller: computeRange selects contiguous range in visible flat order', () => {
+  const flatRows = [
+    '/proj/main.tex',
+    '/proj/intro.tex',
+    '/proj/methods.tex',
+    '/proj/results.tex',
+    '/proj/conclusion.tex'
+  ];
+
+  // Forward range
+  const range1 = computeRange(flatRows, '/proj/intro.tex', '/proj/results.tex');
+  assert.deepStrictEqual(range1, [
+    '/proj/intro.tex',
+    '/proj/methods.tex',
+    '/proj/results.tex'
+  ]);
+
+  // Backward range
+  const range2 = computeRange(flatRows, '/proj/results.tex', '/proj/intro.tex');
+  assert.deepStrictEqual(range2, [
+    '/proj/intro.tex',
+    '/proj/methods.tex',
+    '/proj/results.tex'
+  ]);
+
+  // Missing anchor fallback (returns target only, never defaults to row 0)
+  const range3 = computeRange(flatRows, '/proj/nonexistent.tex', '/proj/results.tex');
+  assert.deepStrictEqual(range3, ['/proj/results.tex']);
+
+  // Missing target
+  const range4 = computeRange(flatRows, '/proj/intro.tex', '/proj/missing.tex');
+  assert.deepStrictEqual(range4, ['/proj/missing.tex']);
 });

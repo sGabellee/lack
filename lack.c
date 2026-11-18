@@ -7,7 +7,8 @@
 #include <sys/stat.h>
 
 int main(int argc, char *argv[]) {
-    // Capture invoking working directory and export as LACK_CWD
+    // Capture invoking working directory and export as LACK_CWD and LACK_LAUNCHED_FROM=cli
+    setenv("LACK_LAUNCHED_FROM", "cli", 1);
     char cwdBuffer[4096];
     if (getcwd(cwdBuffer, sizeof(cwdBuffer)) != NULL) {
         setenv("LACK_CWD", cwdBuffer, 1);

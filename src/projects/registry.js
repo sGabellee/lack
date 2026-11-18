@@ -13,6 +13,7 @@ class ProjectRegistry {
     this.registryFilePath = registryFilePath;
     this.defaultStoreRoot = defaultStoreRoot;
     this.entries = {};
+    this.declinedFolders = [];
     this.load();
   }
 
@@ -20,13 +21,23 @@ class ProjectRegistry {
     try {
       if (fs.existsSync(this.registryFilePath)) {
         const raw = fs.readFileSync(this.registryFilePath, 'utf8');
-        this.entries = JSON.parse(raw);
-        if (!this.entries || typeof this.entries !== 'object' || Array.isArray(this.entries)) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          this.entries = { ...parsed };
+          if (Array.isArray(this.entries._declinedFolders)) {
+            this.declinedFolders = this.entries._declinedFolders;
+            delete this.entries._declinedFolders;
+          } else {
+            this.declinedFolders = [];
+          }
+        } else {
           this.entries = {};
+          this.declinedFolders = [];
           this.rebuild(this.defaultStoreRoot);
         }
       } else {
         this.entries = {};
+        this.declinedFolders = [];
         this.rebuild(this.defaultStoreRoot);
       }
     } catch (err) {
@@ -34,6 +45,7 @@ class ProjectRegistry {
         console.warn('[LACK_DEBUG] Corrupted projects.json registry, rebuilding...', err.message);
       }
       this.entries = {};
+      this.declinedFolders = [];
       this.rebuild(this.defaultStoreRoot);
     }
   }
@@ -45,7 +57,11 @@ class ProjectRegistry {
     }
 
     const tmpPath = `${this.registryFilePath}.tmp-${process.pid}-${Date.now()}`;
-    const payload = JSON.stringify(this.entries, null, 2);
+    const payloadObject = {
+      ...this.entries,
+      _declinedFolders: this.declinedFolders
+    };
+    const payload = JSON.stringify(payloadObject, null, 2);
 
     try {
       fs.writeFileSync(tmpPath, payload, 'utf8');
@@ -55,6 +71,21 @@ class ProjectRegistry {
         try { fs.unlinkSync(tmpPath); } catch (_) {}
       }
       throw err;
+    }
+  }
+
+  isFolderDeclined(folderPath) {
+    if (!folderPath) return false;
+    const normal = path.normalize(path.resolve(folderPath));
+    return this.declinedFolders.some(f => path.normalize(path.resolve(f)) === normal);
+  }
+
+  declineFolder(folderPath) {
+    if (!folderPath) return;
+    const normal = path.normalize(path.resolve(folderPath));
+    if (!this.isFolderDeclined(normal)) {
+      this.declinedFolders.push(normal);
+      this.save();
     }
   }
 

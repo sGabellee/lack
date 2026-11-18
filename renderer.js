@@ -50,7 +50,8 @@ const {
   canSetAsMainDocument,
   resolveClassicCompileTarget,
   resolveExportPdfDefaultName,
-  listStoreTexFiles
+  listStoreTexFiles,
+  computeRange
 } = require("./src/projects/ui-controller.js");
 
 // ====== UTILS ======
@@ -2179,6 +2180,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("explorer-panel")?.classList.remove("hidden");
     projectPane?.classList.remove("hidden");
     sidebarSplitter?.classList.remove("hidden");
+    const savedRatio = parseFloat(localStorage.getItem("lack-sidebar-split-ratio") || "0.5");
+    if (folderPane) folderPane.style.flex = `${savedRatio}`;
+    if (projectPane) projectPane.style.flex = `${1 - savedRatio}`;
     footerProjectChip?.classList.remove("hidden");
     if (footerProjectName) footerProjectName.textContent = opts.name;
     if (projectPaneName) projectPaneName.textContent = opts.name;
@@ -2255,6 +2259,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     currentProject = null;
     projectPane?.classList.add("hidden");
     sidebarSplitter?.classList.add("hidden");
+    if (folderPane) folderPane.style.flex = "1";
     footerProjectChip?.classList.add("hidden");
     updateTitle();
     if (currentProjectDir) renderFolderPane(currentProjectDir);
@@ -2308,7 +2313,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   let selectedExplorerPaths = [];
   let selectedExplorerPath = null;
   let selectedExplorerElement = null;
-  let lastExplorerAnchorElement = null;
+  let lastExplorerAnchorPath = null;
 
   function getAllExplorerItems() {
     const container = document.getElementById("sidebar-tab-content-files") || document.getElementById("explorer-panel");
@@ -2362,19 +2367,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (!isLinked) {
-        if (isLinkedProject) {
-          closeLinkedProject();
-        }
         pdfViewer.loadPdfDocument(itemPath);
       }
     } else {
-      const isInsideCurrentProjectStore = isLinkedProject && currentProject && currentProject.storePath &&
-        path.resolve(itemPath).startsWith(path.resolve(currentProject.storePath));
-
-      if (!isInsideCurrentProjectStore && isLinkedProject) {
-        closeLinkedProject();
-      }
-
       openFileFromPath(itemPath);
     }
   }
@@ -2390,22 +2385,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         try { window.getSelection().removeAllRanges(); } catch (_) {}
       }
       const allItems = getAllExplorerItems();
-      let anchorIdx = lastExplorerAnchorElement ? allItems.indexOf(lastExplorerAnchorElement) : -1;
-      if (anchorIdx === -1 && selectedExplorerElement) {
-        anchorIdx = allItems.indexOf(selectedExplorerElement);
-      }
-      const targetIdx = allItems.indexOf(itemDiv);
-      if (anchorIdx === -1) anchorIdx = 0;
-
-      const start = Math.min(anchorIdx, targetIdx);
-      const end = Math.max(anchorIdx, targetIdx);
-      const rangeElements = allItems.slice(start, end + 1);
+      const flatPaths = allItems.map(el => el.dataset.path).filter(Boolean);
+      const rangePaths = computeRange(flatPaths, lastExplorerAnchorPath, itemPath);
 
       if (!isCtrlOrCmd) {
-        selectedExplorerPaths = rangeElements.map(el => el.dataset.path).filter(Boolean);
+        selectedExplorerPaths = rangePaths;
       } else {
-        const newPaths = rangeElements.map(el => el.dataset.path).filter(Boolean);
-        const combined = new Set([...selectedExplorerPaths.map(p => path.resolve(p)), ...newPaths.map(p => path.resolve(p))]);
+        const combined = new Set([...selectedExplorerPaths.map(p => path.resolve(p)), ...rangePaths.map(p => path.resolve(p))]);
         selectedExplorerPaths = Array.from(combined);
       }
 
@@ -2429,13 +2415,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         selectedExplorerPath = itemPath;
         selectedExplorerElement = itemDiv;
       }
-      lastExplorerAnchorElement = itemDiv;
+      lastExplorerAnchorPath = itemPath;
       updateExplorerSelectionUI();
     } else {
       selectedExplorerPaths = [itemPath];
       selectedExplorerPath = itemPath;
       selectedExplorerElement = itemDiv;
-      lastExplorerAnchorElement = itemDiv;
+      lastExplorerAnchorPath = itemPath;
 
       updateExplorerSelectionUI();
 
@@ -3759,19 +3745,19 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Explorer & Pane Action Buttons
-  document.getElementById("new-folder")?.addEventListener("click", async () => {
-    const targetDir = (isLinkedProject && currentProject && currentProject.targetPath)
-      ? path.dirname(currentProject.targetPath)
-      : currentProjectDir;
+  document.getElementById("new-folder")?.addEventListener("click", () => {
+    const isProjectActive = isLinkedProject && currentProject && currentProject.storePath;
+    const targetDir = isProjectActive
+      ? currentProject.storePath
+      : ((currentProject && currentProject.targetPath) ? path.dirname(currentProject.targetPath) : currentProjectDir);
+
     if (!targetDir) {
-      const res = await dialog.showOpenDialog({
-        title: "Seleziona o crea la cartella di progetto",
-        properties: ["openDirectory", "createDirectory"]
-      });
-      if (!res.canceled && res.filePaths.length > 0) openFolder(res.filePaths[0]);
+      showNotification("Apri una cartella o crea un progetto per creare una cartella", "info");
       return;
     }
-    showInlineTreeInput(folderTreeEl || fileTreeLegacy, targetDir, "folder", false);
+
+    const container = isProjectActive ? projectTreeEl : (folderTreeEl || fileTreeLegacy);
+    showInlineTreeInput(container, targetDir, "folder", isProjectActive);
   });
 
   document.getElementById("new-file")?.addEventListener("click", async () => {
@@ -3892,6 +3878,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     const isCollapsed = projectPane?.classList.contains("collapsed");
     const btn = document.getElementById("project-btn-collapse");
     if (btn) btn.textContent = isCollapsed ? "+" : "−";
+  });
+  document.getElementById("project-btn-close")?.addEventListener("click", () => {
+    closeLinkedProject();
+    showNotification("Progetto chiuso", "info");
   });
 
   // ====== PROJECTS MANAGER MODAL (Mark Gallery Style) ======
@@ -5591,6 +5581,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Initial tab
-  newFile();
+  // Initial state: show start screen if no tabs opened
+  renderTabs();
 });
