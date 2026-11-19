@@ -91,7 +91,7 @@ class RecentsStore {
     }
 
     return list.map(item => {
-      let exists = false;
+      let exists;
       try {
         exists = probeFs.existsSync(item.path);
       } catch (_) {

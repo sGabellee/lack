@@ -110,7 +110,7 @@ function listStoreTexFiles(storePath, fsModule = null) {
   const results = [];
 
   function walk(dir) {
-    let entries = [];
+    let entries;
     try {
       entries = fsys.readdirSync(dir, { withFileTypes: true });
     } catch (_) {

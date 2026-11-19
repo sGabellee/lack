@@ -24,6 +24,30 @@ const SYMBOL_PREVIEWS = {
   ldots: '…', cdots: '⋯', vdots: '⋮', ddots: '⋱'
 };
 
+const STANDARD_SIGNATURES = {
+  section: '{}', subsection: '{}', subsubsection: '{}', chapter: '{}', paragraph: '{}', subparagraph: '{}',
+  textbf: '{}', textit: '{}', texttt: '{}', textsc: '{}', textmd: '{}', textnormal: '{}',
+  emph: '{}', underline: '{}',
+  label: '{}', ref: '{}', pageref: '{}', eqref: '{}', cite: '{}', autoref: '{}', cref: '{}', Cref: '{}',
+  frac: '{}{}', dfrac: '{}{}', tfrac: '{}{}', cfrac: '{}{}',
+  sqrt: '{}',
+  includegraphics: '[]{}',
+  input: '{}', include: '{}', subfile: '{}',
+  url: '{}', href: '{}{}',
+  footnote: '{}',
+  caption: '{}',
+  textcolor: '{}{}', color: '{}',
+  item: '[]'
+};
+
+const HIGH_PRIORITY_COMMANDS = new Set([
+  'section', 'subsection', 'subsubsection', 'chapter', 'paragraph',
+  'textbf', 'textit', 'emph', 'texttt', 'underline',
+  'label', 'ref', 'cite', 'eqref', 'pageref', 'autoref',
+  'item', 'begin', 'end', 'frac', 'sqrt', 'includegraphics',
+  'input', 'include', 'usepackage', 'documentclass', 'tableofcontents'
+]);
+
 // Find unclosed environments before pos
 function getUnclosedEnvironments(docText, pos) {
   const textBefore = docText.slice(0, pos);
@@ -55,16 +79,76 @@ function extractLabels(docText) {
   return Array.from(labels);
 }
 
-// Custom completion source
-function createLatexCompletionSource(projectContext = {}) {
-  // projectContext: { getBibKeys: () => string[], getImageFiles: () => string[], getTexFiles: () => string[] }
+// Levenshtein distance for Tier 4 typo recovery
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
 
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function getCommandSignature(macro) {
+  if (STANDARD_SIGNATURES[macro.name]) {
+    return STANDARD_SIGNATURES[macro.name];
+  }
+  if (macro.args) {
+    const rawArgs = macro.args.trim().split(/\s+/);
+    let sig = '';
+    for (const a of rawArgs) {
+      if (a === 'm' || a === 'r') sig += '{}';
+      else if (a === 'o' || a === 'd') sig += '[]';
+    }
+    if (sig) return sig;
+  }
+  if (macro.snippet) {
+    let sig = '';
+    const matches = macro.snippet.match(/(\{[^}]*\}|\[[^\]]*\])/g);
+    if (matches) {
+      for (const m of matches) {
+        if (m.startsWith('{')) sig += '{}';
+        else if (m.startsWith('[')) sig += '[]';
+      }
+      if (sig) return sig;
+    }
+  }
+  return '';
+}
+
+function getSourceBadge(macro) {
+  if (macro.package === 'latex2e' || !macro.package) {
+    return 'cmd';
+  }
+  return `${macro.package}-cmd`;
+}
+
+// Custom Overleaf-Style completion source
+function createLatexCompletionSource(projectContext = {}) {
   return function latexCompletionSource(context) {
     const { state, pos } = context;
     const doc = state.doc;
     const line = doc.lineAt(pos);
     const textBeforeCursorOnLine = line.text.slice(0, pos - line.from);
-    const fullDocText = doc.toString();
+    const fullDocText = (typeof doc.toString === 'function') ? doc.toString() : String(doc || '');
+
+    // Check if beamer class is active in document
+    const isBeamerDoc = /\\documentclass(?:\[[^\]]*\])?\{beamer\}/.test(fullDocText);
 
     // 1. Contextual: \end{...}
     const endMatch = /\\end\{([a-zA-Z0-9*_-]*)$/.exec(textBeforeCursorOnLine);
@@ -79,23 +163,20 @@ function createLatexCompletionSource(projectContext = {}) {
         if (!seen.has(envName)) {
           seen.add(envName);
           options.push({
-            label: envName,
-            type: 'type',
-            detail: 'unclosed environment',
+            label: envName + '}',
+            detail: 'unclosed env',
             boost: 100 - idx,
             apply: envName + '}'
           });
         }
       });
 
-      // Add remaining environments from db
       latexDb.environments.forEach((env) => {
         if (!seen.has(env.name)) {
           seen.add(env.name);
           options.push({
-            label: env.name,
-            type: 'type',
-            detail: env.package || 'environment',
+            label: env.name + '}',
+            detail: env.package ? `${env.package}-env` : 'env',
             apply: env.name + '}'
           });
         }
@@ -113,16 +194,12 @@ function createLatexCompletionSource(projectContext = {}) {
     if (beginMatch) {
       const typed = beginMatch[1];
       const from = pos - typed.length;
-      const options = latexDb.environments.map((env) => {
-        let snippetText = `${env.name}}\n\t\${}\n\\end{${env.name}}`;
-        return {
-          label: env.name,
-          type: 'class',
-          detail: env.package ? `(${env.package})` : 'environment',
-          info: env.doc_it || env.doc_en,
-          apply: snippet(snippetText)
-        };
-      });
+      const options = latexDb.environments.map((env) => ({
+        label: env.name + '}',
+        detail: env.package ? `${env.package}-env` : 'env',
+        info: env.doc_it || env.doc_en,
+        apply: snippet(`${env.name}}\n\t\${}\n\\end{${env.name}}`)
+      }));
 
       return {
         from,
@@ -137,9 +214,8 @@ function createLatexCompletionSource(projectContext = {}) {
       const typed = usepackageMatch[1];
       const from = pos - typed.length;
       const options = (latexDb.packages || []).map((pkg) => ({
-        label: pkg,
-        type: 'namespace',
-        detail: 'package',
+        label: pkg + '}',
+        detail: 'pkg',
         apply: pkg + '}'
       }));
 
@@ -158,10 +234,9 @@ function createLatexCompletionSource(projectContext = {}) {
       const bibKeys = typeof projectContext.getBibKeys === 'function' ? projectContext.getBibKeys() : [];
       const options = bibKeys.map((item) => {
         const key = typeof item === 'string' ? item : item.key;
-        const detail = typeof item === 'object' && item.title ? item.title : 'bib entry';
+        const detail = typeof item === 'object' && item.title ? item.title : 'bib';
         return {
-          label: key,
-          type: 'variable',
+          label: key + '}',
           detail,
           apply: key + '}'
         };
@@ -181,8 +256,7 @@ function createLatexCompletionSource(projectContext = {}) {
       const from = pos - typed.length;
       const labels = extractLabels(fullDocText);
       const options = labels.map((lbl) => ({
-        label: lbl,
-        type: 'constant',
+        label: lbl + '}',
         detail: 'label',
         apply: lbl + '}'
       }));
@@ -201,9 +275,8 @@ function createLatexCompletionSource(projectContext = {}) {
       const from = pos - typed.length;
       const images = typeof projectContext.getImageFiles === 'function' ? projectContext.getImageFiles() : [];
       const options = images.map((imgPath) => ({
-        label: imgPath,
-        type: 'text',
-        detail: 'image file',
+        label: imgPath + '}',
+        detail: 'image',
         apply: imgPath + '}'
       }));
 
@@ -221,9 +294,8 @@ function createLatexCompletionSource(projectContext = {}) {
       const from = pos - typed.length;
       const texFiles = typeof projectContext.getTexFiles === 'function' ? projectContext.getTexFiles() : [];
       const options = texFiles.map((texPath) => ({
-        label: texPath,
-        type: 'text',
-        detail: 'LaTeX source file',
+        label: texPath + '}',
+        detail: 'tex',
         apply: texPath + '}'
       }));
 
@@ -234,62 +306,149 @@ function createLatexCompletionSource(projectContext = {}) {
       };
     }
 
-    // 8. General LaTeX command completion: \command
+    // 8. General LaTeX Command Completion: \command
     const cmdMatch = /\\([a-zA-Z@*]*)$/.exec(textBeforeCursorOnLine);
     if (!cmdMatch) {
       return null;
     }
 
     const typedCmd = cmdMatch[1];
+    const query = typedCmd.toLowerCase();
     const from = pos - typedCmd.length;
 
-    const options = [];
+    // Filter macros according to 4-tier ranking rules
+    const allowsStar = typedCmd.endsWith('*');
+    const seenNames = new Set();
+    const candidateMacros = [];
 
-    // Add macros
-    latexDb.macros.forEach((macro) => {
+    for (const macro of latexDb.macros) {
       const name = macro.name;
-      const symbolPreview = SYMBOL_PREVIEWS[name];
-      const detail = symbolPreview ? `${symbolPreview} (${macro.package || 'LaTeX'})` : (macro.package || 'LaTeX');
+      // Rule: collapse * variants unless user query explicitly ends with *
+      if (!allowsStar && name.endsWith('*')) {
+        continue;
+      }
+      if (seenNames.has(name)) continue;
+      seenNames.add(name);
+      candidateMacros.push(macro);
+    }
 
-      let snippetStr = '\\' + name;
-      if (macro.snippet && macro.snippet.includes('${')) {
-        // convert e.g. \section{${1:title}} to CM6 snippet format
-        snippetStr = macro.snippet;
-      } else if (macro.args) {
-        if (macro.args === 'm') {
-          snippetStr = `\\${name}{\${}}`;
-        } else if (macro.args === 'mm') {
-          snippetStr = `\\${name}{\${}}{\${}}`;
-        } else if (macro.args === 'om') {
-          snippetStr = `\\${name}[\${}]{\${}}`;
+    // Categorize into the 4 strict tiers:
+    const tier1 = []; // Exact matches
+    const tier2 = []; // Prefix matches
+    const tier3 = []; // Contiguous substring matches
+    const tier4 = []; // Typo candidates (Levenshtein <= 1)
+
+    for (const macro of candidateMacros) {
+      const nameLower = macro.name.toLowerCase();
+      if (!query) {
+        tier2.push(macro);
+      } else if (nameLower === query) {
+        tier1.push(macro);
+      } else if (nameLower.startsWith(query)) {
+        tier2.push(macro);
+      } else if (nameLower.includes(query)) {
+        tier3.push(macro);
+      }
+    }
+
+    // Tier 4: Only if Tiers 1-3 are empty and query length >= 3
+    if (tier1.length === 0 && tier2.length === 0 && tier3.length === 0 && query.length >= 3) {
+      for (const macro of candidateMacros) {
+        const dist = levenshtein(query, macro.name.toLowerCase());
+        if (dist <= 1) {
+          tier4.push({ macro, dist });
         }
       }
+      tier4.sort((a, b) => a.dist - b.dist || a.macro.name.length - b.macro.name.length);
+    }
 
-      options.push({
-        label: '\\' + name,
-        type: symbolPreview ? 'constant' : 'function',
-        detail,
+    // Sort Tier 2 (Prefix matches):
+    tier2.sort((a, b) => {
+      // 1. High-priority standard commands first
+      const aHigh = HIGH_PRIORITY_COMMANDS.has(a.name) ? 1 : 0;
+      const bHigh = HIGH_PRIORITY_COMMANDS.has(b.name) ? 1 : 0;
+      if (aHigh !== bHigh) return bHigh - aHigh;
+
+      // 2. Beamer penalty if not a beamer document
+      if (!isBeamerDoc) {
+        const aBeamer = a.package === 'beamer' ? 1 : 0;
+        const bBeamer = b.package === 'beamer' ? 1 : 0;
+        if (aBeamer !== bBeamer) return aBeamer - bBeamer;
+      }
+
+      // 3. Shorter commands first
+      if (a.name.length !== b.name.length) {
+        return a.name.length - b.name.length;
+      }
+
+      // 4. Alphabetical
+      return a.name.localeCompare(b.name);
+    });
+
+    // Sort Tier 3 (Substring matches):
+    tier3.sort((a, b) => {
+      const aIdx = a.name.toLowerCase().indexOf(query);
+      const bIdx = b.name.toLowerCase().indexOf(query);
+      if (aIdx !== bIdx) return aIdx - bIdx;
+
+      if (!isBeamerDoc) {
+        const aBeamer = a.package === 'beamer' ? 1 : 0;
+        const bBeamer = b.package === 'beamer' ? 1 : 0;
+        if (aBeamer !== bBeamer) return aBeamer - bBeamer;
+      }
+
+      if (a.name.length !== b.name.length) {
+        return a.name.length - b.name.length;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    // Combine ranked list
+    const combinedMacros = [
+      ...tier1,
+      ...tier2,
+      ...tier3,
+      ...tier4.map(t => t.macro)
+    ];
+
+    if (process.env.LACK_DEBUG) {
+      console.log(`[LACK_DEBUG] Autocomplete query "${query}" -> T1:${tier1.length} T2:${tier2.length} T3:${tier3.length} T4:${tier4.length}`);
+    }
+
+    const options = combinedMacros.map((macro, rankIdx) => {
+      const name = macro.name;
+      const sig = getCommandSignature(macro);
+      const label = '\\' + name + sig;
+      const sourceBadge = getSourceBadge(macro);
+      const symbolPreview = SYMBOL_PREVIEWS[name];
+
+      let snippetStr = '\\' + name;
+      if (sig === '{}') {
+        snippetStr = `\\${name}{\${}}`;
+      } else if (sig === '{}{}') {
+        snippetStr = `\\${name}{\${1}}{\${2}}`;
+      } else if (sig === '[]{}') {
+        snippetStr = `\\${name}[\${1}]{\${2}}`;
+      } else if (macro.snippet && macro.snippet.includes('${')) {
+        snippetStr = macro.snippet;
+      }
+
+      const item = {
+        label,
+        detail: symbolPreview ? `${symbolPreview}  ${sourceBadge}` : sourceBadge,
         info: macro.doc_it || macro.doc_en,
+        boost: 2000 - rankIdx,
         apply: snippet(snippetStr)
-      });
+      };
+
+      return item;
     });
 
-    // Add environment shortcuts: e.g. \begin{equation} ...
-    latexDb.environments.forEach((env) => {
-      const name = env.name;
-      options.push({
-        label: '\\begin{' + name + '}',
-        type: 'class',
-        detail: env.package || 'environment',
-        info: env.doc_it || env.doc_en,
-        apply: snippet(`\\begin{${name}}\n\t\${}\n\\end{${name}}`)
-      });
-    });
-
+    // Include the leading backslash in the replacement range
     return {
-      from: from - 1, // Include the leading backslash in replacement
+      from: from - 1,
       options,
-      filter: true
+      filter: false // Our custom 4-tier ranking handles filtering! No CM6 scattered underlines!
     };
   };
 }
@@ -297,6 +456,10 @@ function createLatexCompletionSource(projectContext = {}) {
 module.exports = {
   createLatexCompletionSource,
   SYMBOL_PREVIEWS,
+  STANDARD_SIGNATURES,
   getUnclosedEnvironments,
-  extractLabels
+  extractLabels,
+  levenshtein,
+  getCommandSignature,
+  getSourceBadge
 };

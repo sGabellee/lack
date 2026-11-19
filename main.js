@@ -29,6 +29,14 @@ if (process.platform === 'win32') {
   app.setAppUserModelId("com.Giovanni.Lack");
 }
 
+if (process.env.LACK_USER_DATA) {
+  try {
+    app.setPath('userData', path.resolve(process.env.LACK_USER_DATA));
+  } catch (err) {
+    console.error('Failed to set custom userData path:', err);
+  }
+}
+
 let win;
 let printWin = null;
 let initialAction = null;
@@ -46,15 +54,67 @@ const invocationCwd = process.env.LACK_CWD || process.cwd();
 // Parse initial command line arguments
 const rawCliArgs = process.defaultApp ? process.argv.slice(2) : process.argv.slice(1);
 
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
+async function runCollabSelfTest() {
+  console.log('[COLLAB SELFTEST] Starting collaboration self-test...');
+  try {
+    const Y = require('yjs');
+    const { generateRoomId, pingSignalingServers } = require('./collaboration.js');
+
+    // 1. Room generation
+    const roomId = generateRoomId();
+    if (!roomId || !roomId.startsWith('lack-')) {
+      throw new Error(`Invalid generated roomId: ${roomId}`);
+    }
+    console.log(`[COLLAB SELFTEST] Generated roomId: ${roomId}`);
+
+    // 2. CRDT synchronization between two in-process peers
+    const doc1 = new Y.Doc();
+    const doc2 = new Y.Doc();
+    const text1 = doc1.getText('latex-content');
+    const text2 = doc2.getText('latex-content');
+
+    text1.insert(0, '\\documentclass{article}\n\\begin{document}\nHello Peer 1\n\\end{document}');
+    const u1 = Y.encodeStateAsUpdate(doc1);
+    Y.applyUpdate(doc2, u1);
+
+    if (text2.toString() !== text1.toString()) {
+      throw new Error('Peer 2 failed to receive initial state from Peer 1');
+    }
+
+    text2.insert(text2.length, '\n% Appended by Peer 2');
+    const u2 = Y.encodeStateAsUpdate(doc2, Y.encodeStateVector(doc1));
+    Y.applyUpdate(doc1, u2);
+
+    if (text1.toString() !== text2.toString() || !text1.toString().includes('Appended by Peer 2')) {
+      throw new Error('Bidirectional synchronization failed');
+    }
+    console.log('[COLLAB SELFTEST] CRDT document sync verified.');
+
+    // 3. Signaling server probe
+    const pingResults = await pingSignalingServers();
+    console.log('[COLLAB SELFTEST] Signaling servers probe:', pingResults);
+
+    console.log('[COLLAB SELFTEST] PASSED: All collaboration checks completed successfully.');
+    app.exit(0);
+  } catch (err) {
+    console.error('[COLLAB SELFTEST] FAILED:', err);
+    app.exit(1);
+  }
+}
+
+if (rawCliArgs.includes('--collab-selftest') || process.argv.includes('--collab-selftest')) {
+  app.whenReady().then(runCollabSelfTest);
 } else {
-  app.on('second-instance', async (event, argv, workingDirectory) => {
-    const cwd = workingDirectory || invocationCwd;
-    const action = await resolveAppAction(argv, cwd);
-    handleResolvedAction(action, null);
-  });
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+  } else {
+    app.on('second-instance', async (event, argv, workingDirectory) => {
+      const cwd = workingDirectory || invocationCwd;
+      const action = await resolveAppAction(argv, cwd);
+      handleResolvedAction(action, null);
+    });
+  }
 }
 
 function initializeRemote() {
@@ -634,6 +694,28 @@ function createWindow() {
 
   win = new BrowserWindow(windowOptions);
   remoteMain.enable(win.webContents);
+
+  // Security restrictions: prevent opening untrusted windows, open external links in browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:') || url.startsWith('mailto:')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, navigationUrl) => {
+    try {
+      const parsed = new URL(navigationUrl);
+      if (parsed.protocol !== 'file:') {
+        event.preventDefault();
+        if (navigationUrl.startsWith('http:') || navigationUrl.startsWith('https:')) {
+          shell.openExternal(navigationUrl);
+        }
+      }
+    } catch (_) {
+      event.preventDefault();
+    }
+  });
 
   // Suppress native menubar completely on Linux/Windows so custom in-DOM titlebar is used exclusively
   if (!isMac) {

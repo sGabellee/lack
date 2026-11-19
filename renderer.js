@@ -28,12 +28,16 @@ const savedLang = localStorage.getItem('lack.lang') || 'it';
 i18n.setLanguage(savedLang);
 
 // --- MODULE IMPORTS ---
-const {
-  startCollaboration,
-  leaveCollaboration,
-  generateRoomId,
-  getCollabState
-} = require("./collaboration.js");
+const createDOMPurify = require("dompurify");
+let domPurifyInstance = null;
+function getDOMPurify() {
+  if (!domPurifyInstance && typeof window !== 'undefined') {
+    domPurifyInstance = createDOMPurify(window);
+  }
+  return domPurifyInstance;
+}
+
+// Collaboration is lazy-loaded on demand via getCollabModule()
 
 const LackTemplates = (typeof window !== 'undefined' && window.LackTemplates) || (typeof require === 'function' ? require('./templates.js') : null);
 const latexCompiler = require("./latex-compiler.js");
@@ -337,7 +341,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     compileOnSave: localStorage.getItem('lack-compileOnSave') !== 'false',
     embedSnapshotDefault: localStorage.getItem('lack-embedSnapshotDefault') === 'true',
     cleanAux: localStorage.getItem('lack-cleanAux') === 'true',
-    viewMode: localStorage.getItem('lack-viewMode') || 'split'
+    viewMode: localStorage.getItem('lack-viewMode') || 'split-view'
   };
 
   // --- DOM REFERENCES ---
@@ -816,14 +820,46 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Responsive toolbar overflow observer
   if (pdfToolbarEl && typeof ResizeObserver !== "undefined") {
     const updateToolbarOverflow = () => {
-      const isNarrow = pdfToolbarEl.clientWidth < 540;
-      const collapsibles = pdfToolbarEl.querySelectorAll(".pdf-tool-collapsible");
-      collapsibles.forEach(el => {
-        if (isNarrow) el.classList.add("hidden");
+      const width = pdfToolbarEl.clientWidth;
+      const secondaries = pdfToolbarEl.querySelectorAll(".pdf-tool-secondary");
+      const fitBtns = pdfToolbarEl.querySelectorAll(".pdf-tool-fit");
+      const menuFitWidth = document.getElementById("pdf-menu-fit-width");
+      const menuFitPage = document.getElementById("pdf-menu-fit-page");
+      const menuFitDivider = document.getElementById("pdf-menu-fit-divider");
+      const menuDownload = document.getElementById("pdf-menu-download");
+      const menuRefresh = document.getElementById("pdf-menu-refresh");
+
+      // Hide secondaries (download, refresh) when width < 560px
+      const hideSecondary = width < 560;
+      // Only collapse fit buttons (↔, ↕) into menu if container is ultra-narrow (< 320px)
+      const hideFit = width < 320;
+
+      secondaries.forEach(el => {
+        if (hideSecondary) el.classList.add("hidden");
         else el.classList.remove("hidden");
       });
+
+      fitBtns.forEach(el => {
+        if (hideFit) el.classList.add("hidden");
+        else el.classList.remove("hidden");
+      });
+
+      // Compact class for text labels (Auto, Log, Pag. / di)
+      if (width < 460) {
+        pdfToolbarEl.classList.add("toolbar-compact");
+      } else {
+        pdfToolbarEl.classList.remove("toolbar-compact");
+      }
+
+      // Synchronize dropdown menu options with collapsed toolbar items
+      if (menuFitWidth) menuFitWidth.style.display = hideFit ? "flex" : "none";
+      if (menuFitPage) menuFitPage.style.display = hideFit ? "flex" : "none";
+      if (menuFitDivider) menuFitDivider.style.display = (hideFit && hideSecondary) ? "block" : "none";
+      if (menuDownload) menuDownload.style.display = hideSecondary ? "flex" : "none";
+      if (menuRefresh) menuRefresh.style.display = hideSecondary ? "flex" : "none";
+
       if (pdfBtnOverflow) {
-        if (isNarrow) {
+        if (hideSecondary || hideFit) {
           pdfBtnOverflow.classList.remove("hidden");
         } else {
           pdfBtnOverflow.classList.add("hidden");
@@ -2073,7 +2109,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btn-placeholder-compile")?.addEventListener("click", () => triggerCompile(false));
 
   function renderBuiltinPreview(htmlContent) {
-    livePreviewEl.innerHTML = htmlContent;
+    const purifier = getDOMPurify();
+    const safeHtml = purifier ? purifier.sanitize(htmlContent, {
+      ADD_TAGS: ['annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac'],
+      ADD_ATTR: ['mathvariant', 'encoding']
+    }) : htmlContent;
+    livePreviewEl.innerHTML = safeHtml;
     const sheets = livePreviewEl.querySelectorAll('.page-sheet-a4');
     const totalPagesEl = document.getElementById("pdf-total-pages");
     const pageInputEl = document.getElementById("pdf-input-page");
@@ -5206,6 +5247,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const btnSoloEditor = document.getElementById("btn-view-editor");
 
   function setViewMode(mode) {
+    if (mode === "split") mode = "split-view";
     config.viewMode = mode;
     localStorage.setItem("lack-viewMode", mode);
 
@@ -5226,13 +5268,38 @@ window.addEventListener("DOMContentLoaded", async () => {
   setViewMode(config.viewMode);
 
   // ====== P2P WEBRTC COLLABORATION ======
+  let collabModuleRef = null;
+  function getCollabModule() {
+    if (!collabModuleRef) {
+      collabModuleRef = require("./collaboration.js");
+    }
+    return collabModuleRef;
+  }
+
+  function getCollabSignalingConfig() {
+    const raw = localStorage.getItem("lack-collab-signaling");
+    if (!raw) return null;
+    return raw.split("\n").map(s => s.trim()).filter(Boolean);
+  }
+
+  function getCollabIceConfig() {
+    const raw = localStorage.getItem("lack-collab-ice");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
   const collabModal = document.getElementById("collab-modal");
   const btnCollab = document.getElementById("btn-collab");
   const collabStatusPill = document.getElementById("collab-status-container");
   const collabStatusText = document.getElementById("collab-status-text");
 
   btnCollab.onclick = () => {
-    const state = getCollabState();
+    const collab = getCollabModule();
+    const state = collab.getCollabState();
     const disconnectedView = document.getElementById("collab-disconnected-view");
     const connectedView = document.getElementById("collab-connected-view");
 
@@ -5245,8 +5312,17 @@ window.addEventListener("DOMContentLoaded", async () => {
       connectedView?.classList.add("hidden");
       disconnectedView?.classList.remove("hidden");
       const newRoomInput = document.getElementById("collab-new-room-id");
-      if (newRoomInput) newRoomInput.value = generateRoomId();
+      if (newRoomInput) newRoomInput.value = collab.generateRoomId();
     }
+
+    // Reset status indicators
+    document.getElementById("collab-status-create")?.classList.add("hidden");
+    document.getElementById("collab-status-join")?.classList.add("hidden");
+    const btnCreate = document.getElementById("btn-collab-create");
+    const btnJoin = document.getElementById("btn-collab-join");
+    if (btnCreate) btnCreate.disabled = false;
+    if (btnJoin) btnJoin.disabled = false;
+
     collabModal.classList.remove("hidden");
   };
 
@@ -5268,7 +5344,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("btn-collab-regen-id").onclick = () => {
-    document.getElementById("collab-new-room-id").value = generateRoomId();
+    document.getElementById("collab-new-room-id").value = getCollabModule().generateRoomId();
   };
 
   document.getElementById("btn-collab-copy-id").onclick = () => {
@@ -5285,51 +5361,185 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("btn-collab-create").onclick = () => {
     const roomId = document.getElementById("collab-new-room-id").value;
-    startCollaboration({
+    const password = document.getElementById("collab-create-password")?.value || null;
+    const btn = document.getElementById("btn-collab-create");
+    const statusEl = document.getElementById("collab-status-create");
+    const statusText = document.getElementById("collab-status-create-text");
+
+    btn.disabled = true;
+    statusEl?.classList.remove("hidden", "status-error");
+    if (statusText) statusText.textContent = i18n.t("collab_connecting");
+
+    const collab = getCollabModule();
+    const customSig = getCollabSignalingConfig();
+    const customIce = getCollabIceConfig();
+
+    const ok = collab.startCollaboration({
       roomId: roomId,
+      password: password,
       cm: cm,
       isJoining: false,
+      signalingServers: customSig,
+      iceServers: customIce,
       onRemoteUpdate: () => updateWordCount(),
       onUsersChange: (count) => {
-        document.getElementById("collab-users-count").textContent = count;
+        const userCountEl = document.getElementById("collab-users-count");
+        if (userCountEl) userCountEl.textContent = count;
         collabStatusText.textContent = `${count} online (${roomId})`;
       },
-      onStatusChange: (status) => {
-        collabStatusPill.classList.remove("hidden");
+      onStatusChange: (status, errDetail) => {
+        if (status === 'connected') {
+          collabStatusPill.classList.remove("hidden");
+          collabStatusText.textContent = `1 online (${roomId})`;
+          btnCollab?.classList.add("active-collab");
+
+          // Transition modal view to connected
+          const connectedView = document.getElementById("collab-connected-view");
+          const disconnectedView = document.getElementById("collab-disconnected-view");
+          connectedView?.classList.remove("hidden");
+          disconnectedView?.classList.add("hidden");
+          const activeInput = document.getElementById("collab-active-room-id");
+          if (activeInput) activeInput.value = roomId;
+
+          setTimeout(() => collabModal.classList.add("hidden"), 300);
+          showNotification(i18n.t("notif_session_started", { room: roomId }), "info");
+        } else if (status === 'error') {
+          statusEl?.classList.add("status-error");
+          if (statusText) statusText.textContent = `Errore di connessione: ${errDetail || 'impossibile connettersi'}`;
+        }
+        btn.disabled = false;
+      },
+      onError: (err) => {
+        btn.disabled = false;
+        statusEl?.classList.add("status-error");
+        if (statusText) statusText.textContent = `Errore: ${err.message}`;
       },
       showNotification: showNotification
     });
-    collabModal.classList.add("hidden");
-    showNotification(i18n.t("notif_session_started", { room: roomId }), "info");
+
+    if (!ok) {
+      btn.disabled = false;
+    }
   };
 
   document.getElementById("btn-collab-join").onclick = () => {
     const roomId = document.getElementById("collab-join-room-id").value.trim();
     if (!roomId) return;
-    startCollaboration({
+    const password = document.getElementById("collab-join-password")?.value || null;
+    const btn = document.getElementById("btn-collab-join");
+    const statusEl = document.getElementById("collab-status-join");
+    const statusText = document.getElementById("collab-status-join-text");
+
+    btn.disabled = true;
+    statusEl?.classList.remove("hidden", "status-error");
+    if (statusText) statusText.textContent = i18n.t("collab_connecting");
+
+    const collab = getCollabModule();
+    const customSig = getCollabSignalingConfig();
+    const customIce = getCollabIceConfig();
+
+    const ok = collab.startCollaboration({
       roomId: roomId,
+      password: password,
       cm: cm,
       isJoining: true,
+      signalingServers: customSig,
+      iceServers: customIce,
       onRemoteUpdate: () => updateWordCount(),
       onUsersChange: (count) => {
-        document.getElementById("collab-users-count").textContent = count;
+        const userCountEl = document.getElementById("collab-users-count");
+        if (userCountEl) userCountEl.textContent = count;
         collabStatusText.textContent = `${count} online (${roomId})`;
       },
-      onStatusChange: (status) => {
-        collabStatusPill.classList.remove("hidden");
+      onStatusChange: (status, errDetail) => {
+        if (status === 'connected') {
+          collabStatusPill.classList.remove("hidden");
+          collabStatusText.textContent = `1 online (${roomId})`;
+          btnCollab?.classList.add("active-collab");
+
+          const connectedView = document.getElementById("collab-connected-view");
+          const disconnectedView = document.getElementById("collab-disconnected-view");
+          connectedView?.classList.remove("hidden");
+          disconnectedView?.classList.add("hidden");
+          const activeInput = document.getElementById("collab-active-room-id");
+          if (activeInput) activeInput.value = roomId;
+
+          setTimeout(() => collabModal.classList.add("hidden"), 300);
+          showNotification(i18n.t("notif_session_joined", { room: roomId }), "info");
+        } else if (status === 'error') {
+          statusEl?.classList.add("status-error");
+          if (statusText) statusText.textContent = `Errore di connessione: ${errDetail || 'impossibile connettersi'}`;
+        }
+        btn.disabled = false;
+      },
+      onError: (err) => {
+        btn.disabled = false;
+        statusEl?.classList.add("status-error");
+        if (statusText) statusText.textContent = `Errore: ${err.message}`;
       },
       showNotification: showNotification
     });
-    collabModal.classList.add("hidden");
-    showNotification(i18n.t("notif_session_joined", { room: roomId }), "info");
+
+    if (!ok) {
+      btn.disabled = false;
+    }
   };
 
   document.getElementById("btn-collab-leave").onclick = () => {
-    leaveCollaboration();
+    getCollabModule().leaveCollaboration();
     collabStatusPill.classList.add("hidden");
+    btnCollab?.classList.remove("active-collab");
     collabModal.classList.add("hidden");
     showNotification(i18n.t("notif_session_ended"), "info");
   };
+
+  // Wire up Collab Settings tab controls
+  const sigTextarea = document.getElementById("settings-collab-signaling");
+  const iceTextarea = document.getElementById("settings-collab-ice");
+  if (sigTextarea) {
+    const saved = localStorage.getItem("lack-collab-signaling");
+    sigTextarea.value = saved || getCollabModule().DEFAULT_SIGNALING_SERVERS.join("\n");
+    sigTextarea.addEventListener("change", () => {
+      localStorage.setItem("lack-collab-signaling", sigTextarea.value);
+    });
+  }
+  if (iceTextarea) {
+    const saved = localStorage.getItem("lack-collab-ice");
+    iceTextarea.value = saved || JSON.stringify(getCollabModule().DEFAULT_ICE_SERVERS, null, 2);
+    iceTextarea.addEventListener("change", () => {
+      localStorage.setItem("lack-collab-ice", iceTextarea.value);
+    });
+  }
+
+  document.getElementById("btn-test-collab-signaling")?.addEventListener("click", async () => {
+    const statusEl = document.getElementById("collab-test-status");
+    const resultsEl = document.getElementById("collab-test-results");
+    const btn = document.getElementById("btn-test-collab-signaling");
+    if (!statusEl || !resultsEl) return;
+
+    btn.disabled = true;
+    statusEl.textContent = i18n.t("collab_testing");
+    statusEl.style.color = "var(--fg)";
+    resultsEl.innerHTML = "";
+
+    const servers = getCollabSignalingConfig() || getCollabModule().DEFAULT_SIGNALING_SERVERS;
+    const results = await getCollabModule().pingSignalingServers(servers);
+
+    let html = "";
+    let okCount = 0;
+    for (const res of results) {
+      if (res.ok) {
+        okCount++;
+        html += `<div style="color: #10b981; margin: 2px 0;">✓ ${res.url} (${res.latency}ms)</div>`;
+      } else {
+        html += `<div style="color: #ef4444; margin: 2px 0;">✕ ${res.url}: ${res.error}</div>`;
+      }
+    }
+    resultsEl.innerHTML = html;
+    statusEl.textContent = `${okCount}/${results.length} server raggiungibili`;
+    statusEl.style.color = okCount > 0 ? "#10b981" : "#ef4444";
+    btn.disabled = false;
+  });
 
   // ====== SETTINGS MODAL ======
   const settingsModal = document.getElementById("settings-modal");
@@ -5866,6 +6076,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       showNotification("Errore salvataggio template: " + e.message, "error");
     }
   }
+
+  window.__lackNewFile = newFile;
 
   // Initial state: show start screen if no tabs opened
   renderTabs();

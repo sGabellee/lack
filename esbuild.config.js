@@ -1,7 +1,7 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
-const isProd = process.env.NODE_ENV === 'production' || process.argv.includes('--production') || true;
+const isProd = process.env.NODE_ENV === 'production' || process.argv.includes('--production');
 
 async function build() {
   try {
@@ -13,10 +13,24 @@ async function build() {
       format: 'cjs',
       platform: 'node',
       target: 'es2022',
+      mainFields: ['module', 'main'],
+      plugins: [
+        {
+          name: 'dedupe-codemirror',
+          setup(build) {
+            build.onResolve({ filter: /^@codemirror\/(state|view|language|commands|autocomplete|search|lint)$/ }, args => {
+              return { path: path.resolve(__dirname, `node_modules/${args.path}/dist/index.js`) };
+            });
+            build.onResolve({ filter: /^y-codemirror\.next$/ }, () => {
+              return { path: path.resolve(__dirname, 'node_modules/y-codemirror.next/src/index.js') };
+            });
+          }
+        }
+      ],
       sourcemap: !isProd,
       minify: isProd,
       logLevel: 'info',
-      external: ['electron', '@electron/remote', 'yjs', 'y-webrtc', 'y-codemirror.next']
+      external: ['electron', '@electron/remote', 'yjs', 'y-webrtc']
     });
     console.log('Successfully built renderer.bundle.js');
 

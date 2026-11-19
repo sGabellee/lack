@@ -3,6 +3,19 @@ const Y = require('yjs');
 const { WebrtcProvider } = require('y-webrtc');
 const i18n = require('./i18n.js');
 
+const DEFAULT_SIGNALING_SERVERS = [
+  'wss://y-webrtc.fly.dev',
+  'wss://y-webrtc-signaling.fly.dev',
+  'wss://signaling.fly.dev',
+  'wss://signaling.yjs.dev'
+];
+
+const DEFAULT_ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' }
+];
+
 let ydoc = null;
 let provider = null;
 let yText = null;
@@ -46,6 +59,56 @@ function applyDiffToYText(yTextTarget, oldVal, newVal) {
 }
 
 /**
+ * Pings a single signaling server over WebSocket to verify reachability and latency.
+ */
+function pingSignalingServer(url, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    try {
+      const WsClass = (typeof window !== 'undefined' && window.WebSocket) ? window.WebSocket : require('ws');
+      const ws = new WsClass(url);
+      let resolved = false;
+
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          try { ws.close(); } catch (_) {}
+          resolve({ ok: false, url, error: 'Timeout' });
+        }
+      }, timeoutMs);
+
+      ws.onopen = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          const latency = Date.now() - t0;
+          try { ws.close(); } catch (_) {}
+          resolve({ ok: true, url, latency });
+        }
+      };
+
+      ws.onerror = (err) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          resolve({ ok: false, url, error: err?.message || 'WebSocket Error' });
+        }
+      };
+    } catch (e) {
+      resolve({ ok: false, url, error: e.message });
+    }
+  });
+}
+
+/**
+ * Pings all candidate signaling servers and returns the results.
+ */
+async function pingSignalingServers(servers = DEFAULT_SIGNALING_SERVERS) {
+  const promises = servers.map(s => pingSignalingServer(s));
+  return await Promise.all(promises);
+}
+
+/**
  * Starts or joins a collaborative session
  */
 function startCollaboration({
@@ -54,9 +117,12 @@ function startCollaboration({
   cm = null,
   editor = null,
   isJoining = false,
+  signalingServers = null,
+  iceServers = null,
   onRemoteUpdate,
   onUsersChange,
   onStatusChange,
+  onError,
   showNotification
 }) {
   if (provider) {
@@ -66,6 +132,10 @@ function startCollaboration({
   currentRoomId = roomId.trim();
   localCmRef = cm;
   localEditorRef = editor;
+
+  if (onStatusChange) {
+    onStatusChange('connecting');
+  }
 
   ydoc = new Y.Doc();
   yText = ydoc.getText('latex-content');
@@ -81,21 +151,19 @@ function startCollaboration({
     }, 'local');
   }
 
-  // Reliable public WebRTC signaling and STUN servers for peer-to-peer connection
+  const sigList = (Array.isArray(signalingServers) && signalingServers.length > 0)
+    ? signalingServers
+    : DEFAULT_SIGNALING_SERVERS;
+
+  const iceList = (Array.isArray(iceServers) && iceServers.length > 0)
+    ? iceServers
+    : DEFAULT_ICE_SERVERS;
+
   const providerOpts = {
-    signaling: [
-      'wss://y-webrtc.fly.dev',
-      'wss://y-webrtc-signaling.fly.dev',
-      'wss://signaling.fly.dev',
-      'wss://signaling.yjs.dev'
-    ],
+    signaling: sigList,
     peerOpts: {
       config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:global.stun.twilio.com:3478' }
-        ]
+        iceServers: iceList
       }
     }
   };
@@ -108,6 +176,8 @@ function startCollaboration({
     provider = new WebrtcProvider(currentRoomId, ydoc, providerOpts);
   } catch (err) {
     console.error('Failed to create WebRTC provider:', err);
+    if (onStatusChange) onStatusChange('error', err.message);
+    if (onError) onError(err);
     if (showNotification) {
       showNotification('Error starting collaboration: ' + err.message, 'error');
     }
@@ -115,48 +185,58 @@ function startCollaboration({
   }
 
   // Bind to CodeMirror 6
-  if (cm && typeof cm.bindYjs === 'function') {
-    cm.bindYjs(yText, undoManager, provider.awareness);
-  } else if (editor) {
-    // Fallback textarea binding
-    yText.observe((event, transaction) => {
-      if (transaction.origin === 'local') return;
+  try {
+    if (cm && typeof cm.bindYjs === 'function') {
+      cm.bindYjs(yText, undoManager, provider.awareness);
+    } else if (editor) {
+      // Fallback textarea binding
+      yText.observe((event, transaction) => {
+        if (transaction.origin === 'local') return;
 
-      isApplyingRemote = true;
-      const remoteStr = yText.toString();
+        isApplyingRemote = true;
+        const remoteStr = yText.toString();
 
-      const selStart = editor.selectionStart;
-      const selEnd = editor.selectionEnd;
-      const oldLen = editor.value.length;
+        const selStart = editor.selectionStart;
+        const oldLen = editor.value.length;
 
-      editor.value = remoteStr;
+        editor.value = remoteStr;
 
-      const diff = remoteStr.length - oldLen;
-      const newSel = Math.max(0, Math.min(remoteStr.length, selStart + (selStart > 0 ? diff : 0)));
-      editor.selectionStart = newSel;
-      editor.selectionEnd = newSel;
+        const diff = remoteStr.length - oldLen;
+        const newSel = Math.max(0, Math.min(remoteStr.length, selStart + (selStart > 0 ? diff : 0)));
+        editor.selectionStart = newSel;
+        editor.selectionEnd = newSel;
 
-      isApplyingRemote = false;
+        isApplyingRemote = false;
 
-      if (onRemoteUpdate) {
-        onRemoteUpdate(remoteStr);
-      }
-    });
-
-    inputHandlerRef = () => {
-      if (isApplyingRemote) return;
-      if (!yText || !ydoc) return;
-
-      ydoc.transact(() => {
-        const currentDoc = yText.toString();
-        const currentVal = editor.value;
-        if (currentDoc !== currentVal) {
-          applyDiffToYText(yText, currentDoc, currentVal);
+        if (onRemoteUpdate) {
+          onRemoteUpdate(remoteStr);
         }
-      }, 'local');
-    };
+      });
 
-    editor.addEventListener('input', inputHandlerRef);
+      inputHandlerRef = () => {
+        if (isApplyingRemote) return;
+        if (!yText || !ydoc) return;
+
+        ydoc.transact(() => {
+          const currentDoc = yText.toString();
+          const currentVal = editor.value;
+          if (currentDoc !== currentVal) {
+            applyDiffToYText(yText, currentDoc, currentVal);
+          }
+        }, 'local');
+      };
+
+      editor.addEventListener('input', inputHandlerRef);
+    }
+  } catch (bindErr) {
+    console.error('Failed to bind editor to Yjs:', bindErr);
+    if (onStatusChange) onStatusChange('error', bindErr.message);
+    if (onError) onError(bindErr);
+    if (showNotification) {
+      showNotification('Failed to bind editor to collaboration session: ' + bindErr.message, 'error');
+    }
+    leaveCollaboration();
+    return false;
   }
 
   // Awareness (User count)
@@ -286,5 +366,9 @@ module.exports = {
   startCollaboration,
   leaveCollaboration,
   generateRoomId,
-  getCollabState
+  getCollabState,
+  pingSignalingServer,
+  pingSignalingServers,
+  DEFAULT_SIGNALING_SERVERS,
+  DEFAULT_ICE_SERVERS
 };

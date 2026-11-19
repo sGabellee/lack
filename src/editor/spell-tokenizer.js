@@ -45,7 +45,6 @@ function tokenizeLatexProse(text) {
     while ((match = segmentRegex.exec(chunk)) !== null) {
       let rawSegment = match[1];
       let segStart = baseOffset + match.index;
-      let segEnd = segStart + rawSegment.length;
 
       // Rule: If segment contains digits or underscores, it is a technical identifier (a4paper, utf8, 11pt, var_name)
       // Completely skip it; NEVER split at digits!
@@ -63,7 +62,7 @@ function tokenizeLatexProse(text) {
 
       // Strip any trailing punctuation or apostrophe
       rawSegment = rawSegment.replace(/[''-]+$/, '');
-      segEnd = segStart + rawSegment.length;
+      const segEnd = segStart + rawSegment.length;
 
       // Filter: shorter than 3 characters
       if (rawSegment.length < 3) continue;

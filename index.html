@@ -21,6 +21,7 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' file: blob:; style-src 'self' 'unsafe-inline' file:; font-src 'self' file: data:; img-src 'self' file: data: blob:; connect-src 'self' file: data: blob: ws: wss:; frame-src 'self' file: blob: data:;" />
   <title>Lack</title>
   <link rel="stylesheet" href="themes.css" />
   <link rel="stylesheet" href="style.css" />
@@ -644,7 +645,7 @@
           <!-- PDF VIEWER & PREVIEW PANE ("IL COMPILATO") -->
           <div id="preview-container">
             <!-- PDF VIEWER TOOLBAR: OVERLEAF COMPILA BUTTON POSITIONED EXACTLY BETWEEN EDITOR & PREVIEW -->
-            <div class="pdf-viewer-toolbar">
+            <div class="pdf-viewer-toolbar" id="pdf-toolbar">
               <div class="pdf-toolbar-left">
                 <!-- OVERLEAF-STYLE RECOMPILE BUTTON -->
                 <button id="btn-recompile" class="compile-btn" data-i18n-title="compile_btn" title="Compila documento LaTeX (Ctrl + Enter)">
@@ -679,9 +680,10 @@
                 <!-- Page navigation -->
                 <button id="pdf-btn-prev" class="pdf-tool-btn" title="Pagina Precedente">&larr;</button>
                 <span class="pdf-page-display">
-                  <span data-i18n="pdf_page">Pag.</span> 
+                  <span class="pdf-page-label-txt" data-i18n="pdf_page">Pag.</span> 
                   <input type="number" id="pdf-input-page" value="1" min="1" max="1" /> 
-                  <span data-i18n="pdf_of">di</span> 
+                  <span class="pdf-page-label-sep">/</span>
+                  <span class="pdf-page-label-txt" data-i18n="pdf_of">di</span> 
                   <span id="pdf-total-pages">1</span>
                 </span>
                 <button id="pdf-btn-next" class="pdf-tool-btn" title="Pagina Successiva">&rarr;</button>
@@ -691,19 +693,19 @@
                 <button id="pdf-btn-zoom-out" class="pdf-tool-btn" title="Riduci">-</button>
                 <span id="pdf-zoom-val" class="pdf-zoom-label">100%</span>
                 <button id="pdf-btn-zoom-in" class="pdf-tool-btn" title="Ingrandisci">+</button>
-                <button id="pdf-btn-fit-width" class="pdf-tool-btn pdf-tool-collapsible" title="Adatta Larghezza">↔</button>
-                <button id="pdf-btn-fit-page" class="pdf-tool-btn pdf-tool-collapsible" title="Adatta Pagina">↕</button>
+                <button id="pdf-btn-fit-width" class="pdf-tool-btn pdf-tool-fit" title="Adatta Larghezza">↔</button>
+                <button id="pdf-btn-fit-page" class="pdf-tool-btn pdf-tool-fit" title="Adatta Pagina">↕</button>
 
-                <div class="toolbar-separator pdf-tool-collapsible" style="height: 16px; margin: 0 2px;"></div>
+                <div class="toolbar-separator pdf-tool-secondary" style="height: 16px; margin: 0 2px;"></div>
 
-                <button id="pdf-btn-download" class="pdf-tool-btn pdf-tool-collapsible" title="Scarica PDF">
+                <button id="pdf-btn-download" class="pdf-tool-btn pdf-tool-secondary" title="Scarica PDF">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
                   </svg>
                 </button>
-                <button id="pdf-btn-refresh" class="pdf-tool-btn pdf-tool-collapsible" title="Ricompila e Aggiorna">
+                <button id="pdf-btn-refresh" class="pdf-tool-btn pdf-tool-secondary" title="Ricompila e Aggiorna">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
@@ -715,7 +717,7 @@
                   <div id="pdf-overflow-dropdown" class="pdf-overflow-dropdown hidden">
                     <button id="pdf-menu-fit-width" class="pdf-overflow-item"><span>↔</span> <span data-i18n="pdf_fit_width">Adatta Larghezza</span></button>
                     <button id="pdf-menu-fit-page" class="pdf-overflow-item"><span>↕</span> <span data-i18n="pdf_fit_page">Adatta Pagina</span></button>
-                    <div class="pdf-overflow-divider"></div>
+                    <div class="pdf-overflow-divider" id="pdf-menu-fit-divider"></div>
                     <button id="pdf-menu-download" class="pdf-overflow-item">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -887,6 +889,15 @@
               <line x1="18" y1="8" x2="18" y2="8"></line>
             </svg>
             <span data-i18n="settings_cat_shortcuts">Scorciatoie</span>
+          </button>
+          <button type="button" class="settings-nav-btn" data-settings-tab="collaboration">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span data-i18n="settings_cat_collaboration">Collaborazione P2P</span>
           </button>
         </nav>
 
@@ -1134,6 +1145,29 @@
               </div>
             </div>
           </div>
+
+          <!-- COLLABORATION TAB -->
+          <div class="settings-tab-pane" id="pane-settings-collaboration">
+            <div class="settings-pane-header">
+              <h3 data-i18n="settings_cat_collaboration">Collaborazione P2P</h3>
+              <p class="settings-pane-sub">Configura i server di segnalazione e NAT traversal per la collaborazione in tempo reale</p>
+            </div>
+            <div class="settings-group">
+              <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <label>Server di Segnalazione WebRTC (uno per riga)</label>
+                <textarea id="settings-collab-signaling" class="collab-input" rows="4" style="resize: vertical; font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+              <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px; margin-top: 12px;">
+                <label>Server STUN / TURN (JSON Array)</label>
+                <textarea id="settings-collab-ice" class="collab-input" rows="3" style="resize: vertical; font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+              <div class="settings-row" style="margin-top: 16px; justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
+                <button type="button" id="btn-test-collab-signaling" class="collab-submit-btn" style="width: auto; padding: 6px 14px;" data-i18n="collab_test_signaling">Testa Server di Segnalazione</button>
+                <span id="collab-test-status" class="collab-test-status" style="font-size: 12px; font-weight: 500;"></span>
+              </div>
+              <div id="collab-test-results" style="margin-top: 8px; font-size: 12px; font-family: monospace;"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1146,7 +1180,7 @@
       <div class="modal-header">
         <div class="collab-header-title">
           <h2 data-i18n="collab_title">Collabora in Tempo Reale</h2>
-          <span class="collab-beta-badge">GRATIS ILLIMITATO</span>
+          <span class="collab-beta-badge" style="white-space: nowrap; color: #ffffff !important; background-color: #80007f;">GRATIS ILLIMITATO</span>
         </div>
         <button id="btn-close-collab" class="collab-close-btn" title="Chiudi">&times;</button>
       </div>
@@ -1173,6 +1207,17 @@
                 </svg>
               </button>
             </div>
+
+            <label class="collab-label" for="collab-create-password" data-i18n="collab_password_opt">Password (Opzionale / Crittografia E2EE)</label>
+            <div class="collab-input-row">
+              <input type="password" id="collab-create-password" placeholder="Lascia vuoto per stanza pubblica" class="collab-input" />
+            </div>
+
+            <div id="collab-status-create" class="collab-dialog-status hidden">
+              <div class="collab-spinner"></div>
+              <span id="collab-status-create-text" data-i18n="collab_connecting">Connessione in corso...</span>
+            </div>
+
             <button id="btn-collab-create" class="collab-submit-btn" data-i18n="collab_start_session">Avvia Sessione Collaborativa</button>
           </div>
 
@@ -1181,6 +1226,17 @@
             <div class="collab-input-row">
               <input type="text" id="collab-join-room-id" placeholder="lack-xxxxxx" spellcheck="false" class="collab-input" />
             </div>
+
+            <label class="collab-label" for="collab-join-password" data-i18n="collab_password_opt">Password Stanza (Se richiesta)</label>
+            <div class="collab-input-row">
+              <input type="password" id="collab-join-password" placeholder="Password stanza" class="collab-input" />
+            </div>
+
+            <div id="collab-status-join" class="collab-dialog-status hidden">
+              <div class="collab-spinner"></div>
+              <span id="collab-status-join-text" data-i18n="collab_connecting">Connessione in corso...</span>
+            </div>
+
             <button id="btn-collab-join" class="collab-submit-btn" data-i18n="collab_join_session">Partecipa alla Sessione</button>
           </div>
         </div>
