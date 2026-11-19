@@ -12,6 +12,7 @@ let localCmRef = null;
 let localEditorRef = null;
 let inputHandlerRef = null;
 let isApplyingRemote = false;
+let connectionTimer = null;
 
 // Calculates minimal diff between old and new text (fallback for textarea)
 function applyDiffToYText(yTextTarget, oldVal, newVal) {
@@ -85,7 +86,8 @@ function startCollaboration({
     signaling: [
       'wss://y-webrtc.fly.dev',
       'wss://y-webrtc-signaling.fly.dev',
-      'wss://signaling.fly.dev'
+      'wss://signaling.fly.dev',
+      'wss://signaling.yjs.dev'
     ],
     peerOpts: {
       config: {
@@ -166,8 +168,31 @@ function startCollaboration({
     }
   });
 
+  if (connectionTimer) {
+    clearTimeout(connectionTimer);
+    connectionTimer = null;
+  }
+
+  // 10s connection timeout detection
+  let isConnected = false;
+  connectionTimer = setTimeout(() => {
+    if (!isConnected && provider) {
+      console.warn('[Collab] WebRTC connection timeout after 10s');
+      if (showNotification) {
+        showNotification('Connessione WebRTC in corso: i server di segnalazione potrebbero essere lenti o non raggiungibili.', 'warning');
+      }
+    }
+  }, 10000);
+
   // Connection status
   provider.on('status', (event) => {
+    if (event.status === 'connected') {
+      isConnected = true;
+      if (connectionTimer) {
+        clearTimeout(connectionTimer);
+        connectionTimer = null;
+      }
+    }
     if (onStatusChange) {
       onStatusChange(event.status); // 'connected' or 'connecting' or 'disconnected'
     }
@@ -202,6 +227,10 @@ function startCollaboration({
  * Leaves active collaboration session
  */
 function leaveCollaboration() {
+  if (connectionTimer) {
+    clearTimeout(connectionTimer);
+    connectionTimer = null;
+  }
   if (localCmRef && typeof localCmRef.unbindYjs === 'function') {
     localCmRef.unbindYjs();
     localCmRef = null;

@@ -185,6 +185,7 @@ class CodeMirrorManager {
     this.vimCompartment = new Compartment();
     this.themeCompartment = new Compartment();
     this.collabCompartment = new Compartment();
+    this.historyCompartment = new Compartment();
 
     this.onDocChangeCallback = null;
     this.onCursorChangeCallback = null;
@@ -297,7 +298,7 @@ class CodeMirrorManager {
         drawSelection(),
         bracketMatching(),
         closeBrackets(),
-        history(),
+        this.historyCompartment.of([history(), Prec.high(keymap.of(historyKeymap))]),
         foldGutter(),
         latexFoldService,
         search({ top: true }),
@@ -319,7 +320,6 @@ class CodeMirrorManager {
         keymap.of([
           ...closeBracketsKeymap,
           ...defaultKeymap,
-          ...historyKeymap,
           ...foldKeymap,
           ...searchKeymap,
           ...lintKeymap
@@ -655,15 +655,21 @@ class CodeMirrorManager {
   bindYjs(yText, undoManager, awareness) {
     if (!yText) return;
     this.view.dispatch({
-      effects: this.collabCompartment.reconfigure(
-        yCollab(yText, awareness, { undoManager })
-      )
+      effects: [
+        this.historyCompartment.reconfigure([]),
+        this.collabCompartment.reconfigure(
+          yCollab(yText, awareness, { undoManager })
+        )
+      ]
     });
   }
 
   unbindYjs() {
     this.view.dispatch({
-      effects: this.collabCompartment.reconfigure([])
+      effects: [
+        this.collabCompartment.reconfigure([]),
+        this.historyCompartment.reconfigure([history(), Prec.high(keymap.of(historyKeymap))])
+      ]
     });
   }
 

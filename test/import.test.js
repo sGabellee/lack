@@ -104,3 +104,11 @@ test('resolveCollisionSafePdfTarget: target-collision rule creates uniqueName fo
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('Draft project: resolves collision-safe target upon compile', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lack-draft-'));
+  const res = resolveCollisionSafePdfTarget(tmpDir, 'draft-doc', null, () => null);
+  assert.strictEqual(res.collided, false);
+  assert.strictEqual(path.basename(res.targetPath), 'draft-doc.pdf');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});

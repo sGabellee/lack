@@ -52,15 +52,7 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', async (event, argv, workingDirectory) => {
     const cwd = workingDirectory || invocationCwd;
-    const instanceArgs = argv.slice(process.defaultApp ? 2 : 1);
-    const action = await resolveOpenAction({
-      rawArgv: instanceArgs,
-      cwd,
-      registry: projectRegistry,
-      readLinkFn: readLink,
-      storeRoot: defaultStoreRoot
-    });
-
+    const action = await resolveAppAction(argv, cwd);
     handleResolvedAction(action, null);
   });
 }
@@ -444,6 +436,67 @@ ipcMain.handle('project-undo-move', async (_e, journalPath) => {
   }
 });
 
+async function resolveAppAction(rawArgs, workingDir) {
+  const env = { ...process.env };
+  if (workingDir) {
+    env.LACK_CWD = workingDir;
+  }
+  const probe = {
+    existsSync: (p) => fs.existsSync(p),
+    statSync: (p) => fs.statSync(p),
+    readDirSync: (p) => fs.readdirSync(p),
+    readLink: readLink,
+    getProject: (id) => projectRegistry.getProject(id),
+    hasTexFiles: (dir) => {
+      try {
+        const files = fs.readdirSync(dir);
+        return Array.isArray(files) && files.some(f => f.toLowerCase().endsWith('.tex'));
+      } catch (_) { return false; }
+    }
+  };
+
+  const launch = resolveLaunch({
+    argv: rawArgs,
+    env,
+    platform: process.platform,
+    probe
+  });
+
+  if (launch.action === 'resolve-pdf') {
+    const link = await readLink(launch.targetPath);
+    if (link && link.id) {
+      const regHit = projectRegistry.getProject(link.id);
+      if (regHit && fs.existsSync(regHit.storePath)) {
+        return {
+          action: 'open-linked',
+          projectId: link.id,
+          name: link.name || regHit.name,
+          storePath: regHit.storePath,
+          targetPath: launch.targetPath,
+          debug: launch.debug
+        };
+      }
+      return {
+        action: 'prompt-relink-or-restore',
+        projectId: link.id,
+        name: link.name,
+        targetPath: launch.targetPath,
+        hasSnapshot: !!link.hasSnapshot,
+        debug: launch.debug
+      };
+    }
+    return {
+      action: 'prompt-claim-pdf',
+      targetPath: launch.targetPath,
+      name: launch.name,
+      template: launch.template,
+      debug: launch.debug
+    };
+  }
+
+  return launch;
+}
+
 function handleResolvedAction(action, targetWin) {
   const currentWin = targetWin || win;
   if (!action) return;
@@ -510,6 +563,28 @@ function handleResolvedAction(action, targetWin) {
   } else if (action.action === 'start-screen') {
     if (currentWin && !currentWin.isDestroyed()) {
       currentWin.webContents.send('show-start-screen');
+    }
+  } else if (action.action === 'open-folder') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      currentWin.webContents.send('open-folder', action.openFolder);
+      if (action.offerConversion && !projectRegistry.isFolderDeclined(action.openFolder)) {
+        currentWin.webContents.send('prompt-convert-folder-to-project', { folderPath: action.openFolder });
+      }
+    }
+  } else if (action.action === 'open-file') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      if (action.openFolder) {
+        currentWin.webContents.send('open-folder', action.openFolder);
+      }
+      const content = fs.existsSync(action.openFile) ? fs.readFileSync(action.openFile, 'utf8') : '';
+      currentWin.webContents.send('load-tex', action.openFile, content);
+    }
+  } else if (action.action === 'bind-buffer') {
+    if (currentWin && !currentWin.isDestroyed()) {
+      if (action.openFolder) {
+        currentWin.webContents.send('open-folder', action.openFolder);
+      }
+      currentWin.webContents.send('bind-buffer', { filePath: action.openFile, createOnSave: true });
     }
   } else if (action.action === 'classic') {
     if (currentWin && !currentWin.isDestroyed()) {
@@ -873,13 +948,7 @@ function buildApplicationMenu() {
 app.whenReady().then(async () => {
   createWindow();
 
-  initialAction = await resolveOpenAction({
-    rawArgv: rawCliArgs,
-    cwd: invocationCwd,
-    registry: projectRegistry,
-    readLinkFn: readLink,
-    storeRoot: defaultStoreRoot
-  });
+  initialAction = await resolveAppAction(process.argv, invocationCwd);
 
   win.webContents.once('did-finish-load', () => {
     if (initialAction) {
@@ -915,12 +984,6 @@ app.on('activate', () => {
 
 app.on("open-file", async (event, filePath) => {
   event.preventDefault();
-  const action = await resolveOpenAction({
-    rawArgv: [filePath],
-    cwd: invocationCwd,
-    registry: projectRegistry,
-    readLinkFn: readLink,
-    storeRoot: defaultStoreRoot
-  });
+  const action = await resolveAppAction([filePath], invocationCwd);
   handleResolvedAction(action, win);
 });
