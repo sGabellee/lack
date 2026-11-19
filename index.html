@@ -691,24 +691,48 @@
                 <button id="pdf-btn-zoom-out" class="pdf-tool-btn" title="Riduci">-</button>
                 <span id="pdf-zoom-val" class="pdf-zoom-label">100%</span>
                 <button id="pdf-btn-zoom-in" class="pdf-tool-btn" title="Ingrandisci">+</button>
-                <button id="pdf-btn-fit-width" class="pdf-tool-btn" title="Adatta Larghezza">↔</button>
-                <button id="pdf-btn-fit-page" class="pdf-tool-btn" title="Adatta Pagina">↕</button>
+                <button id="pdf-btn-fit-width" class="pdf-tool-btn pdf-tool-collapsible" title="Adatta Larghezza">↔</button>
+                <button id="pdf-btn-fit-page" class="pdf-tool-btn pdf-tool-collapsible" title="Adatta Pagina">↕</button>
 
-                <div class="toolbar-separator" style="height: 16px; margin: 0 2px;"></div>
+                <div class="toolbar-separator pdf-tool-collapsible" style="height: 16px; margin: 0 2px;"></div>
 
-                <button id="pdf-btn-download" class="pdf-tool-btn" title="Scarica PDF">
+                <button id="pdf-btn-download" class="pdf-tool-btn pdf-tool-collapsible" title="Scarica PDF">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
                   </svg>
                 </button>
-                <button id="pdf-btn-refresh" class="pdf-tool-btn" title="Ricompila e Aggiorna">
+                <button id="pdf-btn-refresh" class="pdf-tool-btn pdf-tool-collapsible" title="Ricompila e Aggiorna">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg>
                 </button>
+
+                <div class="pdf-overflow-container" style="position: relative; display: inline-flex;">
+                  <button id="pdf-btn-overflow" class="pdf-tool-btn hidden" title="Altre opzioni" style="font-size: 14px; font-weight: bold;">⋯</button>
+                  <div id="pdf-overflow-dropdown" class="pdf-overflow-dropdown hidden">
+                    <button id="pdf-menu-fit-width" class="pdf-overflow-item"><span>↔</span> <span data-i18n="pdf_fit_width">Adatta Larghezza</span></button>
+                    <button id="pdf-menu-fit-page" class="pdf-overflow-item"><span>↕</span> <span data-i18n="pdf_fit_page">Adatta Pagina</span></button>
+                    <div class="pdf-overflow-divider"></div>
+                    <button id="pdf-menu-download" class="pdf-overflow-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span data-i18n="pdf_download">Scarica PDF</span>
+                    </button>
+                    <button id="pdf-menu-refresh" class="pdf-overflow-item">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                      </svg>
+                      <span data-i18n="pdf_refresh">Ricompila e Aggiorna</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

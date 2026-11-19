@@ -54,6 +54,12 @@ const {
   computeRange
 } = require("./src/projects/ui-controller.js");
 
+const {
+  moveFileSafe,
+  recordMoveJournal,
+  undoMoveJournal
+} = require("./src/projects/import.js");
+
 // ====== UTILS ======
 function escapeHtml(s) {
   if (typeof s !== 'string') return String(s);
@@ -107,6 +113,55 @@ function showNotification(message, type = 'info') {
   notification.addEventListener('mouseenter', () => clearTimeout(dismissTimer));
   notification.addEventListener('mouseleave', () => {
     dismissTimer = setTimeout(dismiss, 2500);
+  });
+}
+
+function showNotificationWithAction(message, actionText, onAction, type = 'info', duration = 8000) {
+  const container = getOrCreateNotificationContainer();
+  const notification = document.createElement('div');
+  notification.className = `cloud-notification ${type} has-action`;
+  notification.style.display = 'flex';
+  notification.style.alignItems = 'center';
+  notification.style.justifyContent = 'space-between';
+  notification.style.gap = '10px';
+  notification.innerHTML = `
+    <span class="cloud-notification-text">${escapeHtml(message)}</span>
+    <button class="cloud-notification-action" style="background: rgba(255,255,255,0.2); border: 1px solid currentColor; color: inherit; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 11px; font-weight: bold; flex-shrink: 0;">${escapeHtml(actionText)}</button>
+  `;
+  container.appendChild(notification);
+
+  let dismissTimer = null;
+  let isDismissed = false;
+
+  function dismiss() {
+    if (isDismissed) return;
+    isDismissed = true;
+    clearTimeout(dismissTimer);
+    notification.classList.add('cloud-dismiss');
+    setTimeout(() => {
+      try { notification.remove(); } catch (_) {}
+    }, 320);
+  }
+
+  const btn = notification.querySelector('.cloud-notification-action');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismiss();
+      if (typeof onAction === 'function') onAction();
+    });
+  }
+
+  dismissTimer = setTimeout(dismiss, duration);
+  notification.addEventListener('click', (e) => {
+    if (e.target !== btn) {
+      e.stopPropagation();
+      dismiss();
+    }
+  });
+  notification.addEventListener('mouseenter', () => clearTimeout(dismissTimer));
+  notification.addEventListener('mouseleave', () => {
+    dismissTimer = setTimeout(dismiss, 3000);
   });
 }
 
@@ -722,6 +777,64 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("pdf-btn-download")?.addEventListener("click", () => downloadPdf());
   document.getElementById("pdf-btn-refresh")?.addEventListener("click", () => triggerCompile());
+
+  // PDF Toolbar Overflow handling
+  const pdfBtnOverflow = document.getElementById("pdf-btn-overflow");
+  const pdfOverflowDropdown = document.getElementById("pdf-overflow-dropdown");
+  const pdfToolbarEl = document.getElementById("pdf-toolbar");
+
+  if (pdfBtnOverflow && pdfOverflowDropdown) {
+    pdfBtnOverflow.addEventListener("click", (e) => {
+      e.stopPropagation();
+      pdfOverflowDropdown.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!pdfOverflowDropdown.classList.contains("hidden") && !pdfOverflowDropdown.contains(e.target) && e.target !== pdfBtnOverflow) {
+        pdfOverflowDropdown.classList.add("hidden");
+      }
+    });
+
+    document.getElementById("pdf-menu-fit-width")?.addEventListener("click", () => {
+      pdfOverflowDropdown.classList.add("hidden");
+      pdfViewer.autoFitWidth();
+    });
+    document.getElementById("pdf-menu-fit-page")?.addEventListener("click", () => {
+      pdfOverflowDropdown.classList.add("hidden");
+      pdfViewer.autoFitPage();
+    });
+    document.getElementById("pdf-menu-download")?.addEventListener("click", () => {
+      pdfOverflowDropdown.classList.add("hidden");
+      downloadPdf();
+    });
+    document.getElementById("pdf-menu-refresh")?.addEventListener("click", () => {
+      pdfOverflowDropdown.classList.add("hidden");
+      triggerCompile();
+    });
+  }
+
+  // Responsive toolbar overflow observer
+  if (pdfToolbarEl && typeof ResizeObserver !== "undefined") {
+    const updateToolbarOverflow = () => {
+      const isNarrow = pdfToolbarEl.clientWidth < 540;
+      const collapsibles = pdfToolbarEl.querySelectorAll(".pdf-tool-collapsible");
+      collapsibles.forEach(el => {
+        if (isNarrow) el.classList.add("hidden");
+        else el.classList.remove("hidden");
+      });
+      if (pdfBtnOverflow) {
+        if (isNarrow) {
+          pdfBtnOverflow.classList.remove("hidden");
+        } else {
+          pdfBtnOverflow.classList.add("hidden");
+          pdfOverflowDropdown?.classList.add("hidden");
+        }
+      }
+    };
+    const roToolbar = new ResizeObserver(() => updateToolbarOverflow());
+    roToolbar.observe(pdfToolbarEl);
+    updateToolbarOverflow();
+  }
 
   // ====== MULTI-FILE PROJECT CONTEXT RESOLVERS ======
   function getActiveSourceRootDir() {
@@ -1840,6 +1953,45 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         await pdfViewer.loadPdfDocument(res.pdfPath);
 
+        // If draft linked project without a target, resolve target on first compile
+        if (isLinkedProject && currentProject && !currentProject.targetPath) {
+          let resolvedTarget = null;
+          if (currentProjectDir && fs.existsSync(currentProjectDir)) {
+            const base = currentProject.name || path.basename(mainDocumentPath || 'documento', '.tex');
+            resolvedTarget = path.join(currentProjectDir, uniqueName(currentProjectDir, base, '.pdf'));
+          } else {
+            const saveRes = await dialog.showSaveDialog({
+              title: "Salva documento PDF del progetto",
+              defaultPath: `${currentProject.name || 'documento'}.pdf`,
+              filters: [{ name: "Documento PDF", extensions: ["pdf"] }]
+            });
+            if (!saveRes.canceled && saveRes.filePath) {
+              resolvedTarget = path.extname(saveRes.filePath).toLowerCase() === '.pdf'
+                ? saveRes.filePath
+                : `${saveRes.filePath}.pdf`;
+            }
+          }
+
+          if (resolvedTarget) {
+            currentProject.targetPath = resolvedTarget;
+            currentProjectDir = path.dirname(resolvedTarget);
+            try {
+              const manifest = await ipcRenderer.invoke('project-load-manifest', currentProject.storePath);
+              if (manifest) {
+                manifest.target = path.resolve(resolvedTarget);
+                await ipcRenderer.invoke('project-save-manifest', currentProject.storePath, manifest);
+              }
+              await ipcRenderer.invoke('project-registry-save', {
+                id: currentProject.id,
+                storePath: currentProject.storePath,
+                name: currentProject.name,
+                lastPdfPath: resolvedTarget
+              });
+            } catch (_) {}
+            startTargetPdfWatcher(resolvedTarget);
+          }
+        }
+
         // If linked project, post-process atomically to target PDF
         if (isLinkedProject && currentProject && currentProject.targetPath) {
           try {
@@ -2189,14 +2341,18 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     updateTitle();
 
-    // Folder pane = folder of target PDF
-    const folderDir = path.dirname(opts.targetPath);
-    currentProjectDir = folderDir;
-    if (folderPathEl) {
-      folderPathEl.textContent = path.basename(folderDir);
-      folderPathEl.classList.remove("hidden");
+    // Folder pane = folder of target PDF (or current directory if draft)
+    if (opts.targetPath) {
+      const folderDir = path.dirname(opts.targetPath);
+      currentProjectDir = folderDir;
+      if (folderPathEl) {
+        folderPathEl.textContent = path.basename(folderDir);
+        folderPathEl.classList.remove("hidden");
+      }
+      renderFolderPane(folderDir);
+    } else if (currentProjectDir) {
+      renderFolderPane(currentProjectDir);
     }
-    renderFolderPane(folderDir);
 
     // Determine main document from opts.mainFile, manifest, <name>.tex, or main.tex
     let mainFileName = opts.mainFile;
@@ -2232,7 +2388,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       pdfViewer.loadPdfDocument(opts.targetPath);
     }
 
-    startTargetPdfWatcher(opts.targetPath);
+    if (opts.targetPath) {
+      startTargetPdfWatcher(opts.targetPath);
+    }
   }
 
   function closeLinkedProject() {
@@ -3660,11 +3818,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       if (!pathsToImport || pathsToImport.length === 0) return;
 
+      const isAltCopy = e.altKey;
       let count = 0;
+      const movedOperations = [];
+
       for (const src of pathsToImport) {
         if (!src || !fs.existsSync(src)) continue;
         if (currentProject.targetPath && path.resolve(src) === path.resolve(currentProject.targetPath)) {
-          showNotification("Il PDF compilato appartiene alla cartella di destinazione, non al progetto sorgente.", "info");
+          showNotification("Il PDF collegato è l'output del progetto e non può essere spostato nello store.", "warning");
           continue;
         }
         const isDir = fs.statSync(src).isDirectory();
@@ -3673,10 +3834,17 @@ window.addEventListener("DOMContentLoaded", async () => {
         const targetName = uniqueName(currentProject.storePath, base, ext);
         const dest = path.join(currentProject.storePath, targetName);
         try {
-          if (isDir) {
-            fs.cpSync(src, dest, { recursive: true });
+          if (isAltCopy || isDir) {
+            // Copy mode (when Alt is held or directories)
+            if (isDir) {
+              fs.cpSync(src, dest, { recursive: true });
+            } else {
+              fs.copyFileSync(src, dest);
+            }
           } else {
-            fs.copyFileSync(src, dest);
+            // Data safety rule: move = copy -> verify (size + SHA-256) -> delete original
+            const op = moveFileSafe(src, dest);
+            movedOperations.push(op);
           }
           if (targetName !== path.basename(src)) {
             showNotification(`Importato come "${targetName}"`, "info");
@@ -3684,11 +3852,45 @@ window.addEventListener("DOMContentLoaded", async () => {
           count++;
         } catch (err) {
           console.warn("[LACK] Drag-drop import error:", err);
+          showNotification("Errore durante l'operazione: " + err.message, "error");
         }
       }
+
       if (count > 0) {
-        showNotification(`${count} element${count === 1 ? 'o importato' : 'i importati'} nello store di progetto`, "info");
         renderProjectPane(currentProject.storePath);
+        if (currentProjectDir) renderFolderPane(currentProjectDir);
+
+        if (movedOperations.length > 0) {
+          const userDataDir = (require("@electron/remote").app || require("electron").app)?.getPath("userData") || os.tmpdir();
+          const journalDir = path.join(userDataDir, "move-journal");
+          let journalPath = null;
+          try {
+            journalPath = recordMoveJournal(journalDir, {
+              projectId: currentProject.id,
+              operations: movedOperations
+            });
+          } catch (_) {}
+
+          showNotificationWithAction(
+            `${movedOperations.length} element${movedOperations.length === 1 ? 'o spostato' : 'i spostati'} nello store`,
+            "Annulla",
+            async () => {
+              if (journalPath) {
+                const undoRes = await ipcRenderer.invoke('project-undo-move', journalPath);
+                if (undoRes.success) {
+                  showNotification(`Ripristinati ${undoRes.count} file`, "info");
+                  renderProjectPane(currentProject.storePath);
+                  if (currentProjectDir) renderFolderPane(currentProjectDir);
+                } else {
+                  showNotification("Errore durante l'annullamento: " + undoRes.error, "error");
+                }
+              }
+            },
+            "info"
+          );
+        } else {
+          showNotification(`${count} element${count === 1 ? 'o copiato' : 'i copiati'} nello store`, "info");
+        }
       }
     });
   }
@@ -4045,14 +4247,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("btn-submit-new-proj")?.addEventListener("click", async () => {
     const name = inputNewProjName?.value.trim() || "Nuovo Progetto";
-    let targetPath = inputNewProjTarget?.value.trim();
+    let targetPath = inputNewProjTarget?.value.trim() || null;
     const template = selectNewProjTemplate?.value || "standard";
 
-    if (!targetPath) {
-      showNotification("Seleziona una destinazione valida per il file PDF.", "warning");
-      return;
-    }
-    if (path.extname(targetPath).toLowerCase() !== ".pdf") {
+    if (targetPath && path.extname(targetPath).toLowerCase() !== ".pdf") {
       targetPath = `${targetPath}.pdf`;
     }
 
@@ -4069,7 +4267,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         name: created.manifest.name,
         storePath: created.storePath,
         targetPath: targetPath,
-        compileImmediate: true
+        compileImmediate: Boolean(targetPath)
       });
     } catch (err) {
       showNotification("Errore creazione progetto: " + err.message, "error");
@@ -5359,6 +5557,94 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   ipcRenderer.on("close-active-tab", () => {
     if (activeTabId) closeTab(activeTabId);
+  });
+  ipcRenderer.on("show-start-screen", () => {
+    if (tabs.length === 0) {
+      renderTabs();
+    }
+  });
+  ipcRenderer.on("bind-buffer", (_e, { filePath, createOnSave }) => {
+    const existing = filePath ? tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(filePath)) : null;
+    if (existing) {
+      switchTab(existing.id);
+    } else {
+      createTab(path.basename(filePath), "", filePath);
+      const tab = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(filePath));
+      if (tab && createOnSave) {
+        tab.createOnSave = true;
+      }
+    }
+  });
+  ipcRenderer.on("prompt-convert-folder-to-project", async (_e, { folderPath }) => {
+    if (!folderPath || !fs.existsSync(folderPath)) return;
+    const isDeclined = await ipcRenderer.invoke('project-is-folder-declined', folderPath);
+    if (isDeclined) return;
+
+    const scan = await ipcRenderer.invoke('project-scan-folder', folderPath);
+    if (!scan || !scan.texFiles || scan.texFiles.length === 0) return;
+
+    const mainCandidate = scan.candidateMain || scan.texFiles[0];
+    const folderName = path.basename(folderPath);
+
+    const answer = await showCustomConfirmDialog({
+      title: "Converti cartella in Progetto Lack",
+      message: `La cartella "${folderName}" contiene ${scan.texFiles.length} file LaTeX (documento principale rilevato: "${mainCandidate}").\n\nVuoi che questi file diventino il tuo Progetto Lack collegato?\nI file sorgente verranno organizzati nell'ambiente di lavoro Lack e verrà creato automaticamente il PDF nella cartella.`,
+      buttons: [
+        { text: "Non chiedere più per questa cartella", value: "decline", isCancel: true },
+        { text: "No, mantieni file singoli", value: "no", isCancel: true },
+        { text: "Sì, converti in Progetto", value: "yes", isPrimary: true }
+      ]
+    });
+
+    if (answer === "decline") {
+      await ipcRenderer.invoke('project-decline-folder', folderPath);
+      return;
+    }
+
+    if (answer === "yes") {
+      try {
+        const res = await ipcRenderer.invoke('project-convert-folder', {
+          folderPath,
+          mainFileName: mainCandidate,
+          projectTitle: folderName
+        });
+
+        if (res.collided) {
+          showNotification(`Attenzione: un file PDF esisteva già. È stato creato "${path.basename(res.targetPath)}".`, "warning");
+        }
+
+        await openLinkedProject({
+          projectId: res.id,
+          name: res.name,
+          storePath: res.storePath,
+          targetPath: res.targetPath,
+          mainFile: res.main,
+          compileImmediate: false
+        });
+
+        await triggerCompile(false);
+
+        if (res.journalPath) {
+          showNotificationWithAction(
+            `Cartella "${folderName}" convertita in progetto collegato!`,
+            "Annulla",
+            async () => {
+              const undoRes = await ipcRenderer.invoke('project-undo-move', res.journalPath);
+              if (undoRes.success) {
+                showNotification(`Ripristinati ${undoRes.count} file nella cartella`, "info");
+                closeLinkedProject();
+                renderFolderPane(folderPath);
+              } else {
+                showNotification("Errore ripristino: " + undoRes.error, "error");
+              }
+            },
+            "info"
+          );
+        }
+      } catch (convErr) {
+        showNotification("Errore durante la conversione: " + convErr.message, "error");
+      }
+    }
   });
   ipcRenderer.on("load-tex", (_e, filePath, content) => {
     const existing = filePath ? tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(filePath)) : null;

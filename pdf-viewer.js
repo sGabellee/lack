@@ -1,6 +1,7 @@
 // ====== LACK PDF.JS VIEWER MODULE ======
 const path = require('path');
 const fs = require('fs');
+const { computeFitScale } = require('./src/viewer/fit-calculator');
 
 let pdfjsLib = null;
 let currentPdfDoc = null;
@@ -585,13 +586,26 @@ async function autoFitWidth() {
   const page = await currentPdfDoc.getPage(curPage || 1);
   const unscaledViewport = page.getViewport({ scale: 1.0 });
   const scrollContainer = getScrollContainer();
-  const availableWidth = (scrollContainer ? scrollContainer.clientWidth : containerEl.clientWidth) - 40;
-  if (availableWidth > 0) {
-    currentScale = Math.max(0.4, Math.min(3.0, availableWidth / unscaledViewport.width));
-    updateZoomLabel();
-    await reRenderVisiblePages();
-    goToPage(curPage, false);
+  const containerWidth = scrollContainer ? scrollContainer.clientWidth : containerEl.clientWidth;
+  const containerHeight = scrollContainer ? scrollContainer.clientHeight : containerEl.clientHeight;
+
+  const result = computeFitScale({
+    containerWidth,
+    containerHeight,
+    pageWidth: unscaledViewport.width,
+    pageHeight: unscaledViewport.height,
+    fitMode: 'fit-width',
+    pixelRatio: window.devicePixelRatio || 1
+  });
+
+  if (process.env.LACK_DEBUG) {
+    console.log('[LACK_DEBUG] computeFitScale fit-width:', result);
   }
+
+  currentScale = result.scale;
+  updateZoomLabel();
+  await reRenderVisiblePages();
+  goToPage(curPage, false);
 }
 
 async function autoFitPage() {
@@ -602,13 +616,26 @@ async function autoFitPage() {
   const page = await currentPdfDoc.getPage(curPage || 1);
   const unscaledViewport = page.getViewport({ scale: 1.0 });
   const scrollContainer = getScrollContainer();
-  const availableHeight = (scrollContainer ? scrollContainer.clientHeight : containerEl.clientHeight) - 50;
-  if (availableHeight > 0) {
-    currentScale = Math.max(0.4, Math.min(3.0, availableHeight / unscaledViewport.height));
-    updateZoomLabel();
-    await reRenderVisiblePages();
-    goToPage(curPage, false);
+  const containerWidth = scrollContainer ? scrollContainer.clientWidth : containerEl.clientWidth;
+  const containerHeight = scrollContainer ? scrollContainer.clientHeight : containerEl.clientHeight;
+
+  const result = computeFitScale({
+    containerWidth,
+    containerHeight,
+    pageWidth: unscaledViewport.width,
+    pageHeight: unscaledViewport.height,
+    fitMode: 'fit-page',
+    pixelRatio: window.devicePixelRatio || 1
+  });
+
+  if (process.env.LACK_DEBUG) {
+    console.log('[LACK_DEBUG] computeFitScale fit-page:', result);
   }
+
+  currentScale = result.scale;
+  updateZoomLabel();
+  await reRenderVisiblePages();
+  goToPage(curPage, false);
 }
 
 async function zoomIn() {
