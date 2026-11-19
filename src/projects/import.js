@@ -119,7 +119,7 @@ function findLatexDependencies(mainTexPath, baseDir) {
     if (visitedTex.has(normal) || !fs.existsSync(normal)) return;
     visitedTex.add(normal);
 
-    let content = '';
+    let content;
     try {
       content = fs.readFileSync(normal, 'utf8');
     } catch (_) {

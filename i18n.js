@@ -154,6 +154,11 @@ const translations = {
     collab_session_active: "Active session",
     collab_participants: "Connected participants",
     collab_leave_session: "End session",
+    settings_cat_collaboration: "P2P Collaboration",
+    collab_password_opt: "Password (Optional / E2EE)",
+    collab_test_signaling: "Test Signaling Servers",
+    collab_testing: "Testing connection...",
+    collab_connecting: "Connecting...",
 
     // Template Gallery
     template_gallery_title: "Template Gallery",
@@ -372,6 +377,11 @@ const translations = {
     collab_session_active: "Sessione attiva",
     collab_participants: "Partecipanti connessi",
     collab_leave_session: "Termina sessione",
+    settings_cat_collaboration: "Collaborazione P2P",
+    collab_password_opt: "Password facoltativa (Crittografia E2EE)",
+    collab_test_signaling: "Testa Server di Segnalazione",
+    collab_testing: "Verifica connessione in corso...",
+    collab_connecting: "Connessione in corso...",
 
     // Template Gallery
     template_gallery_title: "Galleria Template",

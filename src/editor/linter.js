@@ -309,9 +309,31 @@ function latexLinterExtension(manager = null) {
         }
       }
 
+      // Suppress diagnostics on the active command token while typing
+      const cursor = view.state.selection.main.head;
+      const line = view.state.doc.lineAt(cursor);
+      let activeTokenFrom = -1;
+      let activeTokenTo = -1;
+
+      const tokenRegex = /\\[a-zA-Z@*]+/g;
+      let m;
+      while ((m = tokenRegex.exec(line.text)) !== null) {
+        const mFrom = line.from + m.index;
+        const mTo = mFrom + m[0].length;
+        if (cursor >= mFrom && cursor <= mTo) {
+          activeTokenFrom = mFrom;
+          activeTokenTo = mTo;
+          break;
+        }
+      }
+
+      if (activeTokenFrom !== -1) {
+        return result.filter(d => !(d.from <= activeTokenTo && d.to >= activeTokenFrom));
+      }
+
       return result;
     }, {
-      delay: 250,
+      delay: 800,
       needsRefresh: (update) => update.transactions.some(
         (tr) => tr.effects.some((e) => e.is(setCompilerIssuesEffect))
       )
