@@ -1,6 +1,4 @@
 <div align="center">
-  <img src="images/lack.png" alt="Lack Icon" width="110" height="110" />
-  <br />
   <img src="images/logo_dark.png" alt="Lack Logo" width="160" />
   <br /><br />
   <p><strong>L'editor LaTeX desktop moderno, potente e collaborativo parte della stessa suite di Mark.</strong></p>
