@@ -36,10 +36,15 @@ for i in "${!steps[@]}"; do
       npm install > /dev/null 2>&1
       ;;
     "Build app")
-      npm run build > /dev/null 2>&1
+      npm run build:bundle > /dev/null 2>&1
       ;;
     "Creazione DMG")
-      npx electron-builder --mac > /dev/null 2>&1
+      npm run build:mac > /dev/null 2>&1
+      if [ -d "dist/mac/Lack.app" ]; then
+        cp -R "dist/mac/Lack.app" /Applications/ 2>/dev/null || true
+      elif [ -d "dist/mac-arm64/Lack.app" ]; then
+        cp -R "dist/mac-arm64/Lack.app" /Applications/ 2>/dev/null || true
+      fi
       ;;
     "Installazione completata")
       echo "Lack è stato installato correttamente!"

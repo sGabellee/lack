@@ -1,15 +1,20 @@
 {
   "name": "Lack",
   "desktopName": "Lack.desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Editor LaTeX professionale con compilatore, anteprima PDF e collaborazione in tempo reale",
   "main": "main.js",
   "scripts": {
     "build:bundle": "node esbuild.config.js",
     "build:editor": "node esbuild.config.js",
     "build:dir": "npm run build:bundle && electron-builder --dir --linux",
+    "build:linux": "npm run build:bundle && electron-builder --linux AppImage deb tar.gz",
+    "build:mac": "npm run build:bundle && electron-builder --mac dmg zip",
+    "build:win": "npm run build:bundle && electron-builder --win nsis zip",
+    "build:all": "npm run build:bundle && electron-builder -mwl",
     "build": "npm run build:bundle && electron-builder",
     "dist": "npm run build:bundle && electron-builder",
+    "release": "npm run build:bundle && electron-builder --publish always",
     "start": "npm run build:bundle && electron . --no-sandbox",
     "test": "node --test test/*.test.js",
     "verify": "npm run build:bundle && npx eslint src/ main.js collaboration.js && npm test && electron . --no-sandbox --collab-selftest && node scripts/verify-collab-e2e.js && node scripts/verify-pdf-toolbar-e2e.js && electron scripts/verify-save-template-e2e.js --no-sandbox && electron scripts/verify-project-save-compile.js --no-sandbox && node scripts/contrast-audit.js && npm run build:dir"
@@ -143,6 +148,9 @@
     },
     "mac": {
       "icon": "build/lack.icns",
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
       "target": [
         "dmg",
         "zip"

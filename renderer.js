@@ -6431,7 +6431,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     showNotification(`Comando di installazione TeX copiato negli appunti: ${cmd}`, "info");
   });
   ipcRenderer.on("open-about", () => {
-    showNotification("Lack - Editor LaTeX Professionale v1.0.0", "info");
+    let appVersion = "1.1.0";
+    try { appVersion = require("./package.json").version; } catch (_) {}
+    showNotification(`Lack - Editor LaTeX Professionale v${appVersion}`, "info");
   });
 
   // Empty state buttons
