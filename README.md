@@ -11,7 +11,7 @@
 
 ---
 
-## 🌟 Panoramica
+## Panoramica
 
 **Lack** è l'editor per LaTeX progettato per offrire un'esperienza fluida, potente e completa, ispirata alle migliori funzionalità di **Overleaf Pro** e **TeXstudio**, pur mantenendo lo **stesso identico stile grafico, ergonomia, eleganza e pulizia di Mark** (l'editor Markdown della stessa suite).
 
@@ -27,7 +27,7 @@ Lack include tutto ciò che serve per la redazione di documenti accademici, tesi
 
 ---
 
-## 🚀 Funzionalità Principali
+## Funzionalità Principali
 
 ### ⚡ Compilazione Senza Limiti
 - Pulsante di ricompilazione in evidenza in stile Overleaf (`Ctrl + Enter`).
@@ -36,23 +36,23 @@ Lack include tutto ciò che serve per la redazione di documenti accademici, tesi
 - Modalità di compilazione automatica in tempo reale (`Auto-compile`) con debounce intelligente o al salvataggio del file.
 - Pulizia automatica opzionale dei file ausiliari (`.aux`, `.log`, `.out`, `.toc`, `.fls`).
 
-### 🛠️ Pannello Errori e Diagnostica TeX
+### Pannello Errori e Diagnostica TeX
 - Cassetto espandibile dei log (`Ctrl + Shift + U`) con badge colorati per errori (rossi) e avvisi (gialli).
 - Salto immediato alla riga interessata cliccando sulla card dell'errore.
 - Visualizzatore del log raw TeX per il debug avanzato di pacchetti e macro.
 
-### 💡 Autocompletamento LaTeX Intelligente
+### Autocompletamento LaTeX Intelligente
 - Digitando `\` viene mostrato un menu fluttuante con oltre 130 comandi essenziali divisi per categoria (*Struttura, Ambienti, Matematica, Stile, Simboli Greci, Citazioni*).
 - Inserimento rapido di formule matematiche inline (`$...$`), display (`\[...\]`), frazioni (`\frac{}{}`), radici quadrate (`\sqrt{}`) e palette dei simboli greci.
 - Chiusura automatica intelligente di parentesi graffe `{}`, dollari `$`, parentesi quadre `[]` e indentazione automatica degli ambienti `\begin{} ... \end{}`.
 - Avvolgimento della selezione senza cancellazione del testo esistente.
 
-### 👥 Collaborazione P2P Gratuita e Illimitata
+### Collaborazione P2P Gratuita e Illimitata
 - Collaborazione in tempo reale basata su CRDT (Yjs) e connessione diretta WebRTC.
 - Nessun server proprietario né costo per utente: crea una stanza con codice `lack-xxxxxx` e condividila con colleghi o compagni di studio.
 - Contatore in tempo reale dei partecipanti connessi e cursore sincronizzato.
 
-### 📚 Galleria Template in stile Overleaf
+### Galleria Template in stile Overleaf
 - **Academic & Papers**: Articolo di conferenza IEEE Transactions (a due colonne).
 - **University & Lab Reports**: Relazione tecnica di laboratorio con frontespizio, abstract e tabelle.
 - **Presentations (Beamer)**: Slide deck moderno per presentazioni accademiche o aziendali.
@@ -63,11 +63,11 @@ Lack include tutto ciò che serve per la redazione di documenti accademici, tesi
 
 ---
 
-## 💻 Installazione
+## Installazione
 
 Lack include script di installazione dedicati e automatizzati per **Ubuntu / Linux**, **macOS** e **Windows**.
 
-### 🐧 Ubuntu / Debian / Linux
+### Ubuntu / Debian / Linux
 Esegui lo script `lin-install.sh` dalla cartella del progetto:
 ```bash
 ./lin-install.sh
@@ -82,7 +82,7 @@ Lo script:
    ```
 4. Registra l'icona e crea il file `.desktop` nel launcher delle applicazioni di sistema.
 
-### 🍎 macOS
+### macOS
 Esegui lo script `mac-install.sh`:
 ```bash
 ./mac-install.sh
@@ -92,7 +92,7 @@ Lo script:
 2. Compila l'applicazione e genera il file DMG o `.app`.
 3. Crea il comando da terminale `/usr/local/bin/lack` per l'avvio globale.
 
-### 🪟 Windows
+### Windows
 Fai doppio clic o esegui dal prompt dei comandi lo script `win-install.bat`:
 ```cmd
 win-install.bat
@@ -129,7 +129,7 @@ Lo script:
 
 ---
 
-## 📦 Motori TeX e Compilatori Consigliati
+## Motori TeX e Compilatori Consigliati
 
 Lack supporta qualsiasi compilatore TeX standard. Per la massima compatibilità con tutti i pacchetti LaTeX liberi:
 
@@ -155,6 +155,6 @@ Se nessun motore nativo è installato, Lack utilizzerà automaticamente il suo *
 
 ---
 
-## 📄 Licenza
+## Licenza
 
 Distribuito sotto licenza [ISC](LICENSE). Sviluppato come parte della suite coordinata con **Mark**.
