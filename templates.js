@@ -532,6 +532,7 @@ const STORAGE_KEY_CATEGORIES = 'lack_custom_categories';
 
 function getCustomCategories() {
   try {
+    if (typeof localStorage === 'undefined') return [];
     const raw = localStorage.getItem(STORAGE_KEY_CATEGORIES);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
@@ -544,8 +545,35 @@ function getAllCategories() {
   return [...DEFAULT_CATEGORIES, ...custom];
 }
 
+function getCategories() {
+  return getAllCategories();
+}
+
+function addCategory(label) {
+  if (!label || !label.trim()) return null;
+  const cleanLabel = label.trim();
+  const id = 'cat-' + cleanLabel.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-');
+  
+  const categories = getAllCategories();
+  const existing = categories.find(c => c.id === id || c.label.toLowerCase() === cleanLabel.toLowerCase());
+  if (existing) return existing;
+
+  const newCat = { id, label: cleanLabel, isCustom: true };
+  try {
+    const custom = getCustomCategories();
+    custom.push(newCat);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(custom));
+    }
+  } catch (e) {
+    console.error('[LackTemplates] Error saving category:', e);
+  }
+  return newCat;
+}
+
 function getCustomTemplates() {
   try {
+    if (typeof localStorage === 'undefined') return [];
     const raw = localStorage.getItem(STORAGE_KEY_TEMPLATES);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
@@ -558,25 +586,39 @@ function getAllTemplates() {
   return [...DEFAULT_TEMPLATES, ...custom];
 }
 
-function saveCustomTemplate({ id, title, category, description, content, suggestedFilename }) {
+function sanitizeLatexFilename(filename, fallbackTitle) {
+  let name = (filename || '').trim();
+  if (!name) {
+    name = (fallbackTitle || 'template').toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_');
+  }
+  if (!name.endsWith('.tex')) {
+    name = name.replace(/\.[a-zA-Z0-9]+$/, '') + '.tex';
+  }
+  return name;
+}
+
+function saveCustomTemplate({ id, title, category, description, content, suggestedFilename, scope }) {
   const custom = getCustomTemplates();
-  const templateId = id || `custom-${Date.now()}`;
+  const templateId = id || `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const existingIdx = custom.findIndex(t => t.id === templateId);
 
   const categories = getAllCategories();
   const catObj = categories.find(c => c.id === category);
   const categoryLabel = catObj ? catObj.label : 'Other';
+  const cleanFilename = sanitizeLatexFilename(suggestedFilename, title);
 
   const templateObj = {
     id: templateId,
-    title: title.trim(),
+    title: (title || '').trim() || 'Template personalizzato',
     category: category || 'other',
     categoryLabel: categoryLabel,
     description: (description || '').trim(),
-    suggestedFilename: suggestedFilename || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.tex`,
-    content: content,
+    suggestedFilename: cleanFilename,
+    scope: scope || 'global',
+    content: content || '',
     isCustom: true,
-    createdAt: new Date().toISOString()
+    createdAt: existingIdx !== -1 && custom[existingIdx].createdAt ? custom[existingIdx].createdAt : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 
   if (existingIdx !== -1) {
@@ -586,20 +628,65 @@ function saveCustomTemplate({ id, title, category, description, content, suggest
   }
 
   try {
-    localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(custom));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(custom));
+    }
   } catch (e) {
-    console.error('Could not save custom template:', e);
+    console.error('[LackTemplates] Could not save custom template:', e);
   }
 
   return templateObj;
 }
 
+function updateCustomTemplate(id, data) {
+  if (!id) return null;
+  const custom = getCustomTemplates();
+  const idx = custom.findIndex(t => t.id === id);
+  if (idx < 0) return null;
+
+  const existing = custom[idx];
+  const allCats = getAllCategories();
+  const catId = data.category || existing.category;
+  const foundCat = allCats.find(c => c.id === catId);
+  const categoryLabel = foundCat ? foundCat.label : (data.categoryLabel || existing.categoryLabel);
+
+  const cleanFilename = data.suggestedFilename !== undefined
+    ? sanitizeLatexFilename(data.suggestedFilename, data.title || existing.title)
+    : existing.suggestedFilename;
+
+  const updated = {
+    ...existing,
+    title: data.title !== undefined ? data.title.trim() : existing.title,
+    category: catId,
+    categoryLabel: categoryLabel,
+    description: data.description !== undefined ? data.description.trim() : existing.description,
+    suggestedFilename: cleanFilename,
+    scope: data.scope || existing.scope || 'global',
+    content: data.content !== undefined ? data.content : existing.content,
+    updatedAt: new Date().toISOString()
+  };
+
+  custom[idx] = updated;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(custom));
+    }
+  } catch (e) {
+    console.error('[LackTemplates] Error updating custom template:', e);
+  }
+  return updated;
+}
+
 function deleteCustomTemplate(id) {
   let custom = getCustomTemplates();
+  const initialLen = custom.length;
   custom = custom.filter(t => t.id !== id);
   try {
-    localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(custom));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(custom));
+    }
   } catch (e) {}
+  return custom.length !== initialLen;
 }
 
 function getTemplateById(id) {
@@ -610,10 +697,14 @@ const LackTemplates = {
   DEFAULT_CATEGORIES,
   DEFAULT_TEMPLATES,
   getAllCategories,
+  getCategories,
+  addCategory,
   getAllTemplates,
   getTemplateById,
   getCustomTemplates,
+  sanitizeLatexFilename,
   saveCustomTemplate,
+  updateCustomTemplate,
   deleteCustomTemplate
 };
 

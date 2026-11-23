@@ -5811,13 +5811,6 @@ body.dark .save-template-text-btn {
 .save-template-new-cat-box.hidden {
   display: none !important;
 }
-  background: transparent;
-  color: #e53935;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: all 0.14s ease;
-  line-height: 1;
-}
 
 .template-card-btn-delete:hover {
   background: rgba(229, 57, 53, 0.12);
@@ -6129,10 +6122,18 @@ body.dark .template-use-big-btn:hover {
 
 /* Save Template Modal */
 .save-template-content {
-  width: min(92vw, 460px);
+  width: min(92vw, 480px);
   background-color: var(--editor-bg);
-  border-radius: 10px;
+  border: 1px solid var(--explorer-border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+body.dark .save-template-content {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
 }
 
 .save-template-body {

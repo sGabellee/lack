@@ -4616,8 +4616,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   const templatePreviewDrawer = document.getElementById("template-preview-drawer");
   let previewedTemplate = null;
 
-  function openTemplateGallery() {
-    renderTemplateCards("all");
+  function openTemplateGallery(category = "all") {
+    renderSidebarCategories();
+    renderTemplateCards(category);
     templateModal.classList.remove("hidden");
   }
 
@@ -4814,6 +4815,13 @@ window.addEventListener("DOMContentLoaded", async () => {
             <button type="button" class="template-card-btn-preview" data-action="preview-template" data-template-id="${escapeHtml(t.id)}">
               <span>${i18n.t('template_preview') || 'Anteprima'}</span>
             </button>
+            ${isCustom ? `
+            <button type="button" class="template-card-btn-edit" data-action="edit-template" data-template-id="${escapeHtml(t.id)}" title="${i18n.t('template_edit_modal_title') || 'Modifica'}">
+              Modifica
+            </button>
+            <button type="button" class="template-card-btn-delete" data-action="delete-template" data-template-id="${escapeHtml(t.id)}" title="${i18n.t('template_delete') || 'Elimina'}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>` : ''}
           </div>
         </div>
       `;
@@ -4832,6 +4840,20 @@ window.addEventListener("DOMContentLoaded", async () => {
         e.stopPropagation();
         showTemplatePreview(template);
       };
+      const editBtn = card.querySelector(".template-card-btn-edit");
+      if (editBtn) {
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          openEditTemplateModal(templateId);
+        };
+      }
+      const deleteBtn = card.querySelector(".template-card-btn-delete");
+      if (deleteBtn) {
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          handleDeleteTemplate(templateId);
+        };
+      }
       card.onclick = () => showTemplatePreview(template);
     });
   }
@@ -4888,11 +4910,304 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   const templateSearchInput = document.getElementById("template-search-input");
+  const templateSearchClear = document.getElementById("template-search-clear");
   templateSearchInput.addEventListener("input", (e) => {
+    const val = e.target.value;
+    if (templateSearchClear) {
+      if (val) templateSearchClear.classList.remove("hidden");
+      else templateSearchClear.classList.add("hidden");
+    }
     const activeNav = document.querySelector(".template-nav-btn.active");
     const cat = activeNav ? activeNav.dataset.category : "all";
-    renderTemplateCards(cat, e.target.value);
+    renderTemplateCards(cat, val);
   });
+  if (templateSearchClear) {
+    templateSearchClear.addEventListener("click", () => {
+      templateSearchInput.value = "";
+      templateSearchClear.classList.add("hidden");
+      const activeNav = document.querySelector(".template-nav-btn.active");
+      const cat = activeNav ? activeNav.dataset.category : "all";
+      renderTemplateCards(cat, "");
+      templateSearchInput.focus();
+    });
+  }
+
+  document.getElementById("btn-gallery-save-current")?.addEventListener("click", () => {
+    openSaveTemplateModal();
+  });
+
+  // ====== SAVE / EDIT TEMPLATE MODAL (MARK STYLE) ======
+  const saveTemplateModal = document.getElementById("save-template-modal");
+  const saveTemplateOverlay = document.getElementById("save-template-overlay");
+  const saveTemplateModalTitle = document.getElementById("save-template-modal-title");
+  const saveTemplateEditId = document.getElementById("save-template-edit-id");
+  const btnCloseSaveTemplate = document.getElementById("btn-close-save-template");
+  const btnCancelSaveTemplate = document.getElementById("btn-cancel-save-template");
+  const btnConfirmSaveTemplate = document.getElementById("btn-confirm-save-template");
+  const saveTemplateTitleInput = document.getElementById("save-template-title");
+  const saveTemplateFilenameInput = document.getElementById("save-template-filename");
+  const saveTemplateCategorySelect = document.getElementById("save-template-category");
+  const btnToggleNewCategory = document.getElementById("btn-toggle-new-category");
+  const saveTemplateNewCategoryBox = document.getElementById("save-template-new-category-box");
+  const saveTemplateNewCategoryInput = document.getElementById("save-template-new-category-input");
+  const saveTemplateScopeSelect = document.getElementById("save-template-scope");
+  const optTemplateScopeProject = document.getElementById("opt-template-scope-project");
+  const saveTemplateDescInput = document.getElementById("save-template-desc");
+  const btnExportTemplateFile = document.getElementById("btn-export-template-file");
+
+  function renderSidebarCategories() {
+    const listEl = document.getElementById("template-categories-nav-list");
+    if (!listEl || !LackTemplates) return;
+    const allCats = LackTemplates.getAllCategories();
+    const defaultIds = new Set(['academic', 'reports', 'thesis', 'beamer', 'cv', 'assignments', 'other']);
+    const customCats = allCats.filter(c => !defaultIds.has(c.id));
+
+    listEl.querySelectorAll('.template-nav-btn.custom-cat-btn').forEach(el => el.remove());
+
+    customCats.forEach(c => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'template-nav-btn custom-cat-btn';
+      btn.dataset.category = c.id;
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>${escapeHtml(c.label)}</span>
+      `;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll(".template-nav-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("template-current-category-title").textContent = c.label;
+        renderTemplateCards(c.id, templateSearchInput?.value || "");
+      });
+      listEl.appendChild(btn);
+    });
+  }
+
+  function populateSaveTemplateCategories(selectedId = 'academic') {
+    if (!saveTemplateCategorySelect || !LackTemplates) return;
+    const cats = LackTemplates.getAllCategories();
+    saveTemplateCategorySelect.innerHTML = cats.map(c => `
+      <option value="${escapeHtml(c.id)}" ${c.id === selectedId ? 'selected' : ''}>${escapeHtml(c.label)}</option>
+    `).join('');
+  }
+
+  function openSaveTemplateModal() {
+    if (!saveTemplateModal) return;
+    const content = cm ? cm.getValue() : "";
+    if (!content || !content.trim()) {
+      showNotification(i18n.t("editor_placeholder") || "Documento vuoto: inserisci del codice LaTeX prima di salvarlo come template", "warning");
+      return;
+    }
+
+    const currentTab = getActiveTab();
+    let initialTitle = "";
+    if (currentTab && currentTab.title) {
+      initialTitle = currentTab.title.replace(/\.tex$/i, "");
+      if (initialTitle.startsWith("untitled")) {
+        initialTitle = "Il mio template";
+      }
+    }
+
+    if (saveTemplateModalTitle) saveTemplateModalTitle.textContent = i18n.t("template_save_modal_title") || "Salva come Template";
+    if (saveTemplateEditId) saveTemplateEditId.value = "";
+    if (btnConfirmSaveTemplate) btnConfirmSaveTemplate.textContent = i18n.t("save") || "Salva Template";
+
+    populateSaveTemplateCategories('academic');
+    if (saveTemplateTitleInput) {
+      saveTemplateTitleInput.value = initialTitle;
+    }
+    if (saveTemplateFilenameInput) {
+      const slug = (initialTitle || 'template').toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_');
+      saveTemplateFilenameInput.value = `${slug}.tex`;
+    }
+    if (saveTemplateDescInput) saveTemplateDescInput.value = "";
+    if (saveTemplateNewCategoryBox) saveTemplateNewCategoryBox.classList.add("hidden");
+    if (saveTemplateNewCategoryInput) saveTemplateNewCategoryInput.value = "";
+
+    if (optTemplateScopeProject) {
+      const hasActiveProject = !!(currentProjectDir || (isLinkedProject && currentProject));
+      optTemplateScopeProject.disabled = !hasActiveProject;
+      optTemplateScopeProject.textContent = hasActiveProject
+        ? (i18n.t("template_location_project") || "Progetto corrente") + ` (${currentProject ? currentProject.name : path.basename(currentProjectDir || '')})`
+        : (i18n.t("template_location_project") || "Progetto corrente") + " (Nessun progetto aperto)";
+    }
+    if (saveTemplateScopeSelect) {
+      saveTemplateScopeSelect.value = "global";
+    }
+
+    saveTemplateModal.classList.remove("hidden");
+    if (saveTemplateTitleInput) {
+      setTimeout(() => {
+        saveTemplateTitleInput.focus();
+        saveTemplateTitleInput.select();
+      }, 80);
+    }
+  }
+
+  function openEditTemplateModal(templateId) {
+    if (!LackTemplates || !saveTemplateModal) return;
+    const template = LackTemplates.getTemplateById(templateId);
+    if (!template) return;
+
+    if (saveTemplateModalTitle) saveTemplateModalTitle.textContent = i18n.t("template_edit_modal_title") || "Modifica Template";
+    if (saveTemplateEditId) saveTemplateEditId.value = templateId;
+    if (btnConfirmSaveTemplate) btnConfirmSaveTemplate.textContent = i18n.t("template_update_btn") || "Aggiorna Template";
+
+    populateSaveTemplateCategories(template.category);
+    if (saveTemplateTitleInput) saveTemplateTitleInput.value = template.title || "";
+    if (saveTemplateFilenameInput) saveTemplateFilenameInput.value = template.suggestedFilename || `${(template.title || 'template').toLowerCase().replace(/[^a-z0-9_-]/g, '_')}.tex`;
+    if (saveTemplateCategorySelect) saveTemplateCategorySelect.value = template.category || "academic";
+    if (saveTemplateScopeSelect) saveTemplateScopeSelect.value = template.scope || "global";
+    if (saveTemplateDescInput) saveTemplateDescInput.value = template.description || "";
+    if (saveTemplateNewCategoryBox) saveTemplateNewCategoryBox.classList.add("hidden");
+    if (saveTemplateNewCategoryInput) saveTemplateNewCategoryInput.value = "";
+
+    saveTemplateModal.classList.remove("hidden");
+    if (saveTemplateTitleInput) {
+      setTimeout(() => {
+        saveTemplateTitleInput.focus();
+        saveTemplateTitleInput.select();
+      }, 80);
+    }
+  }
+
+  function closeSaveTemplateModal() {
+    if (!saveTemplateModal) return;
+    saveTemplateModal.classList.add("hidden");
+  }
+
+  async function handleDeleteTemplate(templateId) {
+    if (!LackTemplates) return;
+    const template = LackTemplates.getTemplateById(templateId);
+    if (!template) return;
+
+    const confirmMsg = i18n.t("template_delete_confirm", { name: template.title }) || `Eliminare il template "${template.title}"?`;
+    const confirmed = await showCustomConfirmDialog({
+      title: i18n.t("template_delete") || "Elimina Template",
+      message: confirmMsg,
+      okText: i18n.t("template_delete") || "Elimina",
+      cancelText: i18n.t("cancel") || "Annulla",
+      isDanger: true
+    });
+
+    if (confirmed) {
+      LackTemplates.deleteCustomTemplate(templateId);
+      if (previewedTemplate && previewedTemplate.id === templateId) {
+        templatePreviewDrawer.classList.add("hidden");
+      }
+      const activeNav = document.querySelector(".template-nav-btn.active");
+      const activeCat = activeNav ? activeNav.dataset.category : "all";
+      renderTemplateCards(activeCat, templateSearchInput?.value || "");
+      showNotification(i18n.t("template_deleted_success") || "Template rimosso con successo!", "info");
+    }
+  }
+
+  saveTemplateTitleInput?.addEventListener("input", (e) => {
+    if (!saveTemplateEditId?.value && saveTemplateFilenameInput) {
+      const slug = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_');
+      saveTemplateFilenameInput.value = slug ? `${slug}.tex` : 'template.tex';
+    }
+  });
+
+  btnToggleNewCategory?.addEventListener("click", () => {
+    if (saveTemplateNewCategoryBox) {
+      saveTemplateNewCategoryBox.classList.toggle("hidden");
+      if (!saveTemplateNewCategoryBox.classList.contains("hidden") && saveTemplateNewCategoryInput) {
+        saveTemplateNewCategoryInput.focus();
+      }
+    }
+  });
+
+  btnCloseSaveTemplate?.addEventListener("click", closeSaveTemplateModal);
+  btnCancelSaveTemplate?.addEventListener("click", closeSaveTemplateModal);
+  saveTemplateOverlay?.addEventListener("click", closeSaveTemplateModal);
+
+  btnExportTemplateFile?.addEventListener("click", async () => {
+    const content = cm ? cm.getValue() : "";
+    if (!content.trim()) {
+      showNotification("Documento vuoto: nulla da esportare", "warning");
+      return;
+    }
+    const title = saveTemplateTitleInput?.value.trim() || "template";
+    const defaultFilename = saveTemplateFilenameInput?.value.trim() || `${title.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}.tex`;
+
+    try {
+      const { filePath } = await dialog.showSaveDialog({
+        title: "Esporta Template LaTeX",
+        defaultPath: defaultFilename,
+        filters: [{ name: "File LaTeX", extensions: ["tex"] }]
+      });
+
+      if (filePath) {
+        fs.writeFileSync(filePath, content, "utf8");
+        showNotification(`Template esportato in ${path.basename(filePath)}`, "info");
+      }
+    } catch (err) {
+      showNotification("Errore esportazione template: " + err.message, "error");
+    }
+  });
+
+  btnConfirmSaveTemplate?.addEventListener("click", () => {
+    if (!LackTemplates) {
+      showNotification("Modulo template non disponibile", "error");
+      return;
+    }
+
+    const title = saveTemplateTitleInput ? saveTemplateTitleInput.value.trim() : "";
+    if (!title) {
+      showNotification("Inserisci un nome per il template", "warning");
+      saveTemplateTitleInput?.focus();
+      return;
+    }
+
+    let category = saveTemplateCategorySelect ? saveTemplateCategorySelect.value : "academic";
+    const newCatName = saveTemplateNewCategoryInput ? saveTemplateNewCategoryInput.value.trim() : "";
+    if (newCatName) {
+      const addedCat = LackTemplates.addCategory(newCatName);
+      if (addedCat) category = addedCat.id;
+    }
+
+    const filename = saveTemplateFilenameInput ? saveTemplateFilenameInput.value.trim() : "";
+    const scope = saveTemplateScopeSelect ? saveTemplateScopeSelect.value : "global";
+    const description = saveTemplateDescInput ? saveTemplateDescInput.value.trim() : "";
+    const editId = saveTemplateEditId ? saveTemplateEditId.value : "";
+
+    try {
+      if (editId) {
+        LackTemplates.updateCustomTemplate(editId, {
+          title,
+          category,
+          suggestedFilename: filename,
+          scope,
+          description
+        });
+        showNotification(i18n.t("template_updated_success") || "Template modificato con successo!", "success");
+      } else {
+        const content = cm ? cm.getValue() : "";
+        LackTemplates.saveCustomTemplate({
+          title,
+          category,
+          suggestedFilename: filename,
+          scope,
+          description,
+          content
+        });
+        showNotification(i18n.t("template_saved_success") || "Template salvato con successo!", "success");
+      }
+
+      closeSaveTemplateModal();
+      renderSidebarCategories();
+      const activeNav = document.querySelector(".template-nav-btn.active");
+      const activeCat = activeNav ? activeNav.dataset.category : "all";
+      renderTemplateCards(activeCat, templateSearchInput?.value || "");
+    } catch (err) {
+      showNotification(err.message || "Errore salvataggio template", "error");
+    }
+  });
+
+  ipcRenderer.on("save-as-template", () => openSaveTemplateModal());
 
   // ====== TOOLBAR LATEX ACTIONS ======
   function wrapSelection(prefix, suffix) {
@@ -5731,9 +6046,17 @@ window.addEventListener("DOMContentLoaded", async () => {
           logsDrawer.classList.toggle("hidden");
         }
       } else if (e.key === "t" || e.key === "T") {
-        if (!e.shiftKey) {
-          e.preventDefault();
+        e.preventDefault();
+        if (e.shiftKey) {
+          openSaveTemplateModal();
+        } else {
           openTemplateGallery();
+        }
+      } else if (e.key === "Escape") {
+        if (saveTemplateModal && !saveTemplateModal.classList.contains("hidden")) {
+          closeSaveTemplateModal();
+        } else if (templateModal && !templateModal.classList.contains("hidden")) {
+          templateModal.classList.add("hidden");
         }
       } else if (e.key === ",") {
         e.preventDefault();
@@ -6055,29 +6378,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("empty-btn-templates")?.addEventListener("click", () => openTemplateGallery());
   document.getElementById("btn-new-tab")?.addEventListener("click", () => newFile());
 
-  // Save current as template modal helper
-  function openSaveTemplateModal() {
-    const content = cm ? cm.getValue() : "";
-    if (!content.trim()) {
-      showNotification("Documento vuoto: inserisci del codice LaTeX prima di salvarlo come template", "warning");
-      return;
-    }
-    const tab = getActiveTab();
-    const title = tab ? tab.title.replace(/\.tex$/i, "") : "Nuovo Template";
-    try {
-      LackTemplates.saveCustomTemplate({
-        title,
-        category: 'academic',
-        description: 'Template personalizzato',
-        content
-      });
-      showNotification(`Template "${title}" salvato con successo!`, "info");
-    } catch (e) {
-      showNotification("Errore salvataggio template: " + e.message, "error");
-    }
-  }
-
+  // Exposed for tests and external triggers
   window.__lackNewFile = newFile;
+  window.__lackOpenSaveTemplateModal = openSaveTemplateModal;
+  window.__lackOpenEditTemplateModal = openEditTemplateModal;
+  window.__lackCloseSaveTemplateModal = closeSaveTemplateModal;
+  window.__lackHandleDeleteTemplate = handleDeleteTemplate;
+  window.__lackOpenTemplateGallery = openTemplateGallery;
 
   // Initial state: show start screen if no tabs opened
   renderTabs();

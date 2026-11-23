@@ -1425,6 +1425,66 @@
     </div>
   </div>
 
+  <!-- POP-UP MODAL SALVA / MODIFICA TEMPLATE (Stile Mark) -->
+  <div id="save-template-modal" class="modal hidden">
+    <div class="modal-overlay" id="save-template-overlay"></div>
+    <div class="modal-content save-template-content">
+      <div class="modal-header">
+        <h2 id="save-template-modal-title" data-i18n="template_save_modal_title">Salva come Template</h2>
+        <button type="button" id="btn-close-save-template" class="collab-close-btn" data-i18n-title="win_close" title="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body save-template-body">
+        <input type="hidden" id="save-template-edit-id" value="" />
+        
+        <!-- Nome del Template -->
+        <div class="save-template-field">
+          <label for="save-template-title" data-i18n="template_field_title">Nome Template</label>
+          <input type="text" id="save-template-title" class="collab-input" placeholder="Es: Relazione di Laboratorio, Tesi Specialistica..." spellcheck="false" />
+        </div>
+
+        <!-- Nome file suggerito (.tex) -->
+        <div class="save-template-field">
+          <label for="save-template-filename" data-i18n="template_field_filename">Nome file suggerito (.tex)</label>
+          <input type="text" id="save-template-filename" class="collab-input" placeholder="Es: relazione_laboratorio.tex" spellcheck="false" />
+        </div>
+
+        <!-- Categoria con opzione + Nuova Categoria -->
+        <div class="save-template-field">
+          <div class="save-template-label-row">
+            <label for="save-template-category" data-i18n="template_field_category">Categoria</label>
+            <button type="button" id="btn-toggle-new-category" class="save-template-text-btn" data-i18n="template_new_category">+ Nuova categoria</button>
+          </div>
+          <select id="save-template-category" class="collab-input"></select>
+          <div id="save-template-new-category-box" class="save-template-new-cat-box hidden">
+            <input type="text" id="save-template-new-category-input" class="collab-input" data-i18n-placeholder="template_new_category_placeholder" placeholder="Inserisci il nome della nuova categoria..." spellcheck="false" />
+          </div>
+        </div>
+
+        <!-- Destinazione / Ambito (Dove deve essere) -->
+        <div class="save-template-field">
+          <label for="save-template-scope" data-i18n="template_field_location">Destinazione template</label>
+          <select id="save-template-scope" class="collab-input">
+            <option value="global" data-i18n="template_location_user">Galleria Personale (Sempre disponibile)</option>
+            <option value="project" data-i18n="template_location_project" id="opt-template-scope-project">Progetto corrente</option>
+          </select>
+        </div>
+
+        <!-- Descrizione breve -->
+        <div class="save-template-field">
+          <label for="save-template-desc" data-i18n="template_field_desc">Descrizione breve</label>
+          <textarea id="save-template-desc" class="collab-input save-template-textarea" placeholder="Breve descrizione di cosa contiene questo template..."></textarea>
+        </div>
+
+        <!-- Azioni -->
+        <div class="save-template-actions">
+          <button type="button" id="btn-export-template-file" class="save-template-text-btn" style="margin-right: auto; font-size: 11.5px;" data-i18n="template_export_file">Esporta come file .tex...</button>
+          <button type="button" id="btn-cancel-save-template" class="pdf-export-btn-cancel" data-i18n="cancel">Annulla</button>
+          <button type="button" id="btn-confirm-save-template" class="collab-submit-btn" data-i18n="save">Salva Template</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- IN-APP CONFIRM / ALERT MODAL -->
   <div id="app-confirm-modal" class="modal hidden">
     <div class="modal-overlay" id="app-confirm-overlay"></div>
