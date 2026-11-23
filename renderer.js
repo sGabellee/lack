@@ -1448,9 +1448,18 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     saveActiveTabState();
 
+    // If tab belongs to an active linked project or folder but has no filePath yet, keep it within the project/folder
+    if (!targetTab.filePath) {
+      if (isLinkedProject && currentProject && currentProject.storePath && fs.existsSync(currentProject.storePath)) {
+        targetTab.filePath = path.join(currentProject.storePath, targetTab.title || "new_file.tex");
+      } else if (currentProjectDir && fs.existsSync(currentProjectDir)) {
+        targetTab.filePath = path.join(currentProjectDir, targetTab.title || "new_file.tex");
+      }
+    }
+
     const missingParentDir = !!(targetTab.filePath && !fs.existsSync(path.dirname(targetTab.filePath)));
     const isLatexTab = isCompilableLatexFile(targetTab.filePath || targetTab.title || "documento.tex");
-    const needsNewPdfProject = isLatexTab && (!targetTab.filePath || missingParentDir);
+    const needsNewPdfProject = isLatexTab && !isLinkedProject && !currentProjectDir && (!targetTab.filePath || missingParentDir);
 
     if (needsNewPdfProject) {
       if (missingParentDir) {
@@ -1992,10 +2001,34 @@ window.addEventListener("DOMContentLoaded", async () => {
         // If draft linked project without a target, resolve target on first compile
         if (isLinkedProject && currentProject && !currentProject.targetPath) {
           let resolvedTarget = null;
-          if (currentProjectDir && fs.existsSync(currentProjectDir)) {
+
+          // 1. Check if manifest in store already specifies target
+          try {
+            const manifest = await ipcRenderer.invoke('project-load-manifest', currentProject.storePath);
+            if (manifest && manifest.target) {
+              resolvedTarget = manifest.target;
+            }
+          } catch (_) {}
+
+          // 2. Check if registry has lastPdfPath
+          if (!resolvedTarget && currentProject.id) {
+            try {
+              const regHit = await ipcRenderer.invoke('project-registry-lookup', currentProject.id);
+              if (regHit && (regHit.targetPath || regHit.lastPdfPath)) {
+                resolvedTarget = regHit.targetPath || regHit.lastPdfPath;
+              }
+            } catch (_) {}
+          }
+
+          // 3. Check if currentProjectDir has a matching PDF or can host base.pdf directly
+          if (!resolvedTarget && currentProjectDir && fs.existsSync(currentProjectDir)) {
             const base = currentProject.name || path.basename(mainDocumentPath || 'documento', '.tex');
-            resolvedTarget = path.join(currentProjectDir, uniqueName(currentProjectDir, base, '.pdf'));
-          } else {
+            const directTarget = path.join(currentProjectDir, `${base}.pdf`);
+            resolvedTarget = directTarget;
+          }
+
+          // 4. Fallback only if no target and no directory
+          if (!resolvedTarget) {
             const saveRes = await dialog.showSaveDialog({
               title: "Salva documento PDF del progetto",
               defaultPath: `${currentProject.name || 'documento'}.pdf`,
@@ -2352,12 +2385,31 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
+    let targetPath = opts.targetPath || null;
+    let manifest = null;
+    if (opts.storePath) {
+      try {
+        manifest = await ipcRenderer.invoke('project-load-manifest', opts.storePath);
+        if (!targetPath && manifest && manifest.target) {
+          targetPath = manifest.target;
+        }
+      } catch (_) {}
+    }
+    if (!targetPath && opts.projectId) {
+      try {
+        const regHit = await ipcRenderer.invoke('project-registry-lookup', opts.projectId);
+        if (regHit && (regHit.targetPath || regHit.lastPdfPath)) {
+          targetPath = regHit.targetPath || regHit.lastPdfPath;
+        }
+      } catch (_) {}
+    }
+
     isLinkedProject = true;
     currentProject = {
       projectId: opts.projectId,
-      name: opts.name,
+      name: opts.name || (manifest ? manifest.name : 'Untitled Project'),
       storePath: opts.storePath,
-      targetPath: opts.targetPath
+      targetPath: targetPath
     };
 
     // Try to acquire PID lock
@@ -2377,14 +2429,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (folderPane) folderPane.style.flex = `${savedRatio}`;
     if (projectPane) projectPane.style.flex = `${1 - savedRatio}`;
     footerProjectChip?.classList.remove("hidden");
-    if (footerProjectName) footerProjectName.textContent = opts.name;
-    if (projectPaneName) projectPaneName.textContent = opts.name;
+    if (footerProjectName) footerProjectName.textContent = currentProject.name;
+    if (projectPaneName) projectPaneName.textContent = currentProject.name;
 
     updateTitle();
 
     // Folder pane = folder of target PDF (or current directory if draft)
-    if (opts.targetPath) {
-      const folderDir = path.dirname(opts.targetPath);
+    if (targetPath) {
+      const folderDir = path.dirname(targetPath);
       currentProjectDir = folderDir;
       if (folderPathEl) {
         folderPathEl.textContent = path.basename(folderDir);
@@ -2396,17 +2448,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Determine main document from opts.mainFile, manifest, <name>.tex, or main.tex
-    let mainFileName = opts.mainFile;
+    let mainFileName = opts.mainFile || (manifest ? manifest.main : null);
     if (!mainFileName) {
-      try {
-        const manifest = await ipcRenderer.invoke('project-load-manifest', opts.storePath);
-        if (manifest && manifest.main) {
-          mainFileName = manifest.main;
-        }
-      } catch (_) {}
-    }
-    if (!mainFileName) {
-      const candidateName = `${opts.name}.tex`;
+      const candidateName = `${currentProject.name}.tex`;
       if (fs.existsSync(path.join(opts.storePath, candidateName))) {
         mainFileName = candidateName;
       } else {
@@ -2425,12 +2469,12 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (opts.compileImmediate) {
       triggerCompile(false);
-    } else if (opts.targetPath && fs.existsSync(opts.targetPath)) {
-      pdfViewer.loadPdfDocument(opts.targetPath);
+    } else if (targetPath && fs.existsSync(targetPath)) {
+      pdfViewer.loadPdfDocument(targetPath);
     }
 
-    if (opts.targetPath) {
-      startTargetPdfWatcher(opts.targetPath);
+    if (targetPath) {
+      startTargetPdfWatcher(targetPath);
     }
   }
 
@@ -4163,10 +4207,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       projectsCardsGrid.innerHTML = "";
       filtered.forEach(proj => {
-        const targetExists = proj.targetPath && fs.existsSync(proj.targetPath);
-        const storeExists = proj.storePath && fs.existsSync(proj.storePath);
+        const targetPath = proj.targetPath || proj.lastPdfPath || '';
+        const targetExists = Boolean(targetPath && fs.existsSync(targetPath));
+        const storeExists = Boolean(proj.storePath && fs.existsSync(proj.storePath));
         const storeSize = storeExists ? formatBytes(calculateDirSize(proj.storePath)) : "0 B";
-        const dateStr = proj.lastModified ? new Date(proj.lastModified).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/D";
+        const dateStr = (proj.lastOpened || proj.lastModified) ? new Date(proj.lastOpened || proj.lastModified).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/D";
 
         const card = document.createElement("div");
         card.className = "project-card";
@@ -4184,7 +4229,7 @@ window.addEventListener("DOMContentLoaded", async () => {
           </div>
           <div class="project-card-target-row">
             <span class="project-badge-${targetExists ? 'exists' : 'missing'}">${targetExists ? 'PDF Presente' : 'PDF Mancante'}</span>
-            <span class="project-card-target-path" title="${escapeHtml(proj.targetPath || '')}">${escapeHtml(proj.targetPath ? path.basename(proj.targetPath) : 'Nessuno')}</span>
+            <span class="project-card-target-path" title="${escapeHtml(targetPath || '')}">${escapeHtml(targetPath ? path.basename(targetPath) : 'Nessuno')}</span>
           </div>
           <div class="project-card-footer">
             <span class="project-card-size">Store: ${storeSize}</span>
@@ -4203,7 +4248,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             projectId: proj.id,
             name: proj.name,
             storePath: proj.storePath,
-            targetPath: proj.targetPath,
+            targetPath: targetPath,
             compileImmediate: targetExists
           });
         };
@@ -6146,6 +6191,24 @@ window.addEventListener("DOMContentLoaded", async () => {
           showNotification(`Attenzione: un file PDF esisteva già. È stato creato "${path.basename(res.targetPath)}".`, "warning");
         }
 
+        // Migrate any open tabs from folderPath to their new destination in storePath
+        for (const tab of tabs) {
+          if (tab.filePath && isPathInsideDir(tab.filePath, folderPath)) {
+            const rel = path.relative(folderPath, tab.filePath);
+            const newStorePath = path.join(res.storePath, rel);
+            if (fs.existsSync(newStorePath)) {
+              for (const [watchPath, watcher] of Array.from(activeFileWatchers.entries())) {
+                if (path.resolve(watchPath) === path.resolve(tab.filePath)) {
+                  try { watcher.close(); } catch (_) {}
+                  activeFileWatchers.delete(watchPath);
+                }
+              }
+              tab.filePath = newStorePath;
+              watchFileForChanges(newStorePath);
+            }
+          }
+        }
+
         await openLinkedProject({
           projectId: res.id,
           name: res.name,
@@ -6380,6 +6443,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Exposed for tests and external triggers
   window.__lackNewFile = newFile;
+  window.__lackSaveFile = saveFile;
+  window.__lackGetActiveTab = getActiveTab;
+  window.__lackOpenLinkedProject = openLinkedProject;
   window.__lackOpenSaveTemplateModal = openSaveTemplateModal;
   window.__lackOpenEditTemplateModal = openEditTemplateModal;
   window.__lackCloseSaveTemplateModal = closeSaveTemplateModal;

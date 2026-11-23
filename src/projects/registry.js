@@ -91,27 +91,31 @@ class ProjectRegistry {
 
   getProject(id) {
     if (!id || !this.entries[id]) return null;
-    return { id, ...this.entries[id] };
+    const entry = this.entries[id];
+    return { id, targetPath: entry.lastPdfPath || entry.targetPath || '', ...entry };
   }
 
   findProjectByTarget(pdfPath) {
     if (!pdfPath) return null;
     const normTarget = path.normalize(path.resolve(pdfPath));
     for (const [id, entry] of Object.entries(this.entries)) {
-      if (entry.lastPdfPath && path.normalize(path.resolve(entry.lastPdfPath)) === normTarget) {
-        return { id, ...entry };
+      const pdf = entry.lastPdfPath || entry.targetPath;
+      if (pdf && path.normalize(path.resolve(pdf)) === normTarget) {
+        return { id, targetPath: pdf, ...entry };
       }
     }
     return null;
   }
 
-  saveProjectEntry(id, { storePath, name, lastPdfPath, lastOpened }) {
+  saveProjectEntry(id, { storePath, name, lastPdfPath, targetPath, lastOpened }) {
     if (!id) throw new Error('Project ID is required');
     const existing = this.entries[id] || {};
+    const finalPdf = lastPdfPath || targetPath || existing.lastPdfPath || existing.targetPath || '';
     this.entries[id] = {
       storePath: storePath || existing.storePath || '',
       name: name || existing.name || 'Untitled Project',
-      lastPdfPath: lastPdfPath || existing.lastPdfPath || '',
+      lastPdfPath: finalPdf,
+      targetPath: finalPdf,
       lastOpened: lastOpened || new Date().toISOString()
     };
     this.save();
@@ -130,6 +134,7 @@ class ProjectRegistry {
   listProjects() {
     return Object.entries(this.entries).map(([id, data]) => ({
       id,
+      targetPath: data.lastPdfPath || data.targetPath || '',
       ...data
     })).sort((a, b) => new Date(b.lastOpened || 0) - new Date(a.lastOpened || 0));
   }

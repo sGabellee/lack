@@ -122,7 +122,7 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
         action: 'classic',
         openFilePath: targetPath,
         openFolderPath: path.dirname(targetPath),
-        promptConvertTexToProject: (isTex && !isInsideStore) ? targetPath : null,
+        promptConvertTexToProject: null,
         ...options,
         debug
       };
@@ -137,7 +137,7 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
         action: 'classic',
         openFilePath: targetPath,
         openFolderPath: path.dirname(targetPath),
-        promptConvertTexToProject: (isTex && !isInsideStore) ? targetPath : null,
+        promptConvertTexToProject: null,
         ...options,
         debug
       };
@@ -150,7 +150,7 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
   const ext = path.extname(targetPath).toLowerCase();
 
   if (ext === '.tex') {
-    // lack NAME.tex -> Classic, prompt to convert if outside storeRoot
+    // lack NAME.tex -> Classic
     const storeRoot = options.storeRoot;
     const isInsideStore = storeRoot && path.resolve(targetPath).startsWith(path.resolve(storeRoot));
 
@@ -158,7 +158,7 @@ async function resolveLaunchArg(arg, cwd, fsProbe, registry, readLinkFn, options
       action: 'classic',
       openFilePath: targetPath,
       openFolderPath: path.dirname(targetPath),
-      promptConvertTexToProject: !isInsideStore ? targetPath : null,
+      promptConvertTexToProject: null,
       ...options,
       debug
     };
