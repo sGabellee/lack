@@ -238,11 +238,17 @@ body.reading-mode-active #titlebar {
   flex-direction: column;
   animation: dropdownFadeIn 0.15s ease;
   box-sizing: border-box;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag !important;
 }
 
 .titlebar-menu-dropdown.open .titlebar-menu-content {
   display: flex;
+}
+
+.titlebar-menu-item,
+.titlebar-menu-item * {
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto !important;
 }
 
 .titlebar-menu-item {
@@ -379,13 +385,14 @@ body.theme-github .titlebar-submenu-content {
   background-color: var(--explorer-bg);
   z-index: 100;
   box-sizing: border-box;
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag !important;
   flex-wrap: nowrap;
 }
 
-/* macOS: extra space for traffic lights */
+/* macOS: extra space for traffic lights & draggable window top bar when custom titlebar is hidden */
 body.platform-darwin #navbar {
   padding-left: 80px;
+  -webkit-app-region: drag;
 }
 
 /* Ensure all interactive elements are clickable and never blocked by drag regions */
@@ -659,7 +666,7 @@ body.win-ctrl-win .win-close-btn:hover {
   max-height: 35px; /* slightly smaller to fit well */
   padding: 8px;
   object-fit: contain;
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag !important;
 }
 
 body.dark #logo {
