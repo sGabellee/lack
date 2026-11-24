@@ -10,13 +10,18 @@ const {
 const {
   defaultKeymap,
   history,
-  historyKeymap
+  historyKeymap,
+  indentWithTab,
+  indentLess,
+  insertTab
 } = require('@codemirror/commands');
 const {
   closeBrackets,
   closeBracketsKeymap,
   autocompletion,
-  acceptCompletion
+  acceptCompletion,
+  nextSnippetField,
+  prevSnippetField
 } = require('@codemirror/autocomplete');
 const {
   bracketMatching,
@@ -262,7 +267,15 @@ class CodeMirrorManager {
       },
       {
         key: 'Tab',
-        run: acceptCompletion
+        run: (view) => {
+          if (acceptCompletion(view)) return true;
+          if (nextSnippetField(view)) return true;
+          return insertTab(view);
+        },
+        shift: (view) => {
+          if (prevSnippetField(view)) return true;
+          return indentLess(view);
+        }
       },
       {
         key: 'Mod-/',
@@ -322,7 +335,8 @@ class CodeMirrorManager {
           ...defaultKeymap,
           ...foldKeymap,
           ...searchKeymap,
-          ...lintKeymap
+          ...lintKeymap,
+          indentWithTab
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

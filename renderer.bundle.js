@@ -45441,7 +45441,14 @@ var require_linter_logic = __commonJS({
         "amssymb",
         "amsfonts",
         "booktabs",
-        "geometry"
+        "geometry",
+        "tcolorbox",
+        "pgfplots",
+        "listings",
+        "minted",
+        "algorithm",
+        "algorithmic",
+        "algpseudocode"
       ]);
       const effectivePackages = new Set(loadedPackages);
       if (effectivePackages.has("amsthm")) effectivePackages.add("mathtools");
@@ -45541,6 +45548,27 @@ var require_linter_logic = __commonJS({
       }
       if (effectivePackages.has("tabularx")) {
         validEnvironments.add("tabularx");
+      }
+      if (effectivePackages.has("tcolorbox")) {
+        [
+          "tcbset",
+          "tcbox",
+          "newtcolorbox",
+          "renewtcolorbox",
+          "tcbuselibrary",
+          "tcbline",
+          "tcblower",
+          "tcbdocmarginnote",
+          "tcolorboxenvironment",
+          "tcbsetforeverylayer",
+          "tcbsubtitle",
+          "tcbincludegraphics",
+          "tcbincludepdf"
+        ].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+        validEnvironments.add("tcolorbox");
       }
       const dbPackages = /* @__PURE__ */ new Set([...db.packages, ...db.macros.map((m) => m.package)]);
       let allLoadedPackagesKnown = true;
@@ -45712,6 +45740,34 @@ var require_linter_logic = __commonJS({
           message: `! LaTeX Error: \\begin{${unclosed.name}} on line ${unclosed.line} not closed.`
         });
       }
+      const titleMetaRegex = /\\(?:title|subtitle|author|institute|date|section|subsection|subsubsection|paragraph|caption|frametitle|framesubtitle)(?:\[[^\]]*\])?\{([^}]*)\}/g;
+      let tmm;
+      while ((tmm = titleMetaRegex.exec(text2)) !== null) {
+        const inner = tmm[1];
+        const innerOffset = tmm.index + tmm[0].lastIndexOf(inner);
+        const ampRegex = /(?<!\\)&/g;
+        let am;
+        while ((am = ampRegex.exec(inner)) !== null) {
+          const ampPos = innerOffset + am.index;
+          if (isMasked[ampPos]) continue;
+          const lineNum = getLineNumber(ampPos);
+          diagnostics.push({
+            from: ampPos,
+            to: ampPos + 1,
+            severity: "error",
+            line: lineNum,
+            message: "! Misplaced alignment tab character &. In LaTeX usa '\\&' per il simbolo & nel testo o nei titoli.",
+            actions: [
+              {
+                name: "Sostituisci con \\&",
+                apply(view, fromOffset, toOffset) {
+                  view.dispatch({ changes: { from: fromOffset, to: toOffset, insert: "\\&" } });
+                }
+              }
+            ]
+          });
+        }
+      }
       let braceDepth = 0;
       let lastOpenBracePos = 0;
       for (let i2 = 0; i2 < len; i2++) {
@@ -45807,6 +45863,34 @@ var require_linter = __commonJS({
           from = line.from + idx;
           to = from + cleanCmd.length;
           origToken = cleanCmd;
+        }
+      } else if (iss.message && iss.message.includes("Misplaced alignment tab character &")) {
+        const codeLine = lineText.replace(/%.*$/, "");
+        const directAmp = codeLine.match(/(?<!\\)&/);
+        if (directAmp) {
+          from = line.from + directAmp.index;
+          to = from + 1;
+          origToken = "&";
+        } else {
+          for (let l = lineNum - 1; l >= Math.max(1, lineNum - 80); l--) {
+            const prevLine = doc3.line(l);
+            const prevCode = prevLine.text.replace(/%.*$/, "");
+            const match2 = prevCode.match(/(?<!\\)&/);
+            if (match2) {
+              from = prevLine.from + match2.index;
+              to = from + 1;
+              origToken = "&";
+              return {
+                from,
+                to,
+                line: l,
+                nonEmpty: true,
+                origToken
+              };
+            }
+          }
+          from = line.from;
+          to = line.to;
         }
       } else {
         const cmdMatch = lineText.match(/\\[a-zA-Z@]+/);
@@ -47516,13 +47600,18 @@ var {
 var {
   defaultKeymap: defaultKeymap2,
   history: history2,
-  historyKeymap: historyKeymap2
+  historyKeymap: historyKeymap2,
+  indentWithTab: indentWithTab2,
+  indentLess: indentLess2,
+  insertTab: insertTab2
 } = (init_dist7(), __toCommonJS(dist_exports4));
 var {
   closeBrackets: closeBrackets2,
   closeBracketsKeymap: closeBracketsKeymap2,
   autocompletion: autocompletion2,
-  acceptCompletion: acceptCompletion2
+  acceptCompletion: acceptCompletion2,
+  nextSnippetField: nextSnippetField2,
+  prevSnippetField: prevSnippetField2
 } = (init_dist8(), __toCommonJS(dist_exports5));
 var {
   bracketMatching: bracketMatching2,
@@ -47730,7 +47819,15 @@ var CodeMirrorManager = class {
       },
       {
         key: "Tab",
-        run: acceptCompletion2
+        run: (view) => {
+          if (acceptCompletion2(view)) return true;
+          if (nextSnippetField2(view)) return true;
+          return insertTab2(view);
+        },
+        shift: (view) => {
+          if (prevSnippetField2(view)) return true;
+          return indentLess2(view);
+        }
       },
       {
         key: "Mod-/",
@@ -47789,7 +47886,8 @@ var CodeMirrorManager = class {
           ...defaultKeymap2,
           ...foldKeymap2,
           ...searchKeymap2,
-          ...lintKeymap2
+          ...lintKeymap2,
+          indentWithTab2
         ]),
         EditorView2.updateListener.of((update) => {
           if (update.docChanged) {

@@ -224,7 +224,8 @@ function lintLatexDocument(text, options = {}) {
     'inputenc', 'fontenc', 'babel', 'lmodern', 'textcomp',
     'microtype', 'csquotes', 'indentfirst', 'cmap', 'fixltx2e',
     'array', 'float', 'caption', 'subcaption', 'enumitem',
-    'url', 'cite', 'amsthm', 'tabularx', 'fontspec', 'amssymb', 'amsfonts', 'booktabs', 'geometry'
+    'url', 'cite', 'amsthm', 'tabularx', 'fontspec', 'amssymb', 'amsfonts', 'booktabs', 'geometry',
+    'tcolorbox', 'pgfplots', 'listings', 'minted', 'algorithm', 'algorithmic', 'algpseudocode'
   ]);
 
   // Package aliases & bundled relationships
@@ -308,6 +309,18 @@ function lintLatexDocument(text, options = {}) {
 
   if (effectivePackages.has('tabularx')) {
     validEnvironments.add('tabularx');
+  }
+
+  if (effectivePackages.has('tcolorbox')) {
+    [
+      'tcbset', 'tcbox', 'newtcolorbox', 'renewtcolorbox', 'tcbuselibrary',
+      'tcbline', 'tcblower', 'tcbdocmarginnote', 'tcolorboxenvironment',
+      'tcbsetforeverylayer', 'tcbsubtitle', 'tcbincludegraphics', 'tcbincludepdf'
+    ].forEach(c => {
+      validCommands.add(c);
+      knownCommandNames.push(c);
+    });
+    validEnvironments.add('tcolorbox');
   }
 
   // Check if every loaded package is known in the DB
@@ -517,7 +530,37 @@ function lintLatexDocument(text, options = {}) {
     });
   }
 
-  // 3. Unbalanced braces outside comments/verbatim
+  // 3. Check for unescaped '&' in headings, captions, and title metadata outside alignment environments
+  const titleMetaRegex = /\\(?:title|subtitle|author|institute|date|section|subsection|subsubsection|paragraph|caption|frametitle|framesubtitle)(?:\[[^\]]*\])?\{([^}]*)\}/g;
+  let tmm;
+  while ((tmm = titleMetaRegex.exec(text)) !== null) {
+    const inner = tmm[1];
+    const innerOffset = tmm.index + tmm[0].lastIndexOf(inner);
+    const ampRegex = /(?<!\\)&/g;
+    let am;
+    while ((am = ampRegex.exec(inner)) !== null) {
+      const ampPos = innerOffset + am.index;
+      if (isMasked[ampPos]) continue;
+      const lineNum = getLineNumber(ampPos);
+      diagnostics.push({
+        from: ampPos,
+        to: ampPos + 1,
+        severity: 'error',
+        line: lineNum,
+        message: "! Misplaced alignment tab character &. In LaTeX usa '\\&' per il simbolo & nel testo o nei titoli.",
+        actions: [
+          {
+            name: "Sostituisci con \\&",
+            apply(view, fromOffset, toOffset) {
+              view.dispatch({ changes: { from: fromOffset, to: toOffset, insert: '\\&' } });
+            }
+          }
+        ]
+      });
+    }
+  }
+
+  // 4. Unbalanced braces outside comments/verbatim
   let braceDepth = 0;
   let lastOpenBracePos = 0;
   for (let i = 0; i < len; i++) {
