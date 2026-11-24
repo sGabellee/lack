@@ -78,3 +78,33 @@ test('computeFitScale: High DPI pixel ratio integer canvas bounds', () => {
   assert.strictEqual(Number.isInteger(resHiDpi.canvasWidth), true);
   assert.strictEqual(Number.isInteger(resHiDpi.canvasHeight), true);
 });
+
+test('computeFitScale: 16:9 Beamer slides edge-to-edge fit-width and framed fit-page', () => {
+  const beamerWidth = 453.54;
+  const beamerHeight = 255.12;
+
+  // Split view: 500px wide, 700px high
+  const splitFitWidth = computeFitScale({
+    containerWidth: 500,
+    containerHeight: 700,
+    pageWidth: beamerWidth,
+    pageHeight: beamerHeight,
+    fitMode: 'fit-width',
+    paddingX: 0,
+    scrollbarGutter: 0
+  });
+  assert.strictEqual(splitFitWidth.scale, 500 / beamerWidth);
+
+  // Full view: 1200px wide, 600px high (height constrained)
+  const fullFitPage = computeFitScale({
+    containerWidth: 1200,
+    containerHeight: 600,
+    pageWidth: beamerWidth,
+    pageHeight: beamerHeight,
+    fitMode: 'fit-page',
+    paddingX: 0,
+    paddingY: 0
+  });
+  const expectedPageScale = Math.min(1200 / beamerWidth, 600 / beamerHeight);
+  assert.strictEqual(fullFitPage.scale, expectedPageScale);
+});

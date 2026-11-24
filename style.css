@@ -7515,6 +7515,54 @@ body.dark .log-issue-line-badge {
   box-sizing: border-box;
 }
 
+/* Flush border-to-border layout for Fit to Width (like Chrome / standard reader) */
+.pdf-viewport.fit-mode-width {
+  overflow-x: hidden !important;
+}
+
+.pdf-viewport.fit-mode-page {
+  scroll-snap-type: y proximity;
+}
+
+.pdf-canvas-container.fit-mode-width {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 16px !important;
+  padding-bottom: 80px !important;
+  width: 100% !important;
+}
+
+.pdf-canvas-container.fit-mode-width .pdf-page-wrapper {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto 14px auto !important;
+}
+
+.pdf-canvas-container.fit-mode-width .pdf-page-canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}
+
+/* Framed centered page layout for Fit to Page (like Chrome / standard reader) */
+.pdf-canvas-container.fit-mode-page {
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.pdf-canvas-container.fit-mode-page .pdf-page-wrapper {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
+  scroll-snap-align: center;
+}
+
 .pdf-page-wrapper {
   position: relative;
   box-shadow: 0 6px 26px rgba(0, 0, 0, 0.28);

@@ -12,9 +12,9 @@ function computeFitScale({
   fitMode = 'fit-width', // 'fit-width' | 'fit-page' | 'custom'
   currentScale = 1.0,
   pixelRatio = 1,
-  paddingX = 24,
-  paddingY = 24,
-  scrollbarGutter = 16
+  paddingX = 0,
+  paddingY = 0,
+  scrollbarGutter = 0
 }) {
   if (!pageWidth || !pageHeight || pageWidth <= 0 || pageHeight <= 0) {
     return { scale: 1.0, canvasWidth: 100, canvasHeight: 100 };

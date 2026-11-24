@@ -151,6 +151,8 @@ async function renderAllPages() {
     renderedPages.clear();
 
     const numPages = currentPdfDoc.numPages;
+    const scrollContainer = getScrollContainer();
+    const viewportHeight = scrollContainer ? scrollContainer.clientHeight : (containerEl ? containerEl.clientHeight : 0);
 
     for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       const wrapper = document.createElement('div');
@@ -171,7 +173,7 @@ async function renderAllPages() {
 
       containerEl.appendChild(wrapper);
 
-      await renderPage(pageNum, canvas, textLayer, annotationLayer);
+      await renderPage(pageNum, canvas, textLayer, annotationLayer, wrapper, viewportHeight);
     }
   } finally {
     isRendering = false;
@@ -182,7 +184,7 @@ async function renderAllPages() {
   }
 }
 
-async function renderPage(pageNum, canvas, textLayerDiv, annotationLayerDiv) {
+async function renderPage(pageNum, canvas, textLayerDiv, annotationLayerDiv, wrapper, viewportHeight = 0) {
   if (!currentPdfDoc) return;
   const page = await currentPdfDoc.getPage(pageNum);
   const viewport = page.getViewport({ scale: currentScale });
@@ -193,6 +195,31 @@ async function renderPage(pageNum, canvas, textLayerDiv, annotationLayerDiv) {
   canvas.height = Math.floor(viewport.height * outputScale);
   canvas.style.width = Math.floor(viewport.width) + 'px';
   canvas.style.height = Math.floor(viewport.height) + 'px';
+
+  if (wrapper) {
+    if (fitMode === 'page' && viewportHeight > 100) {
+      const renderedHeight = Math.floor(viewport.height);
+      const topMargin = Math.max(16, Math.floor((viewportHeight - renderedHeight) / 2));
+      const bottomMargin = Math.max(28, viewportHeight - renderedHeight - topMargin + 24);
+      wrapper.style.width = Math.floor(viewport.width) + 'px';
+      wrapper.style.height = Math.floor(viewport.height) + 'px';
+      wrapper.style.marginTop = `${topMargin}px`;
+      wrapper.style.marginBottom = `${bottomMargin}px`;
+      wrapper.style.minHeight = '';
+    } else if (fitMode === 'width') {
+      wrapper.style.width = '100%';
+      wrapper.style.height = '';
+      wrapper.style.marginTop = '';
+      wrapper.style.marginBottom = '';
+      wrapper.style.minHeight = '';
+    } else {
+      wrapper.style.width = Math.floor(viewport.width) + 'px';
+      wrapper.style.height = Math.floor(viewport.height) + 'px';
+      wrapper.style.marginTop = '';
+      wrapper.style.marginBottom = '';
+      wrapper.style.minHeight = '';
+    }
+  }
 
   const ctx = canvas.getContext('2d');
   ctx.save();
@@ -581,11 +608,17 @@ function updateZoomLabel() {
 async function autoFitWidth() {
   if (!currentPdfDoc || !containerEl) return;
   fitMode = 'width';
+  containerEl.classList.add('fit-mode-width');
+  containerEl.classList.remove('fit-mode-page');
+  const scrollContainer = getScrollContainer();
+  if (scrollContainer) {
+    scrollContainer.classList.add('fit-mode-width');
+    scrollContainer.classList.remove('fit-mode-page');
+  }
   updateFitButtonStates();
   const curPage = pageInputEl ? parseInt(pageInputEl.value, 10) || 1 : 1;
   const page = await currentPdfDoc.getPage(curPage || 1);
   const unscaledViewport = page.getViewport({ scale: 1.0 });
-  const scrollContainer = getScrollContainer();
   const containerWidth = scrollContainer ? scrollContainer.clientWidth : containerEl.clientWidth;
   const containerHeight = scrollContainer ? scrollContainer.clientHeight : containerEl.clientHeight;
 
@@ -595,6 +628,8 @@ async function autoFitWidth() {
     pageWidth: unscaledViewport.width,
     pageHeight: unscaledViewport.height,
     fitMode: 'fit-width',
+    paddingX: 0,
+    scrollbarGutter: 0,
     pixelRatio: window.devicePixelRatio || 1
   });
 
@@ -611,20 +646,33 @@ async function autoFitWidth() {
 async function autoFitPage() {
   if (!currentPdfDoc || !containerEl) return;
   fitMode = 'page';
+  containerEl.classList.add('fit-mode-page');
+  containerEl.classList.remove('fit-mode-width');
+  const scrollContainer = getScrollContainer();
+  if (scrollContainer) {
+    scrollContainer.classList.add('fit-mode-page');
+    scrollContainer.classList.remove('fit-mode-width');
+  }
   updateFitButtonStates();
   const curPage = pageInputEl ? parseInt(pageInputEl.value, 10) || 1 : 1;
   const page = await currentPdfDoc.getPage(curPage || 1);
   const unscaledViewport = page.getViewport({ scale: 1.0 });
-  const scrollContainer = getScrollContainer();
   const containerWidth = scrollContainer ? scrollContainer.clientWidth : containerEl.clientWidth;
   const containerHeight = scrollContainer ? scrollContainer.clientHeight : containerEl.clientHeight;
 
+  // Clean padding for framed page display
+  const padX = 16;
+  const padY = 24;
+
   const result = computeFitScale({
-    containerWidth,
-    containerHeight,
+    containerWidth: Math.max(50, containerWidth - padX),
+    containerHeight: Math.max(50, containerHeight - padY),
     pageWidth: unscaledViewport.width,
     pageHeight: unscaledViewport.height,
     fitMode: 'fit-page',
+    paddingX: 0,
+    paddingY: 0,
+    scrollbarGutter: 0,
     pixelRatio: window.devicePixelRatio || 1
   });
 
@@ -640,22 +688,31 @@ async function autoFitPage() {
 
 async function zoomIn() {
   fitMode = null;
+  if (containerEl) containerEl.classList.remove('fit-mode-width', 'fit-mode-page');
+  const scrollContainer = getScrollContainer();
+  if (scrollContainer) scrollContainer.classList.remove('fit-mode-width', 'fit-mode-page');
   updateFitButtonStates();
-  currentScale = Math.min(3.0, currentScale + 0.15);
+  currentScale = Math.min(3.0, Math.round((currentScale + 0.15) * 100) / 100);
   updateZoomLabel();
   await reRenderVisiblePages();
 }
 
 async function zoomOut() {
   fitMode = null;
+  if (containerEl) containerEl.classList.remove('fit-mode-width', 'fit-mode-page');
+  const scrollContainer = getScrollContainer();
+  if (scrollContainer) scrollContainer.classList.remove('fit-mode-width', 'fit-mode-page');
   updateFitButtonStates();
-  currentScale = Math.max(0.4, currentScale - 0.15);
+  currentScale = Math.max(0.4, Math.round((currentScale - 0.15) * 100) / 100);
   updateZoomLabel();
   await reRenderVisiblePages();
 }
 
 async function resetZoom() {
   fitMode = null;
+  if (containerEl) containerEl.classList.remove('fit-mode-width', 'fit-mode-page');
+  const scrollContainer = getScrollContainer();
+  if (scrollContainer) scrollContainer.classList.remove('fit-mode-width', 'fit-mode-page');
   updateFitButtonStates();
   currentScale = 1.0;
   updateZoomLabel();
