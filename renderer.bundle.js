@@ -45836,9 +45836,14 @@ var require_linter = __commonJS({
     }
     function mapTrackedEntry(entry, changes, newDoc, isUndo = false) {
       const docLen = newDoc.length;
+      const cLen = changes ? changes.length : 0;
       if (entry.deleted) {
-        const undoStart = Math.max(0, Math.min(changes.mapPos(entry.anchor, -1), docLen));
-        const undoEnd = Math.max(undoStart, Math.min(changes.mapPos(entry.anchor, 1), docLen));
+        if (!changes || entry.anchor !== void 0 && entry.anchor > cLen) {
+          return { ...entry, from: 0, to: 0, anchor: 0 };
+        }
+        const safeAnchor = Math.max(0, Math.min(entry.anchor || 0, cLen));
+        const undoStart = Math.max(0, Math.min(changes.mapPos(safeAnchor, -1), docLen));
+        const undoEnd = Math.max(undoStart, Math.min(changes.mapPos(safeAnchor, 1), docLen));
         if (isUndo && entry.origToken && undoEnd > undoStart) {
           const firstLine = newDoc.lineAt(undoStart).number;
           const lastLine = newDoc.lineAt(undoEnd).number;
@@ -45861,10 +45866,21 @@ var require_linter = __commonJS({
         }
         return { ...entry, from: undoStart, to: undoStart, anchor: undoStart };
       }
-      const mappedFrom = Math.max(0, Math.min(changes.mapPos(entry.from, 1), docLen));
-      const mappedTo = Math.max(0, Math.min(changes.mapPos(entry.to, -1), docLen));
+      if (!changes || entry.from > cLen || entry.to > cLen) {
+        return {
+          ...entry,
+          from: 0,
+          to: 0,
+          deleted: true,
+          anchor: 0
+        };
+      }
+      const safeFrom = Math.max(0, Math.min(entry.from, cLen));
+      const safeTo = Math.max(safeFrom, Math.min(entry.to, cLen));
+      const mappedFrom = Math.max(0, Math.min(changes.mapPos(safeFrom, 1), docLen));
+      const mappedTo = Math.max(0, Math.min(changes.mapPos(safeTo, -1), docLen));
       if (entry.nonEmpty && mappedFrom >= mappedTo) {
-        const anchor = Math.max(0, Math.min(changes.mapPos(entry.from, -1), docLen));
+        const anchor = Math.max(0, Math.min(changes.mapPos(safeFrom, -1), docLen));
         return {
           ...entry,
           from: anchor,
@@ -47812,9 +47828,16 @@ var CodeMirrorManager = class {
     return this.view.state.doc.toString();
   }
   setValue(newText) {
-    if (newText === this.getValue()) return;
+    if (newText === this.getValue()) {
+      this.view.dispatch({
+        selection: { anchor: 0 },
+        annotations: tabSwitchAnnotation.of(true)
+      });
+      return;
+    }
     this.view.dispatch({
       changes: { from: 0, to: this.view.state.doc.length, insert: newText },
+      selection: { anchor: 0 },
       annotations: tabSwitchAnnotation.of(true)
     });
   }
@@ -47976,7 +47999,7 @@ var CodeMirrorManager = class {
     if (!this.view) return;
     const currentDoc = this.view.state.doc;
     const canReplaySnapshot = Boolean(
-      compileSnapshot && !compileSnapshot.invalidated && compileSnapshot.compiledDoc && (compileSnapshot.filePath || "") === (activeFilePath || "")
+      compileSnapshot && !compileSnapshot.invalidated && compileSnapshot.compiledDoc && compileSnapshot.filePath && activeFilePath && compileSnapshot.filePath === activeFilePath
     );
     const sourceDoc = canReplaySnapshot ? compileSnapshot.compiledDoc : currentDoc;
     const preChanges = canReplaySnapshot ? compileSnapshot.changes : null;

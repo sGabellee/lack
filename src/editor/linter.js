@@ -73,10 +73,15 @@ function resolveCompilerIssueRange(doc, iss) {
 /** Map a single tracked `[from, to]` range through a CodeMirror ChangeSet. */
 function mapTrackedEntry(entry, changes, newDoc, isUndo = false) {
   const docLen = newDoc.length;
+  const cLen = changes ? changes.length : 0;
 
   if (entry.deleted) {
-    const undoStart = Math.max(0, Math.min(changes.mapPos(entry.anchor, -1), docLen));
-    const undoEnd = Math.max(undoStart, Math.min(changes.mapPos(entry.anchor, 1), docLen));
+    if (!changes || (entry.anchor !== undefined && entry.anchor > cLen)) {
+      return { ...entry, from: 0, to: 0, anchor: 0 };
+    }
+    const safeAnchor = Math.max(0, Math.min(entry.anchor || 0, cLen));
+    const undoStart = Math.max(0, Math.min(changes.mapPos(safeAnchor, -1), docLen));
+    const undoEnd = Math.max(undoStart, Math.min(changes.mapPos(safeAnchor, 1), docLen));
     if (isUndo && entry.origToken && undoEnd > undoStart) {
       const firstLine = newDoc.lineAt(undoStart).number;
       const lastLine = newDoc.lineAt(undoEnd).number;
@@ -100,12 +105,25 @@ function mapTrackedEntry(entry, changes, newDoc, isUndo = false) {
     return { ...entry, from: undoStart, to: undoStart, anchor: undoStart };
   }
 
-  const mappedFrom = Math.max(0, Math.min(changes.mapPos(entry.from, 1), docLen));
-  const mappedTo = Math.max(0, Math.min(changes.mapPos(entry.to, -1), docLen));
+  // If entry range is beyond changeset length, it cannot belong to this document version
+  if (!changes || entry.from > cLen || entry.to > cLen) {
+    return {
+      ...entry,
+      from: 0,
+      to: 0,
+      deleted: true,
+      anchor: 0
+    };
+  }
+
+  const safeFrom = Math.max(0, Math.min(entry.from, cLen));
+  const safeTo = Math.max(safeFrom, Math.min(entry.to, cLen));
+  const mappedFrom = Math.max(0, Math.min(changes.mapPos(safeFrom, 1), docLen));
+  const mappedTo = Math.max(0, Math.min(changes.mapPos(safeTo, -1), docLen));
 
   // If a non-empty token/range was completely deleted or replaced, collapse the error
   if (entry.nonEmpty && mappedFrom >= mappedTo) {
-    const anchor = Math.max(0, Math.min(changes.mapPos(entry.from, -1), docLen));
+    const anchor = Math.max(0, Math.min(changes.mapPos(safeFrom, -1), docLen));
     return {
       ...entry,
       from: anchor,

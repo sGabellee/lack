@@ -1911,12 +1911,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     btnRecompile.classList.add("compiling");
     saveActiveTabState();
 
-    let targetPath = (isLinkedProject && mainDocumentPath)
+    const isProjectTab = Boolean(
+      isLinkedProject &&
+      currentProject &&
+      tab &&
+      tab.filePath &&
+      (
+        (mainDocumentPath && path.resolve(tab.filePath) === path.resolve(mainDocumentPath)) ||
+        (currentProject.storePath && isPathInsideDir(tab.filePath, currentProject.storePath))
+      )
+    );
+    const isProjectCompile = Boolean(isLinkedProject && currentProject && (isProjectTab || !tab));
+
+    let targetPath = (isProjectCompile && mainDocumentPath)
       ? mainDocumentPath
       : resolveClassicCompileTarget({
           activeTab: tab,
-          mainDocumentPath,
-          currentProjectDir,
+          mainDocumentPath: isLinkedProject ? null : mainDocumentPath,
+          currentProjectDir: isLinkedProject ? null : currentProjectDir,
           mainDocumentExplicit
         });
 
@@ -1936,10 +1948,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    const workDir = isLinkedProject && currentProject
+    const workDir = isProjectCompile
       ? currentProject.storePath
       : (currentProjectDir || (targetPath ? path.dirname(targetPath) : null));
-    const outputDir = isLinkedProject && currentProject ? path.join(currentProject.storePath, '.lack', 'build') : null;
+    const outputDir = isProjectCompile ? path.join(currentProject.storePath, '.lack', 'build') : null;
 
     // Stage any dirty open subfiles belonging to workDir so unsaved \input files compile live
     const extraBuffers = [];
@@ -1998,8 +2010,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         await pdfViewer.loadPdfDocument(res.pdfPath);
 
-        // If draft linked project without a target, resolve target on first compile
-        if (isLinkedProject && currentProject && !currentProject.targetPath) {
+        // If draft linked project without a target, resolve target on first compile of project
+        if (isProjectCompile && !currentProject.targetPath) {
           let resolvedTarget = null;
 
           // 1. Check if manifest in store already specifies target
@@ -2061,8 +2073,8 @@ window.addEventListener("DOMContentLoaded", async () => {
           }
         }
 
-        // If linked project, post-process atomically to target PDF
-        if (isLinkedProject && currentProject && currentProject.targetPath) {
+        // If linked project and compiling the project, post-process atomically to target PDF
+        if (isProjectCompile && currentProject.targetPath) {
           try {
             await ipcRenderer.invoke('project-post-process-compile', {
               storePath: currentProject.storePath,
@@ -3796,16 +3808,24 @@ window.addEventListener("DOMContentLoaded", async () => {
             : '';
           await fs.promises.writeFile(targetPath, starterContent, 'utf8');
           showNotification(`File "${name}" creato!`, "info");
-          openFileFromPath(targetPath);
         }
-
+      } catch (err) {
+        showNotification("Errore: " + err.message, "error");
+        return;
+      } finally {
         if (isProjectStore) {
           renderProjectPane(targetDir);
         } else {
           renderFolderPane(targetDir);
         }
-      } catch (err) {
-        showNotification("Errore: " + err.message, "error");
+      }
+
+      if (type === "file") {
+        try {
+          openFileFromPath(targetPath);
+        } catch (err) {
+          console.error("Errore apertura file:", err);
+        }
       }
     };
 
@@ -4925,10 +4945,58 @@ window.addEventListener("DOMContentLoaded", async () => {
     templatePreviewDrawer.classList.remove("hidden");
   }
 
-  function useTemplate(t) {
+  async function useTemplate(t) {
+    if (!t) return;
     templateModal.classList.add("hidden");
-    newFile(t.content);
-    showNotification(`Template "${t.title}" caricato!`, "info");
+    if (templatePreviewDrawer) templatePreviewDrawer.classList.add("hidden");
+
+    const currentTab = getActiveTab();
+    const currentContent = cm ? cm.getValue() : (currentTab ? currentTab.content : "");
+    const isCurrentEmpty = !currentTab || !currentContent || currentContent.trim() === "";
+
+    if (isCurrentEmpty) {
+      if (currentTab && cm) {
+        cm.setValue(t.content || "");
+        currentTab.content = t.content || "";
+        currentTab.dirty = true;
+        if (!currentTab.filePath && currentTab.title && currentTab.title.startsWith("untitled")) {
+          currentTab.title = t.suggestedFilename || `${t.title || "template"}.tex`;
+        }
+        renderTabs();
+        showNotification(i18n.t("template_loaded", { name: t.title }) || `Template "${t.title}" caricato!`, "info");
+        triggerCompile(false);
+      } else {
+        newFile(t.content);
+        showNotification(i18n.t("template_loaded", { name: t.title }) || `Template "${t.title}" caricato!`, "info");
+      }
+    } else {
+      const choice = await showCustomConfirmDialog({
+        title: i18n.t("template_gallery_title") || "Template",
+        message: i18n.t("template_replace_confirm") || "Il documento corrente contiene testo. Vuoi sostituire il contenuto o aprire in una nuova scheda?",
+        icon: "question",
+        buttons: [
+          { text: i18n.t("dialog_cancel") || "Annulla", value: "cancel", isCancel: true },
+          { text: i18n.t("template_btn_replace") || "Sostituisci", value: "replace", isDanger: true },
+          { text: i18n.t("template_btn_new_tab") || "Nuova scheda", value: "new-tab", isPrimary: true }
+        ]
+      });
+
+      if (choice === "replace") {
+        if (cm) {
+          cm.setValue(t.content || "");
+          if (currentTab) {
+            currentTab.content = t.content || "";
+            currentTab.dirty = true;
+          }
+          renderTabs();
+          showNotification(i18n.t("template_loaded", { name: t.title }) || `Template "${t.title}" caricato!`, "info");
+          triggerCompile(false);
+        }
+      } else if (choice === "new-tab") {
+        newFile(t.content);
+        showNotification(i18n.t("template_loaded", { name: t.title }) || `Template "${t.title}" caricato!`, "info");
+      }
+    }
   }
 
   document.getElementById("btn-use-previewed-template").onclick = () => {
