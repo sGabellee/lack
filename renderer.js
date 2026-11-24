@@ -3796,16 +3796,24 @@ window.addEventListener("DOMContentLoaded", async () => {
             : '';
           await fs.promises.writeFile(targetPath, starterContent, 'utf8');
           showNotification(`File "${name}" creato!`, "info");
-          openFileFromPath(targetPath);
         }
-
+      } catch (err) {
+        showNotification("Errore: " + err.message, "error");
+        return;
+      } finally {
         if (isProjectStore) {
           renderProjectPane(targetDir);
         } else {
           renderFolderPane(targetDir);
         }
-      } catch (err) {
-        showNotification("Errore: " + err.message, "error");
+      }
+
+      if (type === "file") {
+        try {
+          openFileFromPath(targetPath);
+        } catch (err) {
+          console.error("Errore apertura file:", err);
+        }
       }
     };
 

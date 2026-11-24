@@ -367,9 +367,16 @@ class CodeMirrorManager {
   }
 
   setValue(newText) {
-    if (newText === this.getValue()) return;
+    if (newText === this.getValue()) {
+      this.view.dispatch({
+        selection: { anchor: 0 },
+        annotations: tabSwitchAnnotation.of(true)
+      });
+      return;
+    }
     this.view.dispatch({
       changes: { from: 0, to: this.view.state.doc.length, insert: newText },
+      selection: { anchor: 0 },
       annotations: tabSwitchAnnotation.of(true)
     });
   }
@@ -567,7 +574,9 @@ class CodeMirrorManager {
       compileSnapshot &&
       !compileSnapshot.invalidated &&
       compileSnapshot.compiledDoc &&
-      (compileSnapshot.filePath || '') === (activeFilePath || '')
+      compileSnapshot.filePath &&
+      activeFilePath &&
+      compileSnapshot.filePath === activeFilePath
     );
 
     const sourceDoc = canReplaySnapshot ? compileSnapshot.compiledDoc : currentDoc;
