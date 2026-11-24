@@ -118,6 +118,9 @@ const translations = {
     settings_zoom_reset: "Reset",
     settings_window_controls: "Window Controls Style",
     settings_window_controls_desc: "Choose the style of titlebar window buttons",
+    window_controls_ubuntu: "Ubuntu / GNOME",
+    window_controls_mac: "macOS",
+    window_controls_win: "Windows",
     settings_tab_size: "Tab Indentation Size",
     settings_tab_size_desc: "Number of spaces inserted for tab indentation",
 
@@ -358,6 +361,9 @@ const translations = {
     settings_zoom_reset: "Ripristina",
     settings_window_controls: "Stile Controlli Finestra",
     settings_window_controls_desc: "Scegli lo stile dei pulsanti della barra del titolo",
+    window_controls_ubuntu: "Ubuntu / GNOME",
+    window_controls_mac: "macOS",
+    window_controls_win: "Windows",
     settings_tab_size: "Dimensione Tabulazione",
     settings_tab_size_desc: "Numero di spazi inseriti con il tasto Tab",
 

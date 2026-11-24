@@ -848,7 +848,11 @@
         <div class="settings-header-left">
           <h2 data-i18n="settings_title">Impostazioni</h2>
         </div>
-        <button id="btn-close-settings" class="collab-close-btn" title="Chiudi">&times;</button>
+        <button id="btn-close-settings" class="collab-close-btn" data-i18n-title="win_close" title="Chiudi">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
       </div>
 
       <div class="settings-layout">
@@ -915,9 +919,9 @@
                   <span class="settings-sublabel" data-i18n="settings_theme_desc">Scegli tra Chiaro, Scuro e GitHub</span>
                 </div>
                 <div class="collab-tabs settings-tabs" id="theme-segmented">
-                  <button type="button" class="collab-tab" id="theme-btn-light" data-theme="light">Chiaro</button>
-                  <button type="button" class="collab-tab active" id="theme-btn-dark" data-theme="dark">Scuro</button>
-                  <button type="button" class="collab-tab" id="theme-btn-github" data-theme="github">GitHub</button>
+                  <button type="button" class="collab-tab active" id="theme-btn-light" data-theme="light" data-i18n="theme_light">Chiaro</button>
+                  <button type="button" class="collab-tab" id="theme-btn-dark" data-theme="dark" data-i18n="theme_dark">Scuro</button>
+                  <button type="button" class="collab-tab" id="theme-btn-github" data-theme="github" data-i18n="theme_github">GitHub</button>
                 </div>
               </div>
               <div class="settings-row">
