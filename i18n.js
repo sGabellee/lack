@@ -197,6 +197,10 @@ const translations = {
     template_updated_success: "Template updated successfully!",
     template_deleted_success: "Template deleted successfully!",
     template_delete_confirm: "Are you sure you want to delete template \"{name}\"?",
+    template_replace_confirm: "Current document has unsaved content. Do you want to replace it or open in a new tab?",
+    template_btn_new_tab: "New Tab",
+    template_btn_replace: "Replace Content",
+    template_loaded: "Template \"{name}\" loaded successfully!",
 
     // Dialogs & Notifications
     confirm: "Confirm",
@@ -433,6 +437,10 @@ const translations = {
     template_updated_success: "Template modificato con successo!",
     template_deleted_success: "Template rimosso con successo!",
     template_delete_confirm: "Sei sicuro di voler eliminare il template \"{name}\"?",
+    template_replace_confirm: "Il documento corrente contiene testo. Vuoi sostituire il contenuto o aprire in una nuova scheda?",
+    template_btn_new_tab: "Nuova scheda",
+    template_btn_replace: "Sostituisci",
+    template_loaded: "Template \"{name}\" caricato!",
 
     // Dialogs & Notifications
     confirm: "Conferma",
