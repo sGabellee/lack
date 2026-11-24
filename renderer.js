@@ -844,11 +844,18 @@ window.addEventListener("DOMContentLoaded", async () => {
         else el.classList.remove("hidden");
       });
 
-      // Compact class for text labels (Auto, Log, Pag. / di)
-      if (width < 460) {
+      // Compact class for text labels (Auto, Log, Pag. / di) when width < 620
+      if (width < 620) {
         pdfToolbarEl.classList.add("toolbar-compact");
       } else {
         pdfToolbarEl.classList.remove("toolbar-compact");
+      }
+
+      // Ultra-compact class for narrow widths < 480
+      if (width < 480) {
+        pdfToolbarEl.classList.add("toolbar-ultra-compact");
+      } else {
+        pdfToolbarEl.classList.remove("toolbar-ultra-compact");
       }
 
       // Synchronize dropdown menu options with collapsed toolbar items
@@ -2706,7 +2713,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       selectedExplorerPaths = [fullPath];
       selectedExplorerPath = fullPath;
       selectedExplorerElement = itemDiv;
-      lastExplorerAnchorElement = itemDiv;
+      lastExplorerAnchorPath = fullPath;
       updateExplorerSelectionUI();
     }
     showMenuFn();
@@ -3003,14 +3010,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function buildFolderTreeRecursive(dir, parentElement) {
-    let entries = [];
+    let rawEntries;
     try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
+      rawEntries = fs.readdirSync(dir, { withFileTypes: true });
     } catch (_) {
       return;
     }
 
-    entries = filterProjectEntries(entries);
+    const entries = filterProjectEntries(rawEntries);
 
     entries.forEach(entry => {
       const fullPath = path.join(dir, entry.name);
@@ -3284,14 +3291,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function buildProjectTreeRecursive(dir, parentElement) {
-    let entries = [];
+    let rawEntries;
     try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
+      rawEntries = fs.readdirSync(dir, { withFileTypes: true });
     } catch (_) {
       return;
     }
 
-    entries = filterProjectEntries(entries);
+    const entries = filterProjectEntries(rawEntries);
 
     const isProjectStoreRoot = isLinkedProject && currentProject && currentProject.storePath &&
       (path.resolve(dir) === path.resolve(currentProject.storePath));
@@ -3312,9 +3319,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     entries.forEach(entry => {
       const fullPath = path.join(dir, entry.name);
-      let isSymlink = false;
+      let isSymlink;
       let isBroken = false;
-      let isDir = false;
+      let isDir;
 
       try {
         const lst = fs.lstatSync(fullPath);
@@ -5971,9 +5978,82 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // ====== SETTINGS MODAL ======
   const settingsModal = document.getElementById("settings-modal");
-  document.getElementById("btn-options").onclick = () => settingsModal.classList.remove("hidden");
+  function updateSettingsZoomDisplay() {
+    const zoomDisp = document.getElementById("settings-zoom-display");
+    if (zoomDisp) {
+      zoomDisp.textContent = `${Math.round(currentZoomLevel * 100)}%`;
+    }
+  }
+
+  function applyWindowControlsStyle(style) {
+    document.body.classList.remove('win-ctrl-ubuntu', 'win-ctrl-mac', 'win-ctrl-win');
+    document.body.classList.add(`win-ctrl-${style}`);
+    localStorage.setItem('lack.windowControlsStyle', style);
+    document.querySelectorAll('#win-controls-segmented button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.controlsStyle === style);
+    });
+  }
+
+  const savedControlsStyle = localStorage.getItem('lack.windowControlsStyle') || (process.platform === 'linux' ? 'ubuntu' : 'win');
+  applyWindowControlsStyle(savedControlsStyle);
+
+  document.querySelectorAll('#win-controls-segmented button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const style = btn.dataset.controlsStyle;
+      if (style) applyWindowControlsStyle(style);
+    });
+  });
+
+  document.getElementById("btn-options").onclick = () => {
+    settingsModal.classList.remove("hidden");
+    updateSettingsZoomDisplay();
+    const currTheme = config.theme || 'light';
+    document.querySelectorAll("#theme-segmented button").forEach(b => {
+      b.classList.toggle("active", b.dataset.theme === currTheme);
+    });
+    const currLang = i18n.currentLocale || 'it';
+    document.getElementById("lang-btn-it")?.classList.toggle("active", currLang === 'it');
+    document.getElementById("lang-btn-en")?.classList.toggle("active", currLang === 'en');
+    const currCtrl = localStorage.getItem('lack.windowControlsStyle') || (process.platform === 'linux' ? 'ubuntu' : 'win');
+    document.querySelectorAll('#win-controls-segmented button').forEach(b => {
+      b.classList.toggle('active', b.dataset.controlsStyle === currCtrl);
+    });
+  };
   document.getElementById("btn-close-settings").onclick = () => settingsModal.classList.add("hidden");
   document.getElementById("modal-overlay").onclick = () => settingsModal.classList.add("hidden");
+
+  // Zoom controls in Settings modal
+  document.getElementById("btn-zoom-in")?.addEventListener("click", () => {
+    currentZoomLevel = Math.min(2.5, Math.round((currentZoomLevel + 0.1) * 10) / 10);
+    webFrame.setZoomFactor(currentZoomLevel);
+    updateSettingsZoomDisplay();
+    showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
+  });
+  document.getElementById("btn-zoom-out")?.addEventListener("click", () => {
+    currentZoomLevel = Math.max(0.5, Math.round((currentZoomLevel - 0.1) * 10) / 10);
+    webFrame.setZoomFactor(currentZoomLevel);
+    updateSettingsZoomDisplay();
+    showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
+  });
+  document.getElementById("btn-zoom-reset")?.addEventListener("click", () => {
+    currentZoomLevel = 1.0;
+    webFrame.setZoomFactor(1.0);
+    updateSettingsZoomDisplay();
+    showNotification("Zoom: 100%", "info");
+  });
+
+  // Tab indentation size
+  const inputTabSize = document.getElementById("input-tab-size");
+  if (inputTabSize) {
+    const savedTabSize = parseInt(localStorage.getItem("lack-tabSize") || "2", 10);
+    inputTabSize.value = savedTabSize;
+    inputTabSize.addEventListener("change", (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (val >= 2 && val <= 8) {
+        localStorage.setItem("lack-tabSize", String(val));
+      }
+    });
+  }
 
   document.querySelectorAll(".settings-nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -6437,6 +6517,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     } else {
       currentZoomLevel = Math.min(2.5, Math.round((currentZoomLevel + 0.1) * 10) / 10);
       webFrame.setZoomFactor(currentZoomLevel);
+      updateSettingsZoomDisplay();
       showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
     }
   }
@@ -6447,6 +6528,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     } else {
       currentZoomLevel = Math.max(0.5, Math.round((currentZoomLevel - 0.1) * 10) / 10);
       webFrame.setZoomFactor(currentZoomLevel);
+      updateSettingsZoomDisplay();
       showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
     }
   }
@@ -6457,6 +6539,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     } else {
       currentZoomLevel = 1.0;
       webFrame.setZoomFactor(1.0);
+      updateSettingsZoomDisplay();
       showNotification("Zoom: 100%", "info");
     }
   }

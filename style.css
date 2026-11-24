@@ -439,45 +439,36 @@ body.platform-darwin #window-controls {
   display: none !important;
 }
 
-body.platform-win32 #window-controls,
-body.win-ctrl-win #window-controls {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  height: 100%;
-  margin: 0;
-  padding: 0;
+body.win-ctrl-win #window-controls,
+body.platform-win32:not(.win-ctrl-ubuntu):not(.win-ctrl-mac) #window-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-body.platform-linux #window-controls,
-body.win-ctrl-ubuntu #window-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding-right: 10px;
-  height: 100%;
-  background: none;
-  border: none;
+body.win-ctrl-ubuntu #window-controls,
+body.platform-linux:not(.win-ctrl-win):not(.win-ctrl-mac) #window-controls {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding-right: 10px !important;
+  height: 100% !important;
 }
 
 body.win-ctrl-mac #window-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding-right: 12px;
-  height: 100%;
-  background: none;
-  border: none;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding-right: 12px !important;
+  height: 100% !important;
 }
 
 .win-ctrl-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: rgba(128, 128, 128, 0.14);
-  color: var(--fg);
   border: none;
   display: flex;
   align-items: center;
@@ -487,29 +478,6 @@ body.win-ctrl-mac #window-controls {
   cursor: pointer !important;
   padding: 0;
   box-sizing: border-box;
-}
-
-.win-ctrl-btn:hover {
-  background-color: rgba(128, 128, 128, 0.3);
-  color: var(--fg);
-}
-
-.win-close-btn:hover {
-  background-color: #e95420 !important;
-  color: #ffffff !important;
-}
-
-body.dark .win-ctrl-btn {
-  background-color: rgba(255, 255, 255, 0.12);
-}
-
-body.dark .win-ctrl-btn:hover {
-  background-color: rgba(255, 255, 255, 0.24);
-}
-
-body.dark .win-close-btn:hover {
-  background-color: #e95420 !important;
-  color: #ffffff !important;
 }
 
 .win-ctrl-btn svg {
@@ -530,99 +498,143 @@ body.window-maximized .win-ctrl-btn .icon-restore {
 }
 
 /* --- UBUNTU / GNOME STYLES (Default on Linux) --- */
-body.platform-linux .win-ctrl-btn,
-body.win-ctrl-ubuntu .win-ctrl-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: rgba(128, 128, 128, 0.14);
-  color: var(--fg);
+body.win-ctrl-ubuntu .win-ctrl-btn,
+body.platform-linux:not(.win-ctrl-mac):not(.win-ctrl-win) .win-ctrl-btn {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  background-color: rgba(128, 128, 128, 0.14) !important;
+  color: var(--fg) !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
-body.platform-linux .win-ctrl-btn:hover,
-body.win-ctrl-ubuntu .win-ctrl-btn:hover {
-  background-color: rgba(128, 128, 128, 0.3);
-  color: var(--fg);
+body.win-ctrl-ubuntu .win-ctrl-btn:hover,
+body.platform-linux:not(.win-ctrl-mac):not(.win-ctrl-win) .win-ctrl-btn:hover {
+  background-color: rgba(128, 128, 128, 0.3) !important;
+  color: var(--fg) !important;
 }
 
-body.dark.platform-linux .win-ctrl-btn,
-body.dark.win-ctrl-ubuntu .win-ctrl-btn {
-  background-color: rgba(255, 255, 255, 0.12);
+body.win-ctrl-ubuntu.dark .win-ctrl-btn,
+body.platform-linux.dark:not(.win-ctrl-mac):not(.win-ctrl-win) .win-ctrl-btn {
+  background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-body.dark.platform-linux .win-ctrl-btn:hover,
-body.dark.win-ctrl-ubuntu .win-ctrl-btn:hover {
-  background-color: rgba(255, 255, 255, 0.24);
+body.win-ctrl-ubuntu.dark .win-ctrl-btn:hover,
+body.platform-linux.dark:not(.win-ctrl-mac):not(.win-ctrl-win) .win-ctrl-btn:hover {
+  background-color: rgba(255, 255, 255, 0.24) !important;
 }
 
-body.platform-linux .win-close-btn:hover,
-body.win-ctrl-ubuntu .win-close-btn:hover {
+body.win-ctrl-ubuntu .win-close-btn:hover,
+body.platform-linux:not(.win-ctrl-mac):not(.win-ctrl-win) .win-close-btn:hover {
   background-color: #e95420 !important;
   color: #ffffff !important;
 }
 
-body.platform-linux .win-ctrl-btn:active,
-body.win-ctrl-ubuntu .win-ctrl-btn:active {
-  transform: scale(0.92);
+body.win-ctrl-ubuntu .win-ctrl-btn svg,
+body.platform-linux:not(.win-ctrl-mac):not(.win-ctrl-win) .win-ctrl-btn svg {
+  opacity: 1 !important;
+  transform: none !important;
+  color: var(--fg) !important;
+}
+
+body.win-ctrl-ubuntu .win-close-btn:hover svg,
+body.platform-linux:not(.win-ctrl-mac):not(.win-ctrl-win) .win-close-btn:hover svg {
+  color: #ffffff !important;
+}
+
+body.win-ctrl-ubuntu .win-ctrl-btn:active,
+body.platform-linux:not(.win-ctrl-mac):not(.win-ctrl-win) .win-ctrl-btn:active {
+  transform: scale(0.92) !important;
 }
 
 /* --- MACOS TRAFFIC LIGHTS STYLE --- */
-body.win-ctrl-mac .win-ctrl-btn {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  position: relative;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+body.win-ctrl-mac .win-ctrl-btn,
+body.win-ctrl-mac.dark .win-ctrl-btn {
+  width: 13px !important;
+  height: 13px !important;
+  min-width: 13px !important;
+  border-radius: 50% !important;
+  position: relative !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15) !important;
 }
 
 body.win-ctrl-mac #win-close {
-  background-color: #ff5f56;
-  border: 1px solid #e0443e;
+  background-color: #ff5f56 !important;
+  border: 1px solid #e0443e !important;
+  order: 1 !important;
 }
 
 body.win-ctrl-mac #win-minimize {
-  background-color: #ffbd2e;
-  border: 1px solid #dea123;
+  background-color: #ffbd2e !important;
+  border: 1px solid #dea123 !important;
+  order: 2 !important;
 }
 
 body.win-ctrl-mac #win-maximize {
-  background-color: #27c93f;
-  border: 1px solid #1aab29;
+  background-color: #27c93f !important;
+  border: 1px solid #1aab29 !important;
+  order: 3 !important;
 }
 
 body.win-ctrl-mac .win-ctrl-btn svg {
-  opacity: 0;
-  transform: scale(0.7);
-  transition: opacity 0.12s ease;
-  color: rgba(0, 0, 0, 0.65);
+  opacity: 0 !important;
+  transform: scale(0.7) !important;
+  transition: opacity 0.12s ease !important;
+  color: rgba(0, 0, 0, 0.65) !important;
 }
 
 body.win-ctrl-mac #window-controls:hover .win-ctrl-btn svg {
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 body.win-ctrl-mac .win-ctrl-btn:active {
-  filter: brightness(0.85);
-  transform: scale(0.92);
+  filter: brightness(0.85) !important;
+  transform: scale(0.92) !important;
 }
 
 /* --- WINDOWS STYLES --- */
-body.platform-win32 .win-ctrl-btn,
-body.win-ctrl-win .win-ctrl-btn {
-  width: 46px;
-  height: 100%;
-  border-radius: 0;
-  background-color: transparent;
+body.win-ctrl-win .win-ctrl-btn,
+body.win-ctrl-win.dark .win-ctrl-btn,
+body.platform-win32:not(.win-ctrl-mac):not(.win-ctrl-ubuntu) .win-ctrl-btn {
+  width: 46px !important;
+  height: 100% !important;
+  min-width: 46px !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  color: var(--fg) !important;
+  border: none !important;
+  box-shadow: none !important;
+  order: unset !important;
 }
 
-body.platform-win32 .win-ctrl-btn:hover,
-body.win-ctrl-win .win-ctrl-btn:hover {
-  background-color: rgba(128, 128, 128, 0.25);
+body.win-ctrl-win #win-minimize,
+body.win-ctrl-win #win-maximize,
+body.win-ctrl-win #win-close {
+  order: unset !important;
 }
 
-body.platform-win32 .win-close-btn:hover,
-body.win-ctrl-win .win-close-btn:hover {
+body.win-ctrl-win .win-ctrl-btn svg,
+body.platform-win32:not(.win-ctrl-mac):not(.win-ctrl-ubuntu) .win-ctrl-btn svg {
+  opacity: 1 !important;
+  transform: none !important;
+  color: var(--fg) !important;
+}
+
+body.win-ctrl-win .win-ctrl-btn:hover,
+body.platform-win32:not(.win-ctrl-mac):not(.win-ctrl-ubuntu) .win-ctrl-btn:hover {
+  background-color: rgba(128, 128, 128, 0.25) !important;
+  color: var(--fg) !important;
+}
+
+body.win-ctrl-win .win-close-btn:hover,
+body.platform-win32:not(.win-ctrl-mac):not(.win-ctrl-ubuntu) .win-close-btn:hover {
   background-color: #e81123 !important;
+  color: white !important;
+}
+
+body.win-ctrl-win .win-close-btn:hover svg,
+body.platform-win32:not(.win-ctrl-mac):not(.win-ctrl-ubuntu) .win-close-btn:hover svg {
   color: white !important;
 }
 
@@ -6641,12 +6653,30 @@ body.dark .editor-gutter {
 .pdf-toolbar-right {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 1;
+  gap: 5px;
+  flex-shrink: 0;
   min-width: 0;
 }
 
 /* Compact toolbar state triggered dynamically by ResizeObserver when space is tight */
+.pdf-viewer-toolbar.toolbar-compact {
+  gap: 4px;
+  padding: 0 6px;
+}
+
+.pdf-viewer-toolbar.toolbar-compact .pdf-toolbar-left {
+  gap: 4px;
+  margin-left: 18px;
+}
+
+.pdf-viewer-toolbar.toolbar-compact .pdf-toolbar-right {
+  gap: 3px;
+}
+
+.pdf-viewer-toolbar.toolbar-compact .compile-btn {
+  padding: 4px 8px;
+}
+
 .pdf-viewer-toolbar.toolbar-compact .auto-compile-label {
   display: none !important;
 }
@@ -6661,6 +6691,30 @@ body.dark .editor-gutter {
 
 .pdf-viewer-toolbar.toolbar-compact .pdf-page-label-sep {
   display: inline !important;
+}
+
+.pdf-viewer-toolbar.toolbar-compact #pdf-input-page {
+  width: 24px;
+  padding: 2px 2px;
+}
+
+.pdf-viewer-toolbar.toolbar-compact .pdf-tool-btn {
+  padding: 2px 4px;
+  min-width: 20px;
+  font-size: 11.5px;
+}
+
+/* Ultra-compact for width < 480px (e.g. narrow screens with sidebar open) */
+.pdf-viewer-toolbar.toolbar-ultra-compact .compile-text {
+  display: none !important;
+}
+
+.pdf-viewer-toolbar.toolbar-ultra-compact .compile-btn {
+  padding: 4px 6px;
+}
+
+.pdf-viewer-toolbar.toolbar-ultra-compact .pdf-zoom-label {
+  font-size: 11px;
 }
 
 .pdf-page-label-sep {
