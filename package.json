@@ -1,7 +1,7 @@
 {
   "name": "Lack",
   "desktopName": "Lack.desktop",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Editor LaTeX professionale con compilatore, anteprima PDF e collaborazione in tempo reale",
   "main": "main.js",
   "scripts": {

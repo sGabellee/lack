@@ -91,3 +91,20 @@ test('i18n: translations include tab context menu and unsaved dialog strings', (
   assert.strictEqual(i18n.t('tab_ctx_close_saved'), 'Close Saved');
   assert.strictEqual(i18n.t('tab_ctx_close_all'), 'Close All');
 });
+
+test('i18n: translations include auto-update dialog and notification strings', () => {
+  const i18n = require('../i18n.js');
+  i18n.setLanguage('it');
+  assert.strictEqual(i18n.t('notif_update_available'), 'Aggiornamento disponibile!');
+  assert.strictEqual(i18n.t('dialog_update_available_title'), 'Aggiornamento disponibile');
+  assert.strictEqual(i18n.t('dialog_update_download_restart'), 'Scarica e riavvia');
+  assert.strictEqual(i18n.t('dialog_update_discard'), 'Scarta');
+  assert.strictEqual(i18n.t('dialog_update_open_github'), 'Scarica da GitHub');
+
+  i18n.setLanguage('en');
+  assert.strictEqual(i18n.t('notif_update_available'), 'Update available!');
+  assert.strictEqual(i18n.t('dialog_update_available_title'), 'Update Available');
+  assert.strictEqual(i18n.t('dialog_update_download_restart'), 'Download and Restart');
+  assert.strictEqual(i18n.t('dialog_update_discard'), 'Discard');
+  assert.strictEqual(i18n.t('dialog_update_open_github'), 'Download from GitHub');
+});

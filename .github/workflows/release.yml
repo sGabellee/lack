@@ -74,6 +74,8 @@ jobs:
           cp dist/*.AppImage release-staging/ 2>/dev/null || true
           cp dist/*.deb release-staging/ 2>/dev/null || true
           cp dist/*.tar.gz release-staging/ 2>/dev/null || true
+          cp dist/latest-linux.yml release-staging/ 2>/dev/null || true
+          cp dist/*.blockmap release-staging/ 2>/dev/null || true
 
       - name: Stage Artifacts (macOS)
         if: matrix.platform == 'mac'
@@ -82,6 +84,8 @@ jobs:
           mkdir -p release-staging
           cp dist/*.dmg release-staging/ 2>/dev/null || true
           cp dist/*.zip release-staging/ 2>/dev/null || true
+          cp dist/latest-mac.yml release-staging/ 2>/dev/null || true
+          cp dist/*.blockmap release-staging/ 2>/dev/null || true
 
       - name: Stage Artifacts (Windows)
         if: matrix.platform == 'windows'
@@ -90,6 +94,8 @@ jobs:
           mkdir -p release-staging
           cp dist/*.exe release-staging/ 2>/dev/null || true
           cp dist/*.zip release-staging/ 2>/dev/null || true
+          cp dist/latest.yml release-staging/ 2>/dev/null || true
+          cp dist/*.blockmap release-staging/ 2>/dev/null || true
 
       - name: Upload Platform Artifacts
         uses: actions/upload-artifact@v4

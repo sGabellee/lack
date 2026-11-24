@@ -1,6 +1,6 @@
 // ====== LACK RENDERER PROCESS ======
 const i18n = require("./i18n.js");
-const { ipcRenderer, webFrame } = require("electron");
+const { ipcRenderer, webFrame, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -271,6 +271,125 @@ function showCustomConfirmDialog(options = {}) {
     modal.classList.remove('hidden');
   });
 }
+
+// ====== AUTO-UPDATE =========================================================
+let updateProgressNotification = null;
+
+function showOrUpdateDownloadNotification(message) {
+  if (updateProgressNotification && document.body.contains(updateProgressNotification)) {
+    const textEl = updateProgressNotification.querySelector('.cloud-notification-text');
+    if (textEl) {
+      textEl.textContent = message;
+      return;
+    }
+  }
+  const container = getOrCreateNotificationContainer();
+  const notification = document.createElement('div');
+  notification.className = 'cloud-notification info';
+  const iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+  notification.innerHTML = `
+    <div class="cloud-notification-icon" style="display:inline-flex;align-items:center;margin-right:6px;">${iconSvg}</div>
+    <span class="cloud-notification-text">${escapeHtml(message)}</span>
+  `;
+  container.appendChild(notification);
+  updateProgressNotification = notification;
+}
+
+ipcRenderer.on('update-available', async (event, info) => {
+  const versionStr = info?.version ? ` (v${info.version})` : '';
+  let choice;
+  try {
+    choice = await showCustomConfirmDialog({
+      title: i18n.t('dialog_update_available_title'),
+      message: `${i18n.t('dialog_update_available_message', { version: versionStr })}\n\n${i18n.t('dialog_update_available_detail')}`,
+      type: 'question',
+      buttons: [
+        { text: i18n.t('dialog_update_download_restart'), value: 'download', isPrimary: true },
+        { text: i18n.t('dialog_update_discard'), value: 'discard', isCancel: true }
+      ],
+      defaultValue: 'discard'
+    });
+  } catch (_) {
+    try {
+      const resp = dialog.showMessageBoxSync({
+        type: 'question',
+        title: i18n.t('dialog_update_available_title'),
+        message: i18n.t('dialog_update_available_message', { version: versionStr }),
+        detail: i18n.t('dialog_update_available_detail'),
+        buttons: [
+          i18n.t('dialog_update_download_restart'),
+          i18n.t('dialog_update_discard')
+        ],
+        defaultId: 0,
+        cancelId: 1
+      });
+      choice = resp === 0 ? 'download' : 'discard';
+    } catch (_) {
+      choice = 'discard';
+    }
+  }
+
+  if (choice === 'download') {
+    showOrUpdateDownloadNotification(i18n.t('notif_update_downloading'));
+    ipcRenderer.send('start-download-update');
+  }
+});
+
+ipcRenderer.on('update-download-progress', (event, percent) => {
+  showOrUpdateDownloadNotification(i18n.t('notif_update_progress', { percent }));
+});
+
+ipcRenderer.on('update-downloaded', () => {
+  if (updateProgressNotification) {
+    try { updateProgressNotification.remove(); } catch (_) {}
+    updateProgressNotification = null;
+  }
+  showNotification(i18n.t('notif_update_downloaded_restarting'), 'success');
+  setTimeout(() => {
+    ipcRenderer.send('quit-and-install-update');
+  }, 1000);
+});
+
+ipcRenderer.on('update-error', async (event, errorMsg) => {
+  if (updateProgressNotification) {
+    try { updateProgressNotification.remove(); } catch (_) {}
+    updateProgressNotification = null;
+  }
+  let choice;
+  try {
+    choice = await showCustomConfirmDialog({
+      title: i18n.t('dialog_update_error_title'),
+      message: i18n.t('dialog_update_error_message', { msg: errorMsg }),
+      type: 'warning',
+      buttons: [
+        { text: i18n.t('dialog_update_open_github'), value: 'github', isPrimary: true },
+        { text: i18n.t('dialog_cancel'), value: 'cancel', isCancel: true }
+      ],
+      defaultValue: 'cancel'
+    });
+  } catch (_) {
+    try {
+      const resp = dialog.showMessageBoxSync({
+        type: 'warning',
+        title: i18n.t('dialog_update_error_title'),
+        message: i18n.t('dialog_update_error_message', { msg: errorMsg }),
+        buttons: [
+          i18n.t('dialog_update_open_github'),
+          i18n.t('dialog_cancel')
+        ],
+        defaultId: 0,
+        cancelId: 1
+      });
+      choice = resp === 0 ? 'github' : 'cancel';
+    } catch (_) {
+      choice = 'cancel';
+    }
+  }
+
+  if (choice === 'github') {
+    shell.openExternal('https://github.com/sGabellee/lack/releases/latest');
+  }
+});
 
 // ====== DOM READY ======
 window.addEventListener("DOMContentLoaded", async () => {
@@ -6582,7 +6701,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     showNotification(`Comando di installazione TeX copiato negli appunti: ${cmd}`, "info");
   });
   ipcRenderer.on("open-about", () => {
-    let appVersion = "1.1.0";
+    let appVersion = "1.1.2";
     try { appVersion = require("./package.json").version; } catch (_) {}
     showNotification(`Lack - Editor LaTeX Professionale v${appVersion}`, "info");
   });

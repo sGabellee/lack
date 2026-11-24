@@ -1042,7 +1042,43 @@ app.whenReady().then(async () => {
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('update-available', (info) => {
-    if (win && !win.isDestroyed()) win.webContents.send('update-available', info);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('update-available', info);
+    }
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('update-download-progress', Math.round(progressObj.percent));
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('update-downloaded', info);
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.warn('[AutoUpdater] Error:', err);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('update-error', err ? (err.message || String(err)) : 'Unknown error');
+    }
+  });
+
+  ipcMain.on('start-download-update', () => {
+    autoUpdater.downloadUpdate().catch((err) => {
+      console.warn('[AutoUpdater] downloadUpdate error:', err);
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('update-error', err ? (err.message || String(err)) : 'Unknown error');
+      }
+    });
+  });
+
+  ipcMain.on('quit-and-install-update', () => {
+    setImmediate(() => {
+      autoUpdater.quitAndInstall(false, true);
+    });
   });
 
   if (app.isPackaged) {

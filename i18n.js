@@ -240,7 +240,22 @@ const translations = {
     dialog_unsaved_tab_message: "Do you want to save the changes you made to \"{name}\"?",
     dialog_save: "Save",
     dialog_dont_save: "Don't Save",
-    dialog_cancel: "Cancel"
+    dialog_cancel: "Cancel",
+
+    // Auto-update
+    notif_update_available: "Update available!",
+    notif_update_downloading: "Downloading update...",
+    notif_update_progress: "Downloading update: {percent}%",
+    notif_update_downloaded: "Update downloaded! Restart to apply.",
+    notif_update_downloaded_restarting: "Update ready! Restarting application...",
+    dialog_update_available_title: "Update Available",
+    dialog_update_available_message: "A new update{version} is available!",
+    dialog_update_available_detail: "Do you want to download the update and restart the application to install it, or discard?",
+    dialog_update_download_restart: "Download and Restart",
+    dialog_update_discard: "Discard",
+    dialog_update_error_title: "Update Failed",
+    dialog_update_error_message: "Could not automatically download or apply the update: {msg}\n\nDo you want to open GitHub to download it manually?",
+    dialog_update_open_github: "Download from GitHub"
   },
 
   it: {
@@ -483,7 +498,22 @@ const translations = {
     dialog_unsaved_tab_message: "Vuoi salvare le modifiche apportate a \"{name}\" prima di chiudere?",
     dialog_save: "Salva",
     dialog_dont_save: "Non salvare",
-    dialog_cancel: "Annulla"
+    dialog_cancel: "Annulla",
+
+    // Auto-update
+    notif_update_available: "Aggiornamento disponibile!",
+    notif_update_downloading: "Download dell'aggiornamento in corso...",
+    notif_update_progress: "Download aggiornamento: {percent}%",
+    notif_update_downloaded: "Aggiornamento scaricato! Riavvia per applicare.",
+    notif_update_downloaded_restarting: "Aggiornamento pronto! Riavvio dell'applicazione in corso...",
+    dialog_update_available_title: "Aggiornamento disponibile",
+    dialog_update_available_message: "È disponibile un nuovo aggiornamento{version}!",
+    dialog_update_available_detail: "Vuoi scaricare l'aggiornamento e riavviare l'applicazione per installarlo o scartare?",
+    dialog_update_download_restart: "Scarica e riavvia",
+    dialog_update_discard: "Scarta",
+    dialog_update_error_title: "Aggiornamento non riuscito",
+    dialog_update_error_message: "Non è stato possibile completare l'aggiornamento automatico: {msg}\n\nVuoi aprire GitHub per scaricarlo manualmente?",
+    dialog_update_open_github: "Scarica da GitHub"
   }
 };
 
