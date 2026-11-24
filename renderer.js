@@ -6723,6 +6723,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.__lackCloseSaveTemplateModal = closeSaveTemplateModal;
   window.__lackHandleDeleteTemplate = handleDeleteTemplate;
   window.__lackOpenTemplateGallery = openTemplateGallery;
+  window.__lackPdfViewer = pdfViewer;
 
   // Initial state: show start screen if no tabs opened
   renderTabs();
