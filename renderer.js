@@ -64,6 +64,10 @@ const {
   undoMoveJournal
 } = require("./src/projects/import.js");
 
+const {
+  createNotificationController
+} = require("./src/ui/notifications.js");
+
 // ====== UTILS ======
 function escapeHtml(s) {
   if (typeof s !== 'string') return String(s);
@@ -79,45 +83,17 @@ function debounce(func, delay) {
 }
 
 // ====== CLOUD POPUP NOTIFICATIONS ======
+const notificationController = createNotificationController({
+  doc: document,
+  escapeHtml
+});
+
 function getOrCreateNotificationContainer() {
-  let container = document.getElementById('notification-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'notification-container';
-    document.body.appendChild(container);
-  }
-  return container;
+  return notificationController.getOrCreateContainer();
 }
 
-function showNotification(message, type = 'info') {
-  const container = getOrCreateNotificationContainer();
-  const notification = document.createElement('div');
-  notification.className = `cloud-notification ${type}`;
-  notification.innerHTML = `<span class="cloud-notification-text">${escapeHtml(message)}</span>`;
-  container.appendChild(notification);
-
-  let dismissTimer = null;
-  let isDismissed = false;
-
-  function dismiss() {
-    if (isDismissed) return;
-    isDismissed = true;
-    clearTimeout(dismissTimer);
-    notification.classList.add('cloud-dismiss');
-    setTimeout(() => {
-      try { notification.remove(); } catch (_) {}
-    }, 320);
-  }
-
-  dismissTimer = setTimeout(dismiss, 4000);
-  notification.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dismiss();
-  });
-  notification.addEventListener('mouseenter', () => clearTimeout(dismissTimer));
-  notification.addEventListener('mouseleave', () => {
-    dismissTimer = setTimeout(dismiss, 2500);
-  });
+function showNotification(message, type = 'info', options = {}) {
+  return notificationController.showNotification(message, type, options);
 }
 
 function showNotificationWithAction(message, actionText, onAction, type = 'info', duration = 8000) {
@@ -6204,16 +6180,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         case 'view-split': setViewMode('split-view'); break;
         case 'view-preview': setViewMode('solo-preview'); break;
         case 'zoom-in':
-          currentZoomLevel = Math.min(2.5, currentZoomLevel + 0.1);
-          webFrame.setZoomFactor(currentZoomLevel);
+          applyUiZoom(currentZoomLevel + 0.1);
           break;
         case 'zoom-out':
-          currentZoomLevel = Math.max(0.6, currentZoomLevel - 0.1);
-          webFrame.setZoomFactor(currentZoomLevel);
+          applyUiZoom(currentZoomLevel - 0.1);
           break;
         case 'zoom-reset':
-          currentZoomLevel = 1.0;
-          webFrame.setZoomFactor(1.0);
+          applyUiZoom(1.0);
           break;
         case 'set-theme-light': applyTheme('light'); break;
         case 'set-theme-dark': applyTheme('dark'); break;
@@ -6531,6 +6504,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function applyUiZoom(targetLevel) {
+    currentZoomLevel = Math.max(0.5, Math.min(2.5, Math.round(targetLevel * 10) / 10));
+    webFrame.setZoomFactor(currentZoomLevel);
+    updateSettingsZoomDisplay();
+    showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info", { replaceKey: "ui-zoom" });
+  }
+
   function applyWindowControlsStyle(style) {
     document.body.classList.remove('win-ctrl-ubuntu', 'win-ctrl-mac', 'win-ctrl-win');
     document.body.classList.add(`win-ctrl-${style}`);
@@ -6569,24 +6549,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("modal-overlay").onclick = () => settingsModal.classList.add("hidden");
 
   // Zoom controls in Settings modal
-  document.getElementById("btn-zoom-in")?.addEventListener("click", () => {
-    currentZoomLevel = Math.min(2.5, Math.round((currentZoomLevel + 0.1) * 10) / 10);
-    webFrame.setZoomFactor(currentZoomLevel);
-    updateSettingsZoomDisplay();
-    showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
-  });
-  document.getElementById("btn-zoom-out")?.addEventListener("click", () => {
-    currentZoomLevel = Math.max(0.5, Math.round((currentZoomLevel - 0.1) * 10) / 10);
-    webFrame.setZoomFactor(currentZoomLevel);
-    updateSettingsZoomDisplay();
-    showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
-  });
-  document.getElementById("btn-zoom-reset")?.addEventListener("click", () => {
-    currentZoomLevel = 1.0;
-    webFrame.setZoomFactor(1.0);
-    updateSettingsZoomDisplay();
-    showNotification("Zoom: 100%", "info");
-  });
+  document.getElementById("btn-zoom-in")?.addEventListener("click", () => applyUiZoom(currentZoomLevel + 0.1));
+  document.getElementById("btn-zoom-out")?.addEventListener("click", () => applyUiZoom(currentZoomLevel - 0.1));
+  document.getElementById("btn-zoom-reset")?.addEventListener("click", () => applyUiZoom(1.0));
 
   // Tab indentation size
   const inputTabSize = document.getElementById("input-tab-size");
@@ -7077,10 +7042,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (isMouseOverPreview && typeof pdfViewer.zoomIn === "function") {
       pdfViewer.zoomIn();
     } else {
-      currentZoomLevel = Math.min(2.5, Math.round((currentZoomLevel + 0.1) * 10) / 10);
-      webFrame.setZoomFactor(currentZoomLevel);
-      updateSettingsZoomDisplay();
-      showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
+      applyUiZoom(currentZoomLevel + 0.1);
     }
   }
 
@@ -7088,10 +7050,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (isMouseOverPreview && typeof pdfViewer.zoomOut === "function") {
       pdfViewer.zoomOut();
     } else {
-      currentZoomLevel = Math.max(0.5, Math.round((currentZoomLevel - 0.1) * 10) / 10);
-      webFrame.setZoomFactor(currentZoomLevel);
-      updateSettingsZoomDisplay();
-      showNotification(`Zoom: ${Math.round(currentZoomLevel * 100)}%`, "info");
+      applyUiZoom(currentZoomLevel - 0.1);
     }
   }
 
@@ -7099,10 +7058,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (isMouseOverPreview && typeof pdfViewer.resetZoom === "function") {
       pdfViewer.resetZoom();
     } else {
-      currentZoomLevel = 1.0;
-      webFrame.setZoomFactor(1.0);
-      updateSettingsZoomDisplay();
-      showNotification("Zoom: 100%", "info");
+      applyUiZoom(1.0);
     }
   }
 

@@ -4724,6 +4724,12 @@ body.dark .cloud-notification:hover {
   }
 }
 
+.cloud-notification.cloud-no-enter {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) scale(1) !important;
+}
+
 .cloud-notification.cloud-dismiss {
   animation: cloudDissolveOut 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   pointer-events: none !important;
