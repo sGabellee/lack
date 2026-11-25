@@ -31,7 +31,17 @@ const {
   StreamLanguage,
   syntaxHighlighting
 } = require('@codemirror/language');
-const { search, searchKeymap, openSearchPanel } = require('@codemirror/search');
+const {
+  search,
+  searchKeymap,
+  openSearchPanel,
+  closeSearchPanel,
+  SearchQuery,
+  setSearchQuery,
+  findNext,
+  findPrevious,
+  SearchCursor
+} = require('@codemirror/search');
 const { lintGutter, lintKeymap, forceLinting } = require('@codemirror/lint');
 const { latexLanguage } = require('./latex-syntax');
 const { vim } = require('@replit/codemirror-vim');
@@ -212,6 +222,26 @@ class CodeMirrorManager {
 
     // Custom keybindings
     const customKeymaps = [
+      {
+        key: 'Mod-f',
+        run: () => {
+          if (typeof self.onSearchCallback === 'function') {
+            self.onSearchCallback();
+            return true;
+          }
+          return false;
+        }
+      },
+      {
+        key: 'Mod-Shift-f',
+        run: () => {
+          if (typeof self.onProjectSearchCallback === 'function') {
+            self.onProjectSearchCallback();
+            return true;
+          }
+          return false;
+        }
+      },
       {
         key: 'Backspace',
         run: backspacePairCommand
@@ -712,6 +742,140 @@ class CodeMirrorManager {
     this.onRotateThemeCallback = fn;
   }
 
+  onSearch(fn) {
+    this.onSearchCallback = fn;
+  }
+
+  onProjectSearch(fn) {
+    this.onProjectSearchCallback = fn;
+  }
+
+  _getAllMatches(query, { caseSensitive = false, wholeWord = false, regexp = false } = {}) {
+    if (!this.view || !query) return [];
+    const doc = this.view.state.doc;
+    let queryStr = query;
+    let isRegexp = regexp;
+    if (wholeWord && !regexp) {
+      queryStr = `\\b${queryStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`;
+      isRegexp = true;
+    }
+    const searchQuery = new SearchQuery({
+      search: queryStr,
+      caseSensitive,
+      regexp: isRegexp
+    });
+    const matches = [];
+    try {
+      const cursor = searchQuery.getCursor(doc, 0);
+      while (!cursor.next().done) {
+        matches.push({ from: cursor.value.from, to: cursor.value.to });
+      }
+    } catch (_) {}
+    return matches;
+  }
+
+  search(query, { caseSensitive = false, regexp = false, wholeWord = false } = {}) {
+    if (!this.view) return { count: 0, current: 0 };
+    if (!query) {
+      this.clearSearch();
+      return { count: 0, current: 0 };
+    }
+    let queryStr = query;
+    let isRegexp = regexp;
+    if (wholeWord && !regexp) {
+      queryStr = `\\b${queryStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`;
+      isRegexp = true;
+    }
+    const searchQuery = new SearchQuery({
+      search: queryStr,
+      caseSensitive,
+      regexp: isRegexp
+    });
+    this.view.dispatch({
+      effects: setSearchQuery.of(searchQuery)
+    });
+    this._lastSearchQuery = query;
+    this._lastSearchCase = caseSensitive;
+    this._lastSearchWord = wholeWord;
+
+    const matches = this._getAllMatches(query, { caseSensitive, wholeWord, regexp: isRegexp });
+    if (matches.length === 0) {
+      return { count: 0, current: 0 };
+    }
+
+    const currentFrom = this.view.state.selection.main.from;
+    const targetMatch = matches.find(m => m.from >= currentFrom) || matches[0];
+    const targetIdx = matches.indexOf(targetMatch);
+
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+
+  findNext() {
+    if (!this.view || !this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+
+    const currentTo = this.view.state.selection.main.to;
+    const targetMatch = matches.find(m => m.from >= currentTo) || matches[0];
+    const targetIdx = matches.indexOf(targetMatch);
+
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+
+  findPrevious() {
+    if (!this.view || !this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+
+    const currentFrom = this.view.state.selection.main.from;
+    const prevMatches = matches.filter(m => m.to <= currentFrom);
+    const targetMatch = prevMatches.length > 0 ? prevMatches[prevMatches.length - 1] : matches[matches.length - 1];
+    const targetIdx = matches.indexOf(targetMatch);
+
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+
+  clearSearch() {
+    if (!this.view) return;
+    this._lastSearchQuery = '';
+    this.view.dispatch({
+      effects: setSearchQuery.of(new SearchQuery({ search: '' }))
+    });
+  }
+
+  getCurrentSearchInfo() {
+    if (!this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const sel = this.view.state.selection.main;
+    const matchIdx = matches.findIndex(m => m.from === sel.from && m.to === sel.to);
+    return { count: matches.length, current: matchIdx !== -1 ? matchIdx + 1 : 1 };
+  }
+
   getWordCount() {
     return getLatexWordCount(this.getValue());
   }
@@ -733,5 +897,12 @@ module.exports = {
   setSpellLanguage: setSpellLanguageInternal,
   addToUserDictionary,
   getSpellSuggestions,
-  initSpellWorker
+  initSpellWorker,
+  SearchQuery,
+  setSearchQuery,
+  findNext,
+  findPrevious,
+  SearchCursor,
+  closeSearchPanel,
+  openSearchPanel
 };

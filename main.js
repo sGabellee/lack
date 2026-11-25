@@ -886,6 +886,11 @@ function buildApplicationMenu() {
           label: "Find",
           accelerator: "CmdOrCtrl+F",
           click: () => { win.webContents.send("open-search"); }
+        },
+        {
+          label: "Find in Project...",
+          accelerator: "CmdOrCtrl+Shift+F",
+          click: () => { win.webContents.send("open-project-search"); }
         }
       ]
     },

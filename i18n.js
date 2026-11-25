@@ -59,6 +59,11 @@ const translations = {
     search_prev: "Previous",
     search_next: "Next",
     search_close: "Close",
+    search_in_project: "Search in Project",
+    project_search_placeholder: "Search word or phrase across all project .tex files...",
+    project_search_no_results: "No matches found.",
+    project_search_found: "{count} matches in {files} files",
+    project_search_found_single: "{count} match in 1 file",
 
     // Explorer
     explorer_title: "Explorer",
@@ -317,6 +322,11 @@ const translations = {
     search_prev: "Precedente",
     search_next: "Successivo",
     search_close: "Chiudi",
+    search_in_project: "Cerca nel Progetto",
+    project_search_placeholder: "Cerca parola o frase in tutti i file .tex del progetto...",
+    project_search_no_results: "Nessuna corrispondenza trovata.",
+    project_search_found: "{count} corrispondenze in {files} file",
+    project_search_found_single: "{count} corrispondenza in 1 file",
 
     // Explorer
     explorer_title: "Explorer",

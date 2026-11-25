@@ -1301,6 +1301,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     renderTabs();
     updateWordCount();
     updateOutlineTree();
+    if (searchContainer && !searchContainer.classList.contains("hidden")) {
+      runDocumentSearch();
+    }
   }
 
   async function closeTab(tabId) {
@@ -2384,6 +2387,18 @@ window.addEventListener("DOMContentLoaded", async () => {
   btnToggleLogs.onclick = () => logsDrawer.classList.toggle("hidden");
   document.getElementById("btn-close-logs").onclick = () => logsDrawer.classList.add("hidden");
   document.getElementById("btn-clear-logs").onclick = () => {
+    const isSearchActive = document.getElementById("tab-log-search")?.classList.contains("active");
+    if (isSearchActive) {
+      if (projectSearchInput) projectSearchInput.value = "";
+      btnProjectSearchClear?.classList.add("hidden");
+      if (projectSearchResults) projectSearchResults.innerHTML = "";
+      if (projectSearchSummary) projectSearchSummary.textContent = "";
+      if (drawerSearchCount) {
+        drawerSearchCount.textContent = "0";
+        drawerSearchCount.classList.add("hidden");
+      }
+      return;
+    }
     logsIssuesList.innerHTML = `<div style="padding:16px; color:#888888; text-align:center;">${i18n.t("logs_no_issues")}</div>`;
     logsRawText.textContent = "";
     badgeErrors.classList.add("hidden");
@@ -2392,19 +2407,429 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (cm) cm.clearErrorHighlight();
   };
 
-  document.getElementById("tab-log-issues").onclick = () => {
-    document.getElementById("tab-log-issues").classList.add("active");
-    document.getElementById("tab-log-raw").classList.remove("active");
-    document.getElementById("logs-issues-pane").classList.add("active");
-    document.getElementById("logs-raw-pane").classList.remove("active");
-  };
+  function switchLogsTab(activeTabName) {
+    const tabIssues = document.getElementById("tab-log-issues");
+    const tabRaw = document.getElementById("tab-log-raw");
+    const tabSearch = document.getElementById("tab-log-search");
+    const paneIssues = document.getElementById("logs-issues-pane");
+    const paneRaw = document.getElementById("logs-raw-pane");
+    const paneSearch = document.getElementById("logs-search-pane");
 
-  document.getElementById("tab-log-raw").onclick = () => {
-    document.getElementById("tab-log-raw").classList.add("active");
-    document.getElementById("tab-log-issues").classList.remove("active");
-    document.getElementById("logs-raw-pane").classList.add("active");
-    document.getElementById("logs-issues-pane").classList.remove("active");
-  };
+    tabIssues?.classList.toggle("active", activeTabName === "issues");
+    tabRaw?.classList.toggle("active", activeTabName === "raw");
+    tabSearch?.classList.toggle("active", activeTabName === "search");
+
+    paneIssues?.classList.toggle("active", activeTabName === "issues");
+    paneRaw?.classList.toggle("active", activeTabName === "raw");
+    paneSearch?.classList.toggle("active", activeTabName === "search");
+  }
+
+  document.getElementById("tab-log-issues").onclick = () => switchLogsTab("issues");
+  document.getElementById("tab-log-raw").onclick = () => switchLogsTab("raw");
+  document.getElementById("tab-log-search")?.addEventListener("click", () => {
+    switchLogsTab("search");
+    document.getElementById("project-search-input")?.focus();
+  });
+
+  // ====== IN-DOCUMENT SEARCH (Ctrl+F) ======
+  const searchContainer = document.getElementById("search-container");
+  const searchInput = document.getElementById("search-input");
+  const searchButton = document.getElementById("search-button");
+  const searchPrev = document.getElementById("search-prev");
+  const searchNext = document.getElementById("search-next");
+  const searchClose = document.getElementById("search-close");
+  const searchResults = document.getElementById("search-results");
+
+  function openDocumentSearch() {
+    if (!searchContainer || !searchInput) return;
+    searchContainer.classList.remove("hidden");
+    const sel = cm ? cm.getSelection() : "";
+    if (sel && !sel.includes("\n")) {
+      searchInput.value = sel;
+    }
+    searchInput.focus();
+    searchInput.select();
+    runDocumentSearch();
+  }
+
+  function closeDocumentSearch() {
+    if (!searchContainer) return;
+    searchContainer.classList.add("hidden");
+    if (cm) {
+      cm.clearSearch();
+      cm.focus();
+    }
+    if (searchResults) searchResults.textContent = "0/0";
+  }
+
+  function runDocumentSearch() {
+    if (!searchInput || !searchResults) return;
+    const query = searchInput.value;
+    if (!query) {
+      if (cm) cm.clearSearch();
+      searchResults.textContent = "0/0";
+      return;
+    }
+    if (cm) {
+      const { count, current } = cm.search(query);
+      searchResults.textContent = `${current}/${count}`;
+    }
+  }
+
+  function findNextInDocument() {
+    if (!cm) return;
+    const { count, current } = cm.findNext();
+    if (searchResults) searchResults.textContent = `${current}/${count}`;
+  }
+
+  function findPrevInDocument() {
+    if (!cm) return;
+    const { count, current } = cm.findPrevious();
+    if (searchResults) searchResults.textContent = `${current}/${count}`;
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      runDocumentSearch();
+    });
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          findPrevInDocument();
+        } else {
+          findNextInDocument();
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeDocumentSearch();
+      }
+    });
+  }
+
+  searchButton?.addEventListener("click", () => findNextInDocument());
+  searchNext?.addEventListener("click", () => findNextInDocument());
+  searchPrev?.addEventListener("click", () => findPrevInDocument());
+  searchClose?.addEventListener("click", () => closeDocumentSearch());
+
+  if (cm && typeof cm.onSearch === "function") {
+    cm.onSearch(() => openDocumentSearch());
+  }
+  if (cm && typeof cm.onProjectSearch === "function") {
+    cm.onProjectSearch(() => openProjectSearch());
+  }
+
+  // ====== PROJECT-WIDE SEARCH (Ctrl+Shift+F) ======
+  const projectSearchInput = document.getElementById("project-search-input");
+  const btnProjectSearchClear = document.getElementById("btn-project-search-clear");
+  const btnProjectSearchCase = document.getElementById("btn-project-search-case");
+  const btnProjectSearchWord = document.getElementById("btn-project-search-word");
+  const btnProjectSearchRun = document.getElementById("btn-project-search-run");
+  const projectSearchSummary = document.getElementById("project-search-summary");
+  const projectSearchResults = document.getElementById("project-search-results");
+  const drawerSearchCount = document.getElementById("drawer-search-count");
+
+  let projectSearchCaseSensitive = false;
+  let projectSearchWholeWord = false;
+  let projectSearchDebounceTimer = null;
+
+  function openProjectSearch(initialQuery = "") {
+    logsDrawer.classList.remove("hidden");
+    switchLogsTab("search");
+    if (projectSearchInput) {
+      if (initialQuery) {
+        projectSearchInput.value = initialQuery;
+      } else {
+        const sel = cm ? cm.getSelection() : "";
+        if (sel && !sel.includes("\n")) {
+          projectSearchInput.value = sel;
+        }
+      }
+      projectSearchInput.focus();
+      projectSearchInput.select();
+      btnProjectSearchClear?.classList.toggle("hidden", !projectSearchInput.value);
+      if (projectSearchInput.value.trim()) {
+        executeProjectSearch();
+      }
+    }
+  }
+
+  function getAllProjectTexFileDescriptors() {
+    const fileMap = new Map();
+
+    if (isLinkedProject && currentProject && currentProject.storePath) {
+      try {
+        const storeTexFiles = listStoreTexFiles(currentProject.storePath, fs);
+        for (const item of storeTexFiles) {
+          fileMap.set(path.resolve(item.fullPath), {
+            relPath: item.relPath || item.name,
+            fullPath: item.fullPath
+          });
+        }
+      } catch (_) {}
+    } else {
+      const scanned = scanSourceRootFiles((name) => name.toLowerCase().endsWith(".tex"));
+      for (const item of scanned) {
+        fileMap.set(path.resolve(item.full), {
+          relPath: item.rel,
+          fullPath: item.full
+        });
+      }
+    }
+
+    for (const t of tabs) {
+      if (t.filePath) {
+        const abs = path.resolve(t.filePath);
+        if (t.filePath.toLowerCase().endsWith(".tex") && !fileMap.has(abs)) {
+          const base = path.basename(t.filePath);
+          const root = getActiveSourceRootDir();
+          const rel = root && t.filePath.startsWith(root) ? path.relative(root, t.filePath) : base;
+          fileMap.set(abs, { relPath: rel, fullPath: t.filePath });
+        }
+      } else {
+        fileMap.set(`untitled:${t.id}`, {
+          relPath: t.title || "untitled.tex",
+          fullPath: null,
+          tabId: t.id
+        });
+      }
+    }
+
+    return Array.from(fileMap.values());
+  }
+
+  function getFileContentForSearch(fileDesc) {
+    if (fileDesc.tabId) {
+      const tab = tabs.find(t => t.id === fileDesc.tabId);
+      if (tab) {
+        return activeTabId === tab.id && cm ? cm.getValue() : (tab.content || "");
+      }
+    }
+    if (fileDesc.fullPath) {
+      const openTab = tabs.find(t => t.filePath && path.resolve(t.filePath) === path.resolve(fileDesc.fullPath));
+      if (openTab) {
+        return activeTabId === openTab.id && cm ? cm.getValue() : (openTab.content || "");
+      }
+      try {
+        return fs.readFileSync(fileDesc.fullPath, "utf8");
+      } catch (_) {
+        return "";
+      }
+    }
+    return "";
+  }
+
+  function executeProjectSearch() {
+    if (!projectSearchInput || !projectSearchResults || !projectSearchSummary) return;
+    const rawQuery = projectSearchInput.value;
+    const query = rawQuery.trim();
+
+    btnProjectSearchClear?.classList.toggle("hidden", !rawQuery);
+
+    if (!query) {
+      projectSearchResults.innerHTML = "";
+      projectSearchSummary.textContent = "";
+      drawerSearchCount?.classList.add("hidden");
+      if (drawerSearchCount) drawerSearchCount.textContent = "0";
+      return;
+    }
+
+    let regex;
+    try {
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = projectSearchWholeWord ? `\\b${escaped}\\b` : escaped;
+      regex = new RegExp(pattern, projectSearchCaseSensitive ? "g" : "gi");
+    } catch (_) {
+      projectSearchSummary.textContent = "Espressione di ricerca non valida.";
+      return;
+    }
+
+    const files = getAllProjectTexFileDescriptors();
+    const resultsByFile = [];
+    let totalMatches = 0;
+
+    for (const fileDesc of files) {
+      const content = getFileContentForSearch(fileDesc);
+      if (!content) continue;
+
+      const lines = content.split(/\r?\n/);
+      const fileMatches = [];
+
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const lineText = lines[lineIdx];
+        regex.lastIndex = 0;
+        let match;
+        while ((match = regex.exec(lineText)) !== null) {
+          fileMatches.push({
+            lineNum: lineIdx + 1,
+            col: match.index + 1,
+            matchLength: match[0].length,
+            matchIndex: match.index,
+            lineText
+          });
+          if (match[0].length === 0) break;
+        }
+      }
+
+      if (fileMatches.length > 0) {
+        totalMatches += fileMatches.length;
+        resultsByFile.push({
+          fileDesc,
+          matches: fileMatches
+        });
+      }
+    }
+
+    renderProjectSearchResults(query, resultsByFile, totalMatches);
+  }
+
+  function escapeProjectSearchHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function renderProjectSearchResults(query, resultsByFile, totalMatches) {
+    if (drawerSearchCount) {
+      drawerSearchCount.textContent = String(totalMatches);
+      drawerSearchCount.classList.toggle("hidden", totalMatches === 0);
+    }
+
+    if (totalMatches === 0) {
+      projectSearchSummary.textContent = `Nessuna corrispondenza trovata per "${query}".`;
+      projectSearchResults.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--fg-muted, #888888); font-size: 12px;">Nessun risultato nei file .tex del progetto.</div>`;
+      return;
+    }
+
+    const filesCount = resultsByFile.length;
+    projectSearchSummary.textContent = filesCount === 1 && totalMatches === 1
+      ? `1 corrispondenza trovata in 1 file.`
+      : `${totalMatches} corrispondenze trovate in ${filesCount} file.`;
+
+    projectSearchResults.innerHTML = "";
+
+    for (const group of resultsByFile) {
+      const groupEl = document.createElement("div");
+      groupEl.className = "project-search-file-group";
+
+      const headerEl = document.createElement("div");
+      headerEl.className = "project-search-file-header";
+      headerEl.title = group.fileDesc.fullPath || group.fileDesc.relPath;
+      headerEl.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+        </svg>
+        <span class="file-path">${escapeProjectSearchHtml(group.fileDesc.relPath)}</span>
+        <span class="project-search-file-badge">${group.matches.length}</span>
+      `;
+      headerEl.addEventListener("click", () => {
+        navigateToMatch(group.fileDesc, 1, 1, 0);
+      });
+      groupEl.appendChild(headerEl);
+
+      const listEl = document.createElement("div");
+      listEl.className = "project-search-matches-list";
+
+      for (const m of group.matches) {
+        const itemEl = document.createElement("div");
+        itemEl.className = "project-search-item";
+        itemEl.title = `Riga ${m.lineNum}, Col ${m.col}`;
+
+        const before = escapeProjectSearchHtml(m.lineText.slice(0, m.matchIndex));
+        const matched = escapeProjectSearchHtml(m.lineText.slice(m.matchIndex, m.matchIndex + m.matchLength));
+        const after = escapeProjectSearchHtml(m.lineText.slice(m.matchIndex + m.matchLength));
+
+        itemEl.innerHTML = `
+          <span class="project-search-line-badge">Ln ${m.lineNum}</span>
+          <span class="project-search-snippet">${before}<mark class="project-search-highlight">${matched}</mark>${after}</span>
+        `;
+
+        itemEl.addEventListener("click", () => {
+          navigateToMatch(group.fileDesc, m.lineNum, m.col, m.matchLength);
+        });
+
+        listEl.appendChild(itemEl);
+      }
+
+      groupEl.appendChild(listEl);
+      projectSearchResults.appendChild(groupEl);
+    }
+  }
+
+  function navigateToMatch(fileDesc, lineNum, col, matchLength) {
+    if (fileDesc.tabId) {
+      switchTab(fileDesc.tabId);
+    } else if (fileDesc.fullPath) {
+      openFileFromPath(fileDesc.fullPath);
+    }
+    if (cm && cm.view) {
+      cm.jumpToLine(lineNum, col);
+      if (matchLength > 0) {
+        const doc = cm.view.state.doc;
+        const targetLine = Math.max(1, Math.min(lineNum, doc.lines));
+        const lineObj = doc.line(targetLine);
+        const from = Math.min(lineObj.from + Math.max(0, col - 1), lineObj.to);
+        const to = Math.min(from + matchLength, lineObj.to);
+        cm.view.dispatch({
+          selection: { anchor: from, head: to },
+          scrollIntoView: true
+        });
+      }
+      cm.focus();
+    }
+  }
+
+  btnProjectSearchClear?.addEventListener("click", () => {
+    if (projectSearchInput) {
+      projectSearchInput.value = "";
+      btnProjectSearchClear.classList.add("hidden");
+      executeProjectSearch();
+      projectSearchInput.focus();
+    }
+  });
+
+  btnProjectSearchCase?.addEventListener("click", () => {
+    projectSearchCaseSensitive = !projectSearchCaseSensitive;
+    btnProjectSearchCase.classList.toggle("active", projectSearchCaseSensitive);
+    executeProjectSearch();
+  });
+
+  btnProjectSearchWord?.addEventListener("click", () => {
+    projectSearchWholeWord = !projectSearchWholeWord;
+    btnProjectSearchWord.classList.toggle("active", projectSearchWholeWord);
+    executeProjectSearch();
+  });
+
+  btnProjectSearchRun?.addEventListener("click", () => {
+    executeProjectSearch();
+  });
+
+  projectSearchInput?.addEventListener("input", () => {
+    clearTimeout(projectSearchDebounceTimer);
+    projectSearchDebounceTimer = setTimeout(() => {
+      executeProjectSearch();
+    }, 250);
+  });
+
+  projectSearchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      clearTimeout(projectSearchDebounceTimer);
+      executeProjectSearch();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      logsDrawer.classList.add("hidden");
+      if (cm) cm.focus();
+    }
+  });
+
+  document.getElementById("footer-btn-project-search")?.addEventListener("click", () => {
+    openProjectSearch();
+  });
 
   async function cleanAuxiliaryFiles() {
     const workDir = isLinkedProject && currentProject ? currentProject.storePath : currentProjectDir;
@@ -5740,8 +6165,10 @@ window.addEventListener("DOMContentLoaded", async () => {
           break;
         case 'select-all': cm.view.dispatch({ selection: { anchor: 0, head: cm.view.state.doc.length } }); break;
         case 'find':
-          document.getElementById('search-container')?.classList.remove('hidden');
-          document.getElementById('search-input')?.focus();
+          openDocumentSearch();
+          break;
+        case 'find-in-project':
+          openProjectSearch();
           break;
         case 'trigger-compile': triggerCompile(false); break;
         case 'toggle-compile-on-save':
@@ -6329,8 +6756,22 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // ====== GLOBAL KEYBOARD SHORTCUTS ======
   window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (searchContainer && !searchContainer.classList.contains("hidden")) {
+        closeDocumentSearch();
+        return;
+      }
+    }
+
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === "n" || e.key === "N") {
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          openProjectSearch();
+        } else {
+          openDocumentSearch();
+        }
+      } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
         newFile();
       } else if (e.key === "s" || e.key === "S") {
@@ -6378,6 +6819,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ====== IPC SHORTCUTS & MENU LISTENERS ======
+  ipcRenderer.on("open-search", () => openDocumentSearch());
+  ipcRenderer.on("open-project-search", () => openProjectSearch());
   ipcRenderer.on("new-file", () => newFile());
   ipcRenderer.on("trigger-save", () => saveFile());
   ipcRenderer.on("trigger-compile", () => triggerCompile(false));
@@ -6724,6 +7167,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.__lackHandleDeleteTemplate = handleDeleteTemplate;
   window.__lackOpenTemplateGallery = openTemplateGallery;
   window.__lackPdfViewer = pdfViewer;
+  window.__lackOpenDocumentSearch = openDocumentSearch;
+  window.__lackCloseDocumentSearch = closeDocumentSearch;
+  window.__lackOpenProjectSearch = openProjectSearch;
+  window.__lackExecuteProjectSearch = executeProjectSearch;
 
   // Initial state: show start screen if no tabs opened
   renderTabs();

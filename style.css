@@ -1721,58 +1721,80 @@ body.theme-github #preview table td {
 
 
 #search-container {
-  position: fixed;
-  top: calc(60px + var(--titlebar-height));
+  position: absolute;
+  top: 10px;
   right: 20px;
   background-color: var(--editor-bg);
   border: 1px solid var(--explorer-border);
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  padding: 5px;
+  padding: 4px 8px;
   z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  gap: 6px;
+  color: var(--fg);
 }
 
 #search-container.hidden {
-  display: none;
+  display: none !important;
 }
 
 #search-input {
-  border: none;
-  background-color: var(--editor-bg);
+  border: 1px solid var(--explorer-border);
+  border-radius: 4px;
+  background-color: var(--card-bg, rgba(0, 0, 0, 0.04));
   color: var(--fg);
-  padding: 5px;
-  margin-right: 5px;
-  width: 200px;
+  padding: 4px 8px;
+  width: 220px;
   outline: none;
   font-family: var(--font-family);
+  font-size: 13px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#search-input:focus {
+  border-color: #be76de;
+  box-shadow: 0 0 0 2px rgba(190, 118, 222, 0.2);
 }
 
 #search-buttons {
   display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 #search-buttons button {
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--fg);
   cursor: pointer;
-  padding: 2px 8px;
-  margin: 0 2px;
-  border-radius: 3px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 #search-buttons button:hover {
   background-color: var(--explorer-hover);
+  border-color: var(--explorer-border);
+}
+
+#search-buttons button:active {
+  background-color: rgba(190, 118, 222, 0.2);
 }
 
 #search-results {
-  margin-left: 10px;
-  color: var(--fg);
-  font-size: 12px;
-  min-width: 35px;
+  margin-left: 4px;
+  color: var(--fg-muted, #888);
+  font-size: 11.5px;
+  min-width: 42px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
 }
 
 .search-highlight {
@@ -1783,6 +1805,28 @@ body.theme-github #preview table td {
 .search-highlight.active {
   background-color: #ff9800;
   color: black;
+}
+
+.cm-searchMatch {
+  background-color: rgba(255, 235, 59, 0.4) !important;
+  border-radius: 2px;
+}
+
+.cm-searchMatch-selected {
+  background-color: rgba(255, 152, 0, 0.6) !important;
+  outline: 1px solid #ff9800;
+  border-radius: 2px;
+}
+
+body.dark .cm-searchMatch {
+  background-color: rgba(255, 235, 59, 0.35) !important;
+  color: inherit;
+}
+
+body.dark .cm-searchMatch-selected {
+  background-color: rgba(190, 118, 222, 0.6) !important;
+  outline: 1px solid #be76de;
+  color: inherit;
 }
 
 .katex-display-container {
@@ -7236,6 +7280,240 @@ body.dark .log-issue-line-badge {
   user-select: text;
 }
 
+/* Project Search Pane in Drawer */
+#logs-search-pane {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+}
+
+#logs-search-pane.active {
+  display: flex;
+}
+
+.project-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 8px 0;
+  border-bottom: 1px solid var(--explorer-border);
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.project-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 540px;
+}
+
+.project-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--fg-muted, #888888);
+  pointer-events: none;
+}
+
+#project-search-input {
+  width: 100%;
+  padding: 5px 28px 5px 28px;
+  border-radius: 5px;
+  border: 1px solid var(--explorer-border);
+  background-color: var(--editor-bg);
+  color: var(--fg);
+  font-size: 13px;
+  font-family: var(--font-family);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#project-search-input:focus {
+  border-color: #be76de;
+  box-shadow: 0 0 0 2px rgba(190, 118, 222, 0.2);
+}
+
+.project-search-btn-clear {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted, #888888);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.project-search-btn-clear:hover {
+  color: var(--fg);
+  background: var(--explorer-hover);
+}
+
+.project-search-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.project-search-opt-btn {
+  background: var(--card-bg, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--explorer-border);
+  color: var(--fg-muted, #888888);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--code-font-family, monospace);
+  transition: all 0.15s ease;
+}
+
+.project-search-opt-btn:hover {
+  background: var(--explorer-hover);
+  color: var(--fg);
+}
+
+.project-search-opt-btn.active {
+  background: var(--primary-accent, #80007f);
+  color: #ffffff;
+  border-color: var(--primary-accent, #80007f);
+}
+
+.project-search-exec-btn {
+  background: var(--primary-accent, #80007f);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.project-search-exec-btn:hover {
+  opacity: 0.9;
+}
+
+.project-search-summary {
+  font-size: 11.5px;
+  color: var(--fg-muted, #888888);
+  margin-bottom: 6px;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.project-search-results {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.project-search-file-group {
+  border: 1px solid var(--explorer-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--card-bg, rgba(255, 255, 255, 0.02));
+}
+
+.project-search-file-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background-color: var(--explorer-bg);
+  border-bottom: 1px solid var(--explorer-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease;
+}
+
+.project-search-file-header:hover {
+  background-color: var(--explorer-hover);
+}
+
+.project-search-file-header .file-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-search-file-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background-color: rgba(190, 118, 222, 0.2);
+  color: var(--purple-text, #be76de);
+  font-weight: 600;
+}
+
+.project-search-matches-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-search-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--explorer-border);
+  font-family: var(--code-font-family, monospace);
+  transition: background-color 0.12s ease;
+}
+
+.project-search-item:last-child {
+  border-bottom: none;
+}
+
+.project-search-item:hover {
+  background-color: var(--explorer-hover);
+}
+
+.project-search-line-badge {
+  color: var(--fg-muted, #888888);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 45px;
+  text-align: right;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.project-search-snippet {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+  color: var(--fg);
+}
+
+.project-search-highlight {
+  background-color: rgba(255, 235, 59, 0.45);
+  color: inherit;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+body.dark .project-search-highlight {
+  background-color: rgba(190, 118, 222, 0.45);
+  color: #ffffff;
+}
+
 /* Footer info tags */
 .footer-info-pill {
   font-size: 11px;
@@ -7244,6 +7522,22 @@ body.dark .log-issue-line-badge {
   border-radius: 4px;
   background-color: var(--explorer-hover);
   margin-left: 6px;
+}
+
+.footer-clickable-pill {
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--fg-muted, #888888);
+  transition: all 0.15s ease;
+  font-family: var(--font-family);
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-clickable-pill:hover {
+  color: var(--fg);
+  background: var(--explorer-hover);
+  border-color: var(--explorer-border);
 }
 
 /* LaTeX Body Typography */

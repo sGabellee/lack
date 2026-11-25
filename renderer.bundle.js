@@ -29651,7 +29651,7 @@ function initVim(CM) {
         } catch (e) {
         }
         if (parsedQuery) {
-          cm.scrollIntoView(findNext2(cm, !forward, parsedQuery), 30);
+          cm.scrollIntoView(findNext3(cm, !forward, parsedQuery), 30);
         } else {
           clearSearchHighlight(cm);
           cm.scrollTo(originalScrollPos.left, originalScrollPos.top);
@@ -30045,7 +30045,7 @@ function initVim(CM) {
       var prev = !motionArgs.forward;
       prev = state.isReversed() ? !prev : prev;
       highlightSearchMatches(cm, query);
-      var result = findNext2(cm, prev, query, motionArgs.repeat);
+      var result = findNext3(cm, prev, query, motionArgs.repeat);
       if (!result) {
         showConfirm(cm, "No match found " + query + (getOption("pcre") ? " (set nopcre to use Vim regexps)" : ""));
       }
@@ -32696,7 +32696,7 @@ function initVim(CM) {
       }
     }, 50);
   }
-  function findNext2(cm, prev, query, repeat2) {
+  function findNext3(cm, prev, query, repeat2) {
     return cm.operation(function() {
       if (repeat2 === void 0) {
         repeat2 = 1;
@@ -47621,7 +47621,17 @@ var {
   StreamLanguage: StreamLanguage2,
   syntaxHighlighting: syntaxHighlighting2
 } = (init_dist6(), __toCommonJS(dist_exports3));
-var { search: search2, searchKeymap: searchKeymap2, openSearchPanel: openSearchPanel2 } = (init_dist9(), __toCommonJS(dist_exports6));
+var {
+  search: search2,
+  searchKeymap: searchKeymap2,
+  openSearchPanel: openSearchPanel2,
+  closeSearchPanel: closeSearchPanel2,
+  SearchQuery: SearchQuery2,
+  setSearchQuery: setSearchQuery2,
+  findNext: findNext2,
+  findPrevious: findPrevious2,
+  SearchCursor: SearchCursor2
+} = (init_dist9(), __toCommonJS(dist_exports6));
 var { lintGutter: lintGutter2, lintKeymap: lintKeymap2, forceLinting: forceLinting2 } = (init_dist10(), __toCommonJS(dist_exports7));
 var { latexLanguage } = require_latex_syntax();
 var { vim } = require_dist3();
@@ -47764,6 +47774,26 @@ var CodeMirrorManager = class {
   initEditor(initialText) {
     const self2 = this;
     const customKeymaps = [
+      {
+        key: "Mod-f",
+        run: () => {
+          if (typeof self2.onSearchCallback === "function") {
+            self2.onSearchCallback();
+            return true;
+          }
+          return false;
+        }
+      },
+      {
+        key: "Mod-Shift-f",
+        run: () => {
+          if (typeof self2.onProjectSearchCallback === "function") {
+            self2.onProjectSearchCallback();
+            return true;
+          }
+          return false;
+        }
+      },
       {
         key: "Backspace",
         run: backspacePairCommand
@@ -48210,6 +48240,123 @@ var CodeMirrorManager = class {
   onRotateTheme(fn) {
     this.onRotateThemeCallback = fn;
   }
+  onSearch(fn) {
+    this.onSearchCallback = fn;
+  }
+  onProjectSearch(fn) {
+    this.onProjectSearchCallback = fn;
+  }
+  _getAllMatches(query, { caseSensitive = false, wholeWord = false, regexp = false } = {}) {
+    if (!this.view || !query) return [];
+    const doc3 = this.view.state.doc;
+    let queryStr = query;
+    let isRegexp = regexp;
+    if (wholeWord && !regexp) {
+      queryStr = `\\b${queryStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`;
+      isRegexp = true;
+    }
+    const searchQuery = new SearchQuery2({
+      search: queryStr,
+      caseSensitive,
+      regexp: isRegexp
+    });
+    const matches = [];
+    try {
+      const cursor = searchQuery.getCursor(doc3, 0);
+      while (!cursor.next().done) {
+        matches.push({ from: cursor.value.from, to: cursor.value.to });
+      }
+    } catch (_) {
+    }
+    return matches;
+  }
+  search(query, { caseSensitive = false, regexp = false, wholeWord = false } = {}) {
+    if (!this.view) return { count: 0, current: 0 };
+    if (!query) {
+      this.clearSearch();
+      return { count: 0, current: 0 };
+    }
+    let queryStr = query;
+    let isRegexp = regexp;
+    if (wholeWord && !regexp) {
+      queryStr = `\\b${queryStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`;
+      isRegexp = true;
+    }
+    const searchQuery = new SearchQuery2({
+      search: queryStr,
+      caseSensitive,
+      regexp: isRegexp
+    });
+    this.view.dispatch({
+      effects: setSearchQuery2.of(searchQuery)
+    });
+    this._lastSearchQuery = query;
+    this._lastSearchCase = caseSensitive;
+    this._lastSearchWord = wholeWord;
+    const matches = this._getAllMatches(query, { caseSensitive, wholeWord, regexp: isRegexp });
+    if (matches.length === 0) {
+      return { count: 0, current: 0 };
+    }
+    const currentFrom = this.view.state.selection.main.from;
+    const targetMatch = matches.find((m) => m.from >= currentFrom) || matches[0];
+    const targetIdx = matches.indexOf(targetMatch);
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+  findNext() {
+    if (!this.view || !this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const currentTo = this.view.state.selection.main.to;
+    const targetMatch = matches.find((m) => m.from >= currentTo) || matches[0];
+    const targetIdx = matches.indexOf(targetMatch);
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+  findPrevious() {
+    if (!this.view || !this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const currentFrom = this.view.state.selection.main.from;
+    const prevMatches = matches.filter((m) => m.to <= currentFrom);
+    const targetMatch = prevMatches.length > 0 ? prevMatches[prevMatches.length - 1] : matches[matches.length - 1];
+    const targetIdx = matches.indexOf(targetMatch);
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+  clearSearch() {
+    if (!this.view) return;
+    this._lastSearchQuery = "";
+    this.view.dispatch({
+      effects: setSearchQuery2.of(new SearchQuery2({ search: "" }))
+    });
+  }
+  getCurrentSearchInfo() {
+    if (!this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const sel = this.view.state.selection.main;
+    const matchIdx = matches.findIndex((m) => m.from === sel.from && m.to === sel.to);
+    return { count: matches.length, current: matchIdx !== -1 ? matchIdx + 1 : 1 };
+  }
   getWordCount() {
     return getLatexWordCount(this.getValue());
   }
@@ -48228,7 +48375,14 @@ module.exports = {
   setSpellLanguage: setSpellLanguageInternal,
   addToUserDictionary,
   getSpellSuggestions,
-  initSpellWorker
+  initSpellWorker,
+  SearchQuery: SearchQuery2,
+  setSearchQuery: setSearchQuery2,
+  findNext: findNext2,
+  findPrevious: findPrevious2,
+  SearchCursor: SearchCursor2,
+  closeSearchPanel: closeSearchPanel2,
+  openSearchPanel: openSearchPanel2
 };
 /*! Bundled license information:
 
