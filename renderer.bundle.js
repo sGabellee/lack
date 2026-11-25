@@ -29651,7 +29651,7 @@ function initVim(CM) {
         } catch (e) {
         }
         if (parsedQuery) {
-          cm.scrollIntoView(findNext2(cm, !forward, parsedQuery), 30);
+          cm.scrollIntoView(findNext3(cm, !forward, parsedQuery), 30);
         } else {
           clearSearchHighlight(cm);
           cm.scrollTo(originalScrollPos.left, originalScrollPos.top);
@@ -30045,7 +30045,7 @@ function initVim(CM) {
       var prev = !motionArgs.forward;
       prev = state.isReversed() ? !prev : prev;
       highlightSearchMatches(cm, query);
-      var result = findNext2(cm, prev, query, motionArgs.repeat);
+      var result = findNext3(cm, prev, query, motionArgs.repeat);
       if (!result) {
         showConfirm(cm, "No match found " + query + (getOption("pcre") ? " (set nopcre to use Vim regexps)" : ""));
       }
@@ -32696,7 +32696,7 @@ function initVim(CM) {
       }
     }, 50);
   }
-  function findNext2(cm, prev, query, repeat2) {
+  function findNext3(cm, prev, query, repeat2) {
     return cm.operation(function() {
       if (repeat2 === void 0) {
         repeat2 = 1;
@@ -45441,7 +45441,14 @@ var require_linter_logic = __commonJS({
         "amssymb",
         "amsfonts",
         "booktabs",
-        "geometry"
+        "geometry",
+        "tcolorbox",
+        "pgfplots",
+        "listings",
+        "minted",
+        "algorithm",
+        "algorithmic",
+        "algpseudocode"
       ]);
       const effectivePackages = new Set(loadedPackages);
       if (effectivePackages.has("amsthm")) effectivePackages.add("mathtools");
@@ -45541,6 +45548,27 @@ var require_linter_logic = __commonJS({
       }
       if (effectivePackages.has("tabularx")) {
         validEnvironments.add("tabularx");
+      }
+      if (effectivePackages.has("tcolorbox")) {
+        [
+          "tcbset",
+          "tcbox",
+          "newtcolorbox",
+          "renewtcolorbox",
+          "tcbuselibrary",
+          "tcbline",
+          "tcblower",
+          "tcbdocmarginnote",
+          "tcolorboxenvironment",
+          "tcbsetforeverylayer",
+          "tcbsubtitle",
+          "tcbincludegraphics",
+          "tcbincludepdf"
+        ].forEach((c) => {
+          validCommands.add(c);
+          knownCommandNames.push(c);
+        });
+        validEnvironments.add("tcolorbox");
       }
       const dbPackages = /* @__PURE__ */ new Set([...db.packages, ...db.macros.map((m) => m.package)]);
       let allLoadedPackagesKnown = true;
@@ -45712,6 +45740,34 @@ var require_linter_logic = __commonJS({
           message: `! LaTeX Error: \\begin{${unclosed.name}} on line ${unclosed.line} not closed.`
         });
       }
+      const titleMetaRegex = /\\(?:title|subtitle|author|institute|date|section|subsection|subsubsection|paragraph|caption|frametitle|framesubtitle)(?:\[[^\]]*\])?\{([^}]*)\}/g;
+      let tmm;
+      while ((tmm = titleMetaRegex.exec(text2)) !== null) {
+        const inner = tmm[1];
+        const innerOffset = tmm.index + tmm[0].lastIndexOf(inner);
+        const ampRegex = /(?<!\\)&/g;
+        let am;
+        while ((am = ampRegex.exec(inner)) !== null) {
+          const ampPos = innerOffset + am.index;
+          if (isMasked[ampPos]) continue;
+          const lineNum = getLineNumber(ampPos);
+          diagnostics.push({
+            from: ampPos,
+            to: ampPos + 1,
+            severity: "error",
+            line: lineNum,
+            message: "! Misplaced alignment tab character &. In LaTeX usa '\\&' per il simbolo & nel testo o nei titoli.",
+            actions: [
+              {
+                name: "Sostituisci con \\&",
+                apply(view, fromOffset, toOffset) {
+                  view.dispatch({ changes: { from: fromOffset, to: toOffset, insert: "\\&" } });
+                }
+              }
+            ]
+          });
+        }
+      }
       let braceDepth = 0;
       let lastOpenBracePos = 0;
       for (let i2 = 0; i2 < len; i2++) {
@@ -45807,6 +45863,34 @@ var require_linter = __commonJS({
           from = line.from + idx;
           to = from + cleanCmd.length;
           origToken = cleanCmd;
+        }
+      } else if (iss.message && iss.message.includes("Misplaced alignment tab character &")) {
+        const codeLine = lineText.replace(/%.*$/, "");
+        const directAmp = codeLine.match(/(?<!\\)&/);
+        if (directAmp) {
+          from = line.from + directAmp.index;
+          to = from + 1;
+          origToken = "&";
+        } else {
+          for (let l = lineNum - 1; l >= Math.max(1, lineNum - 80); l--) {
+            const prevLine = doc3.line(l);
+            const prevCode = prevLine.text.replace(/%.*$/, "");
+            const match2 = prevCode.match(/(?<!\\)&/);
+            if (match2) {
+              from = prevLine.from + match2.index;
+              to = from + 1;
+              origToken = "&";
+              return {
+                from,
+                to,
+                line: l,
+                nonEmpty: true,
+                origToken
+              };
+            }
+          }
+          from = line.from;
+          to = line.to;
         }
       } else {
         const cmdMatch = lineText.match(/\\[a-zA-Z@]+/);
@@ -47516,13 +47600,18 @@ var {
 var {
   defaultKeymap: defaultKeymap2,
   history: history2,
-  historyKeymap: historyKeymap2
+  historyKeymap: historyKeymap2,
+  indentWithTab: indentWithTab2,
+  indentLess: indentLess2,
+  insertTab: insertTab2
 } = (init_dist7(), __toCommonJS(dist_exports4));
 var {
   closeBrackets: closeBrackets2,
   closeBracketsKeymap: closeBracketsKeymap2,
   autocompletion: autocompletion2,
-  acceptCompletion: acceptCompletion2
+  acceptCompletion: acceptCompletion2,
+  nextSnippetField: nextSnippetField2,
+  prevSnippetField: prevSnippetField2
 } = (init_dist8(), __toCommonJS(dist_exports5));
 var {
   bracketMatching: bracketMatching2,
@@ -47532,7 +47621,17 @@ var {
   StreamLanguage: StreamLanguage2,
   syntaxHighlighting: syntaxHighlighting2
 } = (init_dist6(), __toCommonJS(dist_exports3));
-var { search: search2, searchKeymap: searchKeymap2, openSearchPanel: openSearchPanel2 } = (init_dist9(), __toCommonJS(dist_exports6));
+var {
+  search: search2,
+  searchKeymap: searchKeymap2,
+  openSearchPanel: openSearchPanel2,
+  closeSearchPanel: closeSearchPanel2,
+  SearchQuery: SearchQuery2,
+  setSearchQuery: setSearchQuery2,
+  findNext: findNext2,
+  findPrevious: findPrevious2,
+  SearchCursor: SearchCursor2
+} = (init_dist9(), __toCommonJS(dist_exports6));
 var { lintGutter: lintGutter2, lintKeymap: lintKeymap2, forceLinting: forceLinting2 } = (init_dist10(), __toCommonJS(dist_exports7));
 var { latexLanguage } = require_latex_syntax();
 var { vim } = require_dist3();
@@ -47676,6 +47775,26 @@ var CodeMirrorManager = class {
     const self2 = this;
     const customKeymaps = [
       {
+        key: "Mod-f",
+        run: () => {
+          if (typeof self2.onSearchCallback === "function") {
+            self2.onSearchCallback();
+            return true;
+          }
+          return false;
+        }
+      },
+      {
+        key: "Mod-Shift-f",
+        run: () => {
+          if (typeof self2.onProjectSearchCallback === "function") {
+            self2.onProjectSearchCallback();
+            return true;
+          }
+          return false;
+        }
+      },
+      {
         key: "Backspace",
         run: backspacePairCommand
       },
@@ -47730,7 +47849,15 @@ var CodeMirrorManager = class {
       },
       {
         key: "Tab",
-        run: acceptCompletion2
+        run: (view) => {
+          if (acceptCompletion2(view)) return true;
+          if (nextSnippetField2(view)) return true;
+          return insertTab2(view);
+        },
+        shift: (view) => {
+          if (prevSnippetField2(view)) return true;
+          return indentLess2(view);
+        }
       },
       {
         key: "Mod-/",
@@ -47789,7 +47916,8 @@ var CodeMirrorManager = class {
           ...defaultKeymap2,
           ...foldKeymap2,
           ...searchKeymap2,
-          ...lintKeymap2
+          ...lintKeymap2,
+          indentWithTab2
         ]),
         EditorView2.updateListener.of((update) => {
           if (update.docChanged) {
@@ -48112,6 +48240,123 @@ var CodeMirrorManager = class {
   onRotateTheme(fn) {
     this.onRotateThemeCallback = fn;
   }
+  onSearch(fn) {
+    this.onSearchCallback = fn;
+  }
+  onProjectSearch(fn) {
+    this.onProjectSearchCallback = fn;
+  }
+  _getAllMatches(query, { caseSensitive = false, wholeWord = false, regexp = false } = {}) {
+    if (!this.view || !query) return [];
+    const doc3 = this.view.state.doc;
+    let queryStr = query;
+    let isRegexp = regexp;
+    if (wholeWord && !regexp) {
+      queryStr = `\\b${queryStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`;
+      isRegexp = true;
+    }
+    const searchQuery = new SearchQuery2({
+      search: queryStr,
+      caseSensitive,
+      regexp: isRegexp
+    });
+    const matches = [];
+    try {
+      const cursor = searchQuery.getCursor(doc3, 0);
+      while (!cursor.next().done) {
+        matches.push({ from: cursor.value.from, to: cursor.value.to });
+      }
+    } catch (_) {
+    }
+    return matches;
+  }
+  search(query, { caseSensitive = false, regexp = false, wholeWord = false } = {}) {
+    if (!this.view) return { count: 0, current: 0 };
+    if (!query) {
+      this.clearSearch();
+      return { count: 0, current: 0 };
+    }
+    let queryStr = query;
+    let isRegexp = regexp;
+    if (wholeWord && !regexp) {
+      queryStr = `\\b${queryStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`;
+      isRegexp = true;
+    }
+    const searchQuery = new SearchQuery2({
+      search: queryStr,
+      caseSensitive,
+      regexp: isRegexp
+    });
+    this.view.dispatch({
+      effects: setSearchQuery2.of(searchQuery)
+    });
+    this._lastSearchQuery = query;
+    this._lastSearchCase = caseSensitive;
+    this._lastSearchWord = wholeWord;
+    const matches = this._getAllMatches(query, { caseSensitive, wholeWord, regexp: isRegexp });
+    if (matches.length === 0) {
+      return { count: 0, current: 0 };
+    }
+    const currentFrom = this.view.state.selection.main.from;
+    const targetMatch = matches.find((m) => m.from >= currentFrom) || matches[0];
+    const targetIdx = matches.indexOf(targetMatch);
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+  findNext() {
+    if (!this.view || !this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const currentTo = this.view.state.selection.main.to;
+    const targetMatch = matches.find((m) => m.from >= currentTo) || matches[0];
+    const targetIdx = matches.indexOf(targetMatch);
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+  findPrevious() {
+    if (!this.view || !this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const currentFrom = this.view.state.selection.main.from;
+    const prevMatches = matches.filter((m) => m.to <= currentFrom);
+    const targetMatch = prevMatches.length > 0 ? prevMatches[prevMatches.length - 1] : matches[matches.length - 1];
+    const targetIdx = matches.indexOf(targetMatch);
+    this.view.dispatch({
+      selection: { anchor: targetMatch.from, head: targetMatch.to },
+      scrollIntoView: true
+    });
+    return { count: matches.length, current: targetIdx !== -1 ? targetIdx + 1 : 1 };
+  }
+  clearSearch() {
+    if (!this.view) return;
+    this._lastSearchQuery = "";
+    this.view.dispatch({
+      effects: setSearchQuery2.of(new SearchQuery2({ search: "" }))
+    });
+  }
+  getCurrentSearchInfo() {
+    if (!this._lastSearchQuery) return { count: 0, current: 0 };
+    const matches = this._getAllMatches(this._lastSearchQuery, {
+      caseSensitive: this._lastSearchCase,
+      wholeWord: this._lastSearchWord
+    });
+    if (matches.length === 0) return { count: 0, current: 0 };
+    const sel = this.view.state.selection.main;
+    const matchIdx = matches.findIndex((m) => m.from === sel.from && m.to === sel.to);
+    return { count: matches.length, current: matchIdx !== -1 ? matchIdx + 1 : 1 };
+  }
   getWordCount() {
     return getLatexWordCount(this.getValue());
   }
@@ -48130,7 +48375,14 @@ module.exports = {
   setSpellLanguage: setSpellLanguageInternal,
   addToUserDictionary,
   getSpellSuggestions,
-  initSpellWorker
+  initSpellWorker,
+  SearchQuery: SearchQuery2,
+  setSearchQuery: setSearchQuery2,
+  findNext: findNext2,
+  findPrevious: findPrevious2,
+  SearchCursor: SearchCursor2,
+  closeSearchPanel: closeSearchPanel2,
+  openSearchPanel: openSearchPanel2
 };
 /*! Bundled license information:
 

@@ -41,6 +41,35 @@ function resolveCompilerIssueRange(doc, iss) {
       to = from + cleanCmd.length;
       origToken = cleanCmd;
     }
+  } else if (iss.message && iss.message.includes('Misplaced alignment tab character &')) {
+    const codeLine = lineText.replace(/%.*$/, '');
+    const directAmp = codeLine.match(/(?<!\\)&/);
+    if (directAmp) {
+      from = line.from + directAmp.index;
+      to = from + 1;
+      origToken = '&';
+    } else {
+      // Look backward for the nearest unescaped & (e.g. in \title or earlier in the frame/environment)
+      for (let l = lineNum - 1; l >= Math.max(1, lineNum - 80); l--) {
+        const prevLine = doc.line(l);
+        const prevCode = prevLine.text.replace(/%.*$/, '');
+        const match = prevCode.match(/(?<!\\)&/);
+        if (match) {
+          from = prevLine.from + match.index;
+          to = from + 1;
+          origToken = '&';
+          return {
+            from,
+            to,
+            line: l,
+            nonEmpty: true,
+            origToken
+          };
+        }
+      }
+      from = line.from;
+      to = line.to;
+    }
   } else {
     // Prefer the first LaTeX control sequence on the line so deletions/edits track the token
     const cmdMatch = lineText.match(/\\[a-zA-Z@]+/);
